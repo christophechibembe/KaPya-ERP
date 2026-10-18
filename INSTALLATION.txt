@@ -1,0 +1,12 @@
+KAPYA ERP v67 — MODIFICATIONS HORS LIGNE
+
+Cette version conserve la clôture de caisse v66 et ajoute la mise en attente hors ligne des modifications d’articles, de clients et de fournisseurs. Elle garde aussi le correctif d’identifiant pour les téléphones Android qui ne proposent pas crypto.randomUUID.
+
+Pour mettre à jour l’application, décompressez cette version dans un nouveau dossier et ouvrez-la avec le lanceur fourni. Pour l’utiliser depuis un téléphone connecté au même partage Wi-Fi, démarrez le serveur en l’attachant au réseau local, puis ouvrez l’adresse IP de l’ordinateur suivie du port du serveur.
+
+Les modifications hors ligne sont conservées sur l’appareil et synchronisées dès le retour de la connexion. L’article, le client ou le fournisseur doit avoir été chargé sur cet appareil auparavant. Une modification refusée par Supabase est annulée localement. La suppression nécessite encore une connexion.
+
+La clôture de caisse de v66 reste disponible et nécessite une connexion à Supabase. Son installation SQL est décrite dans INSTALLATION-CLOTURE-CAISSE.md.
+
+
+Installation sur téléphone : en HTTP via l’adresse IP du réseau local, l’application peut être utilisée dans le navigateur, mais Android peut refuser l’installation en application. Pour l’installer sur l’écran d’accueil avec le mode hors ligne de l’interface, il faut ouvrir l’application depuis une adresse HTTPS (par exemple un site Netlify publié), puis choisir « Installer l’application » ou « Ajouter à l’écran d’accueil » dans le menu du navigateur.

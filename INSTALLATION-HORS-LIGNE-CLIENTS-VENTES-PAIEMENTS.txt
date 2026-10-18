@@ -1,0 +1,24 @@
+KaPya ERP — opérations hors ligne
+
+FONCTIONS INCLUSES
+- Création hors ligne de clients, fournisseurs et articles.
+- Modification hors ligne d’articles, de clients et de fournisseurs déjà chargés sur l’appareil.
+- Enregistrement hors ligne d'achats, de modifications de vente, de paiements de crédit et de dépôts d'acompte.
+- Synchronisation dans l'ordre de saisie au retour d'Internet, avec identifiants uniques pour éviter les doublons.
+- Stock et soldes affichés localement ajustés pendant l'attente. Les opérations refusées par le serveur sont annulées localement et signalées.
+- Le dépôt hors ligne produit un reçu provisoire ; son numéro définitif est attribué après synchronisation.
+
+INSTALLATION
+1. Faites une copie de sauvegarde du dossier actuel de l'application.
+2. Décompressez cette archive dans le dossier de KaPya ERP en conservant les sous-dossiers js/, sql/ et supabase/ ; acceptez le remplacement des fichiers.
+3. Dans le tableau de bord Supabase du projet KaPya, ouvrez SQL Editor.
+4. Ouvrez sql/achats-et-acomptes-hors-ligne.sql depuis l'archive, copiez tout son contenu dans SQL Editor, puis cliquez sur Run. Ce script installe les fonctions idempotentes pour les achats et les dépôts.
+5. La fonction de paiement de crédit hors ligne est dans sql/paiement-credit-hors-ligne.sql. Si elle n'a pas déjà été exécutée, exécutez aussi son contenu dans SQL Editor.
+6. Rechargez http://localhost:8102/ avec Ctrl+F5 lorsque l'appareil est connecté.
+
+UTILISATION HORS LIGNE
+- Connectez-vous d'abord avec Internet et laissez l'application charger les clients, fournisseurs, articles, achats et crédits.
+- Les nouvelles fiches doivent être créées avant les opérations qui les utilisent. À la synchronisation, les fiches sont envoyées avant les achats et dépôts qui y font référence.
+- Pour autoriser un dépôt hors ligne, l'application doit avoir chargé les ventes à crédit du client. Elle bloque le dépôt si une dette est détectée ou si la liste des dettes n'a jamais été chargée.
+- Les données en attente sont conservées sur cet appareil jusqu'à la synchronisation. Ne choisissez pas « Effacer les données hors ligne » avant la reconnexion.
+- Si une opération est refusée (par exemple, stock insuffisant ou dette restante), corrigez-la après reconnexion.

@@ -1,0 +1,128 @@
+[build]
+  publish = "."
+
+# Le service worker doit toujours être récupéré depuis le réseau (mises à jour)
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Fichiers du projet et outils internes : non publics
+
+[[redirects]]
+  from = "/sql/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/tests/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/tools/*"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/diagnostic.html"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/CHANGEMENTS-V67.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/CHANGEMENTS-V68.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/CHANGEMENTS-V69.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/CHANGEMENTS-V71.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/CHANGEMENTS-V74.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/CHANGEMENTS-V75.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/HANDOFF-CODEX-V68.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/INSTALLATION-CLOTURE-CAISSE.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/INSTALLATION-HORS-LIGNE-CLIENTS-VENTES-PAIEMENTS.txt"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/INSTALLATION-LOCALE.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/INSTALLATION-V69.md"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/INSTALLATION.txt"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/LISEZ-MOI.txt"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/lancer-8106.bat"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/lancer.bat"
+  to = "/404.html"
+  status = 404
+
+[[redirects]]
+  from = "/lancer.sh"
+  to = "/404.html"
+  status = 404
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"

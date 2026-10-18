@@ -1,0 +1,16 @@
+KaPya ERP — version v67
+
+CONTENU
+- Clôture de caisse v66 et scripts Supabase inclus.
+- Création et modification hors ligne de clients, fournisseurs et articles.
+- Ventes, achats, dépôts et paiements mis en attente selon les fonctions déjà présentes.
+- Synchronisation à la reconnexion, avec annulation locale et signalement des changements refusés.
+- Correctif de compatibilité des identifiants pour certains téléphones Android.
+
+INSTALLATION
+- L’application locale démarre avec lancer-8106.bat (http://localhost:8106).
+- Les instructions de clôture et de mise à jour SQL sont dans INSTALLATION-CLOTURE-CAISSE.md.
+- Le mode hors ligne est expliqué dans INSTALLATION.txt et INSTALLATION-HORS-LIGNE-CLIENTS-VENTES-PAIEMENTS.txt.
+- Pour installer l’application comme PWA sur un téléphone, l’adresse doit être servie en HTTPS. Une adresse HTTP locale reste utilisable dans le navigateur, mais ne garantit pas l’installation.
+
+Aucune migration SQL n’est nécessaire pour la mise en attente des modifications de fiches. La clôture de caisse requiert le script indiqué dans le guide d’installation.

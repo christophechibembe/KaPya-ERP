@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KaPya ERP — diagnostic Supabase</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;margin:2rem;max-width:720px;color:#0f1b33}
+h1{font-size:1.4rem}li{margin:.35rem 0}.ok{color:#15803d;font-weight:600}.ko{color:#b91c1c;font-weight:600}.muted{color:#6b7a90}
+button{padding:.6rem 1.1rem;border:0;border-radius:10px;background:#1f6feb;color:#fff;font:600 .95rem system-ui;cursor:pointer}</style>
+</head><body>
+<h1>Diagnostic de la connexion Supabase</h1>
+<p class="muted">Lit la configuration de <code>js/config.js</code>. N'affiche aucune clé.</p>
+<p><button id="go" type="button">Lancer le diagnostic</button></p>
+<ul id="out" aria-live="polite"></ul>
+<script type="module">
+import { CFG } from './js/config.js';
+const out = document.getElementById('out');
+const line = (ok, label, detail = '') => { const li = document.createElement('li');
+  li.innerHTML = `<span class="${ok ? 'ok' : 'ko'}">${ok ? 'OK' : 'ÉCHEC'}</span> — ${label}${detail ? ` <span class="muted">(${detail})</span>` : ''}`; out.append(li); };
+const H = { apikey: CFG.key, Authorization: 'Bearer ' + CFG.key };
+async function check(label, path, opts = {}) {
+  try {
+    const r = await fetch(CFG.url + path, { headers: H, ...opts });
+    const t = await r.text();
+    const ok = r.ok;
+    line(ok, label, `HTTP ${r.status}${ok ? '' : ' · ' + t.slice(0, 160)}`);
+    return ok;
+  } catch (e) { line(false, label, 'réseau : ' + e.message); return false; }
+}
+// Une fonction présente renvoie une erreur métier (« Ajoutez au moins une ligne ») ; une fonction absente renvoie 404 PGRST202.
+async function rpc(name, args) {
+  try {
+    const r = await fetch(`${CFG.url}/rest/v1/rpc/${name}`, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(args) });
+    const t = await r.text();
+    const present = r.status !== 404 || !/PGRST202|does not exist|Could not find/i.test(t);
+    const metier = /Ajoutez au moins une ligne/i.test(t);
+    line(present && (r.ok || metier || r.status === 400), `fonction ${name}`, metier ? 'présente (contrôle métier OK)' : `HTTP ${r.status}${present ? '' : ' · absente : exécuter sql/fonctions.sql'}`);
+  } catch (e) { line(false, `fonction ${name}`, 'réseau : ' + e.message); }
+}
+document.getElementById('go').onclick = async () => {
+  out.innerHTML = '';
+  if (CFG.key.startsWith('VOTRE')) { line(false, 'clé publique absente dans js/config.js'); return; }
+  line(true, 'configuration lue', CFG.url);
+  await check('projet joignable (auth)', '/auth/v1/health');
+  for (const t of ['organizations', 'profiles', 'articles', 'sales', 'sale_lines', 'purchases', 'purchase_lines', 'stock_moves', 'customers', 'suppliers', 'settings'])
+    await check(`table « ${t} »`, `/rest/v1/${t}?select=*&limit=1`);
+  await rpc('create_purchase', { p_supplier: null, p_number: null, p_date: null, p_lines: [] });
+  await rpc('create_sale', { p_customer: null, p_number: null, p_date: null, p_lines: [] });
+};
+</script></body></html>
