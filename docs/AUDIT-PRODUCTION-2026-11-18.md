@@ -119,7 +119,8 @@ articles vendus, pas par les dépenses.
 2. **Obtenir un dump officiel** (`supabase db dump`, qui demande le mot de passe de la base)
    si l'on veut une restauration garantie. `sql/schema-production.sql` est exécutable sur
    un projet vide et vérifié par `tests/schema-rebuild.test.mjs`, mais n'a pas encore été
-   rejoué sur un vrai projet de test.
+   rejoué sur un vrai projet de test. Commandes prêtes dans `docs/BACKUP_AND_RECOVERY.md` ;
+   il ne manque que le mot de passe de la base pour produire le dump.
 3. **Tests fonctionnels sur un projet de test** : ventes, crédits, clôtures, restauration.
    L'isolation multi-entreprises est déjà vérifiée sur la production (voir Sécurité) ;
    il reste à rejouer les parcours complets sur un projet dédié, sans données réelles.

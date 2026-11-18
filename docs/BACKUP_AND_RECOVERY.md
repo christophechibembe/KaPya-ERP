@@ -1,5 +1,27 @@
 # Sauvegarde et reprise
 
+## Dump officiel PostgreSQL (`pg_dump`)
+
+L'export de `sql/exports/` ne contient que le schéma (aucune donnée). Pour une
+restauration garantie, produire en plus un dump officiel avec la CLI Supabase
+(`npx supabase db dump`). Il faut le mot de passe de la base, à saisir au moment de
+la commande ou à fournir via `--password` ; il n'est jamais enregistré dans le dépôt.
+
+Le dump contient des **données personnelles** : l'écrire **hors du dépôt**, par exemple
+dans `D:\kapya-sauvegardes\`, et ne jamais le committer.
+
+```powershell
+# Schéma complet
+npx supabase db dump --db-url "postgresql://postgres.ttplxlobehmwzfnxviej:<mot-de-passe>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" -f "D:\kapya-sauvegardes\kapya-2026-11-18-schema.sql"
+
+# Données seules (même chaîne de connexion)
+npx supabase db dump --data-only --db-url "postgresql://postgres.ttplxlobehmwzfnxviej:<mot-de-passe>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" -f "D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql"
+```
+
+Utiliser la chaîne **Session pooler** (port `5432`, hôte `aws-0-<région>.pooler.supabase.com`,
+utilisateur `postgres.<référence>`), et non la connexion directe, si le réseau refuse IPv6.
+Pour un test, restaurer d'abord dans un projet vide, jamais en production active.
+
 ## Créer une sauvegarde
 
 Dans **Sauvegarde**, choisir **Préparer la sauvegarde**. L’application exporte les tables accessibles, pagine les grands résultats et ajoute une empreinte SHA-256 au fichier JSON. Une table absente ou inaccessible est signalée et rend la sauvegarde incomplète. Ne pas traiter un fichier incomplet comme une copie intégrale.
