@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:16
+-- Export : 2026-11-18 07:29
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- accept_invitation [SECURITY DEFINER] [search_path=""]
@@ -858,6 +858,47 @@ begin
   if p_credit and v_role in ('admin','manager') then
     perform public.create_credit_note(p_sale, p_lines, 'Retour ' || v_num || '. ' || trim(coalesce(p_note,'')));
   end if;
+  return v_id;
+end;
+$function$
+;
+
+-- create_inventory [SECURITY DEFINER] [search_path=public, pg_temp]
+CREATE OR REPLACE FUNCTION public.create_inventory(p_warehouse uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+  v_id uuid;
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if coalesce(public.my_role() not in ('admin', 'manager'), true) then
+    raise exception 'Seul le gérant ou le responsable peut ouvrir un inventaire.';
+  end if;
+  if not exists (select 1 from public.warehouses w where w.id = p_warehouse and w.org_id = v_org and w.active) then
+    raise exception 'Dépôt introuvable ou inactif.';
+  end if;
+
+  -- Un seul brouillon par dépôt : on reprend celui qui existe déjà.
+  select i.id into v_id from public.inventories i
+  where i.org_id = v_org and i.warehouse_id = p_warehouse and i.status = 'draft'
+  order by i.created_at desc limit 1;
+  if v_id is not null then return v_id; end if;
+
+  insert into public.inventories (org_id, warehouse_id, created_by)
+  values (v_org, p_warehouse, auth.uid())
+  returning id into v_id;
+
+  insert into public.inventory_lines (org_id, inventory_id, article_id, theoretical)
+  select v_org, v_id, a.id, coalesce(ws.qty, 0)
+  from public.articles a
+  left join public.warehouse_stock ws
+    on ws.article_id = a.id and ws.warehouse_id = p_warehouse and ws.org_id = v_org
+  where a.org_id = v_org and a.archived_at is null;
+
   return v_id;
 end;
 $function$
@@ -3228,6 +3269,23 @@ AS $function$
 $function$
 ;
 
+-- set_barcode_enabled [SECURITY DEFINER] [search_path=public, pg_temp]
+CREATE OR REPLACE FUNCTION public.set_barcode_enabled(p_on boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if public.my_role() <> 'admin' then raise exception 'Seul le gérant peut modifier ce réglage.'; end if;
+  update public.organizations set barcode_enabled = coalesce(p_on, false) where id = v_org;
+end;
+$function$
+;
+
 -- set_business_type [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.set_business_type(p_type text)
  RETURNS void
@@ -3327,6 +3385,37 @@ begin
     operator = case when p_method = 'mobile_money' then p_operator else null end
   where sale_id = p_sale and kind = 'initial';
 end; $function$
+;
+
+-- set_inventory_count [SECURITY DEFINER] [search_path=public, pg_temp]
+CREATE OR REPLACE FUNCTION public.set_inventory_count(p_inventory uuid, p_article uuid, p_counted numeric)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+  v_status text;
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if coalesce(public.my_role() not in ('admin', 'manager'), true) then
+    raise exception 'Seul le gérant ou le responsable peut compter un inventaire.';
+  end if;
+  if p_counted is not null and (p_counted < 0 or p_counted <> round(p_counted, 3)) then
+    raise exception 'La quantité comptée doit être positive, avec trois décimales au plus.';
+  end if;
+
+  select status into v_status from public.inventories
+  where id = p_inventory and org_id = v_org for update;
+  if not found then raise exception 'Inventaire introuvable.'; end if;
+  if v_status <> 'draft' then raise exception 'Cet inventaire est déjà validé.'; end if;
+
+  update public.inventory_lines set counted = p_counted
+  where inventory_id = p_inventory and article_id = p_article and org_id = v_org;
+  if not found then raise exception 'Ce produit ne fait pas partie de cet inventaire.'; end if;
+end;
+$function$
 ;
 
 -- set_receipt_footer [SECURITY DEFINER] [search_path=""]
@@ -3643,6 +3732,56 @@ begin
     join public.articles a on a.id=(l->>'article_id')::uuid and a.org_id=public.my_org();
   return p_id;
 end
+$function$
+;
+
+-- validate_inventory [SECURITY DEFINER] [search_path=public, pg_temp]
+CREATE OR REPLACE FUNCTION public.validate_inventory(p_inventory uuid)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+  v_inv public.inventories%rowtype;
+  v_ligne record;
+  v_actuel numeric(14,3);
+  v_ecart numeric(14,3);
+  v_corrections integer := 0;
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if coalesce(public.my_role() not in ('admin', 'manager'), true) then
+    raise exception 'Seul le gérant ou le responsable peut valider un inventaire.';
+  end if;
+
+  select * into v_inv from public.inventories
+  where id = p_inventory and org_id = v_org for update;
+  if not found then raise exception 'Inventaire introuvable.'; end if;
+  if v_inv.status <> 'draft' then raise exception 'Cet inventaire est déjà validé.'; end if;
+
+  for v_ligne in
+    select article_id, counted from public.inventory_lines
+    where inventory_id = p_inventory and counted is not null order by article_id
+  loop
+    select qty into v_actuel from public.warehouse_stock
+    where org_id = v_org and warehouse_id = v_inv.warehouse_id and article_id = v_ligne.article_id;
+    v_ecart := round(v_ligne.counted - coalesce(v_actuel, 0), 3);
+    if v_ecart <> 0 then
+      -- La contrainte sur stock_moves n'autorise pas de motif dédié : on utilise
+      -- 'adjustment' et ref_id pointe vers l'inventaire pour garder la trace.
+      insert into public.stock_moves (org_id, article_id, qty, reason, ref_id, warehouse_id)
+      values (v_org, v_ligne.article_id, v_ecart, 'adjustment', p_inventory, v_inv.warehouse_id);
+      v_corrections := v_corrections + 1;
+    end if;
+  end loop;
+
+  update public.inventories
+  set status = 'validated', validated_by = auth.uid(), validated_at = now()
+  where id = p_inventory;
+
+  return v_corrections;
+end;
 $function$
 ;
 

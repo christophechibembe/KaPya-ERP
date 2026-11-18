@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:16
+-- Export : 2026-11-18 07:29
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- app_errors · app_errors_created_idx
@@ -137,6 +137,21 @@ CREATE UNIQUE INDEX dashboard_preferences_pkey ON public.dashboard_preferences U
 
 -- document_counters · document_counters_pkey
 CREATE UNIQUE INDEX document_counters_pkey ON public.document_counters USING btree (org_id, kind);
+
+-- inventories · inventories_draft_idx
+CREATE INDEX inventories_draft_idx ON public.inventories USING btree (org_id, warehouse_id) WHERE (status = 'draft'::text);
+
+-- inventories · inventories_pkey
+CREATE UNIQUE INDEX inventories_pkey ON public.inventories USING btree (id);
+
+-- inventory_lines · inventory_lines_inventory_id_article_id_key
+CREATE UNIQUE INDEX inventory_lines_inventory_id_article_id_key ON public.inventory_lines USING btree (inventory_id, article_id);
+
+-- inventory_lines · inventory_lines_inventory_idx
+CREATE INDEX inventory_lines_inventory_idx ON public.inventory_lines USING btree (inventory_id);
+
+-- inventory_lines · inventory_lines_pkey
+CREATE UNIQUE INDEX inventory_lines_pkey ON public.inventory_lines USING btree (id);
 
 -- invitations · invitations_code_key
 CREATE UNIQUE INDEX invitations_code_key ON public.invitations USING btree (code);

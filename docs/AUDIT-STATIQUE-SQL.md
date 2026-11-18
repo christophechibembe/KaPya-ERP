@@ -3,11 +3,11 @@
 Généré par `node scripts/auditer-sql.mjs`. Analyse du SQL versionné uniquement :
 aucune connexion à la base, aucune garantie que ces fichiers sont appliqués en production.
 
-- Tables déclarées : **64**
-- Tables avec RLS activée : **64**
-- Tables avec au moins une politique : **63**
-- Fonctions : **211**, dont **172** en `SECURITY DEFINER`
-- Migrations : **28**
+- Tables déclarées : **66**
+- Tables avec RLS activée : **66**
+- Tables avec au moins une politique : **65**
+- Fonctions : **215**, dont **176** en `SECURITY DEFINER`
+- Migrations : **29**
 
 ## Tables sans RLS (0)
 

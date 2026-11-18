@@ -167,27 +167,26 @@ const rlsSansPolitique = tables.filter(t => t.rls && t.policies === 0).map(t => 
 const definerSansSearchPath = fonctions.filter(f => f.security_definer && !/search_path/.test(f.config)).map(f => f.name);
 const anonExecutable = fonctions.filter(f => f.anon_execute && f.security_definer).map(f => f.name);
 const tablesRepo = new Set();
-{
-  const { readdir } = await import('node:fs/promises');
-  const fichiersSql = (await readdir(path.join(root, 'sql'))).filter(f => f.endsWith('.sql'));
-  for (const f of fichiersSql) {
-    const texte = await readFile(path.join(root, 'sql', f), 'utf8');
-    for (const m of texte.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?\s*\(/gi)) tablesRepo.add(m[1].toLowerCase());
-  }
-}
-const tablesProduction = new Set(tables.map(t => t.table_name));
-const absentesDuDepot = [...tablesProduction].filter(t => !tablesRepo.has(t)).sort();
-const absentesDeProduction = [...tablesRepo].filter(t => !tablesProduction.has(t)).sort();
-
-// Fonctions et politiques versionnées, pour repérer les écarts réels.
 const fonctionsRepo = new Set();
 const politiquesRepo = new Set();
 {
   const { readdir } = await import('node:fs/promises');
-  const fichiersSql = (await readdir(path.join(root, 'sql'))).filter(f => f.endsWith('.sql'));
-  for (const f of fichiersSql) {
-    const texte = await readFile(path.join(root, 'sql', f), 'utf8');
-    for (const m of texte.matchAll(/create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?"?(\w+)"?/gi)) fonctionsRepo.add(m[1].toLowerCase());
+  // Le SQL versionné = sql/*.sql (sauf l'instantané de référence, qui décrit la
+  // production et fausserait la comparaison) + supabase/migrations/*.sql.
+  const fichiers = [];
+  for (const dossierSrc of ['sql', path.join('supabase', 'migrations')]) {
+    const dossierComplet = path.join(root, dossierSrc);
+    let noms = [];
+    try { noms = await readdir(dossierComplet); } catch { noms = []; }
+    for (const nom of noms.filter(n => n.endsWith('.sql'))) {
+      if (dossierSrc === 'sql' && nom === 'schema-production.sql') continue;
+      fichiers.push(path.join(dossierComplet, nom));
+    }
+  }
+  for (const fichier of fichiers) {
+    const texte = await readFile(fichier, 'utf8');
+    for (const m of texte.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?\s*\(/gi)) tablesRepo.add(m[1].toLowerCase());
+    for (const m of texte.matchAll(/create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?"?(\w+)"?\s*\(/gi)) fonctionsRepo.add(m[1].toLowerCase());
     for (const m of texte.matchAll(/create\s+policy\s+(?:"([^"]+)"|(\w+))\s+on\s+(?:public\.)?"?(\w+)"?/gi)) politiquesRepo.add(`${m[3].toLowerCase()}|${(m[1] || m[2]).toLowerCase()}`);
     // Boucle dynamique de schema.sql : quatre politiques nommées <table>_r/_i/_u/_d.
     for (const m of texte.matchAll(/foreach\s+\w+\s+in\s+array\s+array\s*\[([^\]]+)\][\s\S]{0,400}?create\s+policy\s+%I\s+on\s+public\.%I/gi)) {
@@ -198,6 +197,11 @@ const politiquesRepo = new Set();
     }
   }
 }
+const tablesProduction = new Set(tables.map(t => t.table_name));
+const absentesDuDepot = [...tablesProduction].filter(t => !tablesRepo.has(t)).sort();
+const absentesDeProduction = [...tablesRepo].filter(t => !tablesProduction.has(t)).sort();
+
+// Fonctions et politiques versionnées, pour repérer les écarts réels.
 const fonctionsProduction = new Set(fonctions.map(f => f.name.toLowerCase()));
 const fonctionsAbsentesDuDepot = [...fonctionsProduction].filter(f => !fonctionsRepo.has(f)).sort();
 const fonctionsAbsentesDeProduction = [...fonctionsRepo].filter(f => !fonctionsProduction.has(f)).sort();

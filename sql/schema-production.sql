@@ -1,6 +1,6 @@
 -- KaPya ERP — schéma de production (instantané de référence)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Généré le 2026-11-18 07:14 par scripts/generer-schema.mjs
+-- Généré le 2026-11-18 07:25 par scripts/generer-schema.mjs
 --
 -- Ce fichier décrit la base telle qu'elle existe réellement. Il est destiné à la
 -- documentation, à la comparaison et à la reconstruction d'un projet de test.
@@ -307,6 +307,26 @@ create table public.document_counters (
   last integer not null
 );
 
+create table public.inventories (
+  id uuid not null,
+  org_id uuid not null,
+  warehouse_id uuid not null,
+  status text not null,
+  created_by uuid,
+  created_at timestamp with time zone not null,
+  validated_by uuid,
+  validated_at timestamp with time zone
+);
+
+create table public.inventory_lines (
+  id uuid not null,
+  org_id uuid not null,
+  inventory_id uuid not null,
+  article_id uuid not null,
+  theoretical numeric(14,3) not null,
+  counted numeric(14,3)
+);
+
 create table public.invitations (
   id uuid not null,
   org_id uuid not null,
@@ -351,7 +371,8 @@ create table public.organizations (
   receipt_footer text,
   discounts_enabled boolean not null,
   vat_enabled boolean not null,
-  vat_rate numeric(5,2) not null
+  vat_rate numeric(5,2) not null,
+  barcode_enabled boolean not null
 );
 
 create table public.paiements_abonnement (
@@ -1601,6 +1622,47 @@ begin
   if p_credit and v_role in ('admin','manager') then
     perform public.create_credit_note(p_sale, p_lines, 'Retour ' || v_num || '. ' || trim(coalesce(p_note,'')));
   end if;
+  return v_id;
+end;
+$function$
+;
+
+-- fonction create_inventory(p_warehouse uuid)
+CREATE OR REPLACE FUNCTION public.create_inventory(p_warehouse uuid)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+  v_id uuid;
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if coalesce(public.my_role() not in ('admin', 'manager'), true) then
+    raise exception 'Seul le gérant ou le responsable peut ouvrir un inventaire.';
+  end if;
+  if not exists (select 1 from public.warehouses w where w.id = p_warehouse and w.org_id = v_org and w.active) then
+    raise exception 'Dépôt introuvable ou inactif.';
+  end if;
+
+  -- Un seul brouillon par dépôt : on reprend celui qui existe déjà.
+  select i.id into v_id from public.inventories i
+  where i.org_id = v_org and i.warehouse_id = p_warehouse and i.status = 'draft'
+  order by i.created_at desc limit 1;
+  if v_id is not null then return v_id; end if;
+
+  insert into public.inventories (org_id, warehouse_id, created_by)
+  values (v_org, p_warehouse, auth.uid())
+  returning id into v_id;
+
+  insert into public.inventory_lines (org_id, inventory_id, article_id, theoretical)
+  select v_org, v_id, a.id, coalesce(ws.qty, 0)
+  from public.articles a
+  left join public.warehouse_stock ws
+    on ws.article_id = a.id and ws.warehouse_id = p_warehouse and ws.org_id = v_org
+  where a.org_id = v_org and a.archived_at is null;
+
   return v_id;
 end;
 $function$
@@ -3971,6 +4033,23 @@ AS $function$
 $function$
 ;
 
+-- fonction set_barcode_enabled(p_on boolean)
+CREATE OR REPLACE FUNCTION public.set_barcode_enabled(p_on boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if public.my_role() <> 'admin' then raise exception 'Seul le gérant peut modifier ce réglage.'; end if;
+  update public.organizations set barcode_enabled = coalesce(p_on, false) where id = v_org;
+end;
+$function$
+;
+
 -- fonction set_business_type(p_type text)
 CREATE OR REPLACE FUNCTION public.set_business_type(p_type text)
  RETURNS void
@@ -4070,6 +4149,37 @@ begin
     operator = case when p_method = 'mobile_money' then p_operator else null end
   where sale_id = p_sale and kind = 'initial';
 end; $function$
+;
+
+-- fonction set_inventory_count(p_inventory uuid, p_article uuid, p_counted numeric)
+CREATE OR REPLACE FUNCTION public.set_inventory_count(p_inventory uuid, p_article uuid, p_counted numeric)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+  v_status text;
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if coalesce(public.my_role() not in ('admin', 'manager'), true) then
+    raise exception 'Seul le gérant ou le responsable peut compter un inventaire.';
+  end if;
+  if p_counted is not null and (p_counted < 0 or p_counted <> round(p_counted, 3)) then
+    raise exception 'La quantité comptée doit être positive, avec trois décimales au plus.';
+  end if;
+
+  select status into v_status from public.inventories
+  where id = p_inventory and org_id = v_org for update;
+  if not found then raise exception 'Inventaire introuvable.'; end if;
+  if v_status <> 'draft' then raise exception 'Cet inventaire est déjà validé.'; end if;
+
+  update public.inventory_lines set counted = p_counted
+  where inventory_id = p_inventory and article_id = p_article and org_id = v_org;
+  if not found then raise exception 'Ce produit ne fait pas partie de cet inventaire.'; end if;
+end;
+$function$
 ;
 
 -- fonction set_receipt_footer(p_org uuid, p_text text)
@@ -4389,6 +4499,56 @@ end
 $function$
 ;
 
+-- fonction validate_inventory(p_inventory uuid)
+CREATE OR REPLACE FUNCTION public.validate_inventory(p_inventory uuid)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_org uuid := public.my_org();
+  v_inv public.inventories%rowtype;
+  v_ligne record;
+  v_actuel numeric(14,3);
+  v_ecart numeric(14,3);
+  v_corrections integer := 0;
+begin
+  if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
+  if coalesce(public.my_role() not in ('admin', 'manager'), true) then
+    raise exception 'Seul le gérant ou le responsable peut valider un inventaire.';
+  end if;
+
+  select * into v_inv from public.inventories
+  where id = p_inventory and org_id = v_org for update;
+  if not found then raise exception 'Inventaire introuvable.'; end if;
+  if v_inv.status <> 'draft' then raise exception 'Cet inventaire est déjà validé.'; end if;
+
+  for v_ligne in
+    select article_id, counted from public.inventory_lines
+    where inventory_id = p_inventory and counted is not null order by article_id
+  loop
+    select qty into v_actuel from public.warehouse_stock
+    where org_id = v_org and warehouse_id = v_inv.warehouse_id and article_id = v_ligne.article_id;
+    v_ecart := round(v_ligne.counted - coalesce(v_actuel, 0), 3);
+    if v_ecart <> 0 then
+      -- La contrainte sur stock_moves n'autorise pas de motif dédié : on utilise
+      -- 'adjustment' et ref_id pointe vers l'inventaire pour garder la trace.
+      insert into public.stock_moves (org_id, article_id, qty, reason, ref_id, warehouse_id)
+      values (v_org, v_ligne.article_id, v_ecart, 'adjustment', p_inventory, v_inv.warehouse_id);
+      v_corrections := v_corrections + 1;
+    end if;
+  end loop;
+
+  update public.inventories
+  set status = 'validated', validated_by = auth.uid(), validated_at = now()
+  where id = p_inventory;
+
+  return v_corrections;
+end;
+$function$
+;
+
 -- fonction valider_paiement(p_id uuid)
 CREATE OR REPLACE FUNCTION public.valider_paiement(p_id uuid)
  RETURNS void
@@ -4691,6 +4851,22 @@ alter table public.dashboard_preferences alter column updated_at set default now
 
 alter table public.document_counters alter column last set default 0;
 
+alter table public.inventories alter column id set default gen_random_uuid();
+
+alter table public.inventories alter column org_id set default public.my_org();
+
+alter table public.inventories alter column status set default 'draft'::text;
+
+alter table public.inventories alter column created_by set default auth.uid();
+
+alter table public.inventories alter column created_at set default now();
+
+alter table public.inventory_lines alter column id set default gen_random_uuid();
+
+alter table public.inventory_lines alter column org_id set default public.my_org();
+
+alter table public.inventory_lines alter column theoretical set default 0;
+
 alter table public.invitations alter column id set default gen_random_uuid();
 
 alter table public.invitations alter column invited_by set default auth.uid();
@@ -4718,6 +4894,8 @@ alter table public.organizations alter column discounts_enabled set default fals
 alter table public.organizations alter column vat_enabled set default false;
 
 alter table public.organizations alter column vat_rate set default 16;
+
+alter table public.organizations alter column barcode_enabled set default false;
 
 alter table public.paiements_abonnement alter column id set default gen_random_uuid();
 
@@ -5167,6 +5345,16 @@ alter table public.dashboard_preferences add constraint dashboard_preferences_pk
 
 alter table public.document_counters add constraint document_counters_pkey PRIMARY KEY (org_id, kind);
 
+alter table public.inventories add constraint inventories_pkey PRIMARY KEY (id);
+
+alter table public.inventories add constraint inventories_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'validated'::text])));
+
+alter table public.inventory_lines add constraint inventory_lines_counted_check CHECK (((counted IS NULL) OR (counted >= (0)::numeric)));
+
+alter table public.inventory_lines add constraint inventory_lines_inventory_id_article_id_key UNIQUE (inventory_id, article_id);
+
+alter table public.inventory_lines add constraint inventory_lines_pkey PRIMARY KEY (id);
+
 alter table public.invitations add constraint invitations_email_check CHECK ((POSITION(('@'::text) IN (email)) > 1));
 
 alter table public.invitations add constraint invitations_pkey PRIMARY KEY (id);
@@ -5419,6 +5607,16 @@ alter table public.customer_setup add constraint customer_setup_id_fkey FOREIGN 
 
 alter table public.customers add constraint customers_org_id_fkey FOREIGN KEY (org_id) REFERENCES organizations(id);
 
+alter table public.inventories add constraint inventories_org_id_fkey FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+alter table public.inventories add constraint inventories_warehouse_id_fkey FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT;
+
+alter table public.inventory_lines add constraint inventory_lines_article_id_fkey FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE;
+
+alter table public.inventory_lines add constraint inventory_lines_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE CASCADE;
+
+alter table public.inventory_lines add constraint inventory_lines_org_id_fkey FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
 alter table public.invitations add constraint invitations_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES auth.users(id) ON DELETE SET NULL;
 
 alter table public.invitations add constraint invitations_org_id_fkey FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE;
@@ -5580,6 +5778,10 @@ CREATE INDEX idx_stock_lots_org_updated ON public.stock_lots USING btree (org_id
 CREATE INDEX idx_suppliers_org_updated ON public.suppliers USING btree (org_id, updated_at);
 
 CREATE INDEX idx_warehouse_stock_org_updated ON public.warehouse_stock USING btree (org_id, updated_at);
+
+CREATE INDEX inventories_draft_idx ON public.inventories USING btree (org_id, warehouse_id) WHERE (status = 'draft'::text);
+
+CREATE INDEX inventory_lines_inventory_idx ON public.inventory_lines USING btree (inventory_id);
 
 CREATE UNIQUE INDEX invitations_code_key ON public.invitations USING btree (code);
 
@@ -5777,6 +5979,10 @@ alter table public.customers enable row level security;
 alter table public.dashboard_preferences enable row level security;
 
 alter table public.document_counters enable row level security;
+
+alter table public.inventories enable row level security;
+
+alter table public.inventory_lines enable row level security;
 
 alter table public.invitations enable row level security;
 
@@ -6065,6 +6271,18 @@ create policy dashboard_preferences_own on public.dashboard_preferences
   to authenticated
   using ((user_id = auth.uid()))
   with check ((user_id = auth.uid()));
+
+create policy inventories_r on public.inventories
+  as permissive
+  for select
+  to authenticated
+  using ((org_id = my_org()));
+
+create policy inventory_lines_r on public.inventory_lines
+  as permissive
+  for select
+  to authenticated
+  using ((org_id = my_org()));
 
 create policy invitations_d on public.invitations
   as permissive
@@ -6622,6 +6840,10 @@ grant delete, insert, references, select, trigger, truncate, update on table pub
 
 grant delete, insert, references, select, trigger, truncate, update on table public.document_counters to authenticated;
 
+grant delete, insert, references, select, trigger, truncate, update on table public.inventories to authenticated;
+
+grant delete, insert, references, select, trigger, truncate, update on table public.inventory_lines to authenticated;
+
 grant delete, insert, references, select, trigger, truncate, update on table public.invitations to anon;
 
 grant delete, insert, references, select, trigger, truncate, update on table public.invitations to authenticated;
@@ -6808,6 +7030,8 @@ grant execute on function public.create_customer_return(p_sale uuid, p_lines jso
 
 -- à durcir : anon peut exécuter public.create_customer_return(p_sale uuid, p_lines jsonb, p_note text, p_credit boolean, p_id uuid)
 
+grant execute on function public.create_inventory(p_warehouse uuid) to authenticated;
+
 grant execute on function public.create_proforma(p_customer uuid, p_customer_label text, p_lines jsonb, p_note text, p_valid_until date, p_warehouse uuid) to authenticated;
 
 grant execute on function public.create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_warehouse uuid) to authenticated;
@@ -6956,6 +7180,8 @@ grant execute on function public.search_sales(p_term text, p_limit integer, p_of
 
 -- à durcir : anon peut exécuter public.search_sales(p_term text, p_limit integer, p_offset integer)
 
+grant execute on function public.set_barcode_enabled(p_on boolean) to authenticated;
+
 grant execute on function public.set_business_type(p_type text) to authenticated;
 
 grant execute on function public.set_company_header(p_org uuid, p_name text, p_address text, p_phone text, p_email text, p_tax_id text, p_rc text) to authenticated;
@@ -6967,6 +7193,8 @@ grant execute on function public.set_discounts_enabled(p_on boolean) to authenti
 grant execute on function public.set_hidden_features(p_list text[]) to authenticated;
 
 grant execute on function public.set_initial_payment_method(p_sale uuid, p_method text, p_reference text, p_operator text) to authenticated;
+
+grant execute on function public.set_inventory_count(p_inventory uuid, p_article uuid, p_counted numeric) to authenticated;
 
 grant execute on function public.set_receipt_footer(p_org uuid, p_text text) to authenticated;
 
@@ -6987,6 +7215,8 @@ grant execute on function public.touch_updated_at() to authenticated;
 grant execute on function public.update_credit_payment(p_payment_id uuid, p_amount numeric, p_paid_at date) to authenticated;
 
 grant execute on function public.update_sale(p_id uuid, p_customer uuid, p_customer_label text, p_date date, p_lines jsonb, p_payment text, p_paid numeric, p_deposit_id uuid, p_advance_amount numeric) to authenticated;
+
+grant execute on function public.validate_inventory(p_inventory uuid) to authenticated;
 
 grant execute on function public.valider_paiement(p_id uuid) to authenticated;
 

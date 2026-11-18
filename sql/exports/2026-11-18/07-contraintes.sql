@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:16
+-- Export : 2026-11-18 07:29
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- app_errors · app_errors_app_version_check (c)
@@ -323,6 +323,36 @@ alter table public.dashboard_preferences add constraint dashboard_preferences_pk
 
 -- document_counters · document_counters_pkey (p)
 alter table public.document_counters add constraint document_counters_pkey PRIMARY KEY (org_id, kind);
+
+-- inventories · inventories_org_id_fkey (f)
+alter table public.inventories add constraint inventories_org_id_fkey FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+-- inventories · inventories_pkey (p)
+alter table public.inventories add constraint inventories_pkey PRIMARY KEY (id);
+
+-- inventories · inventories_status_check (c)
+alter table public.inventories add constraint inventories_status_check CHECK ((status = ANY (ARRAY['draft'::text, 'validated'::text])));
+
+-- inventories · inventories_warehouse_id_fkey (f)
+alter table public.inventories add constraint inventories_warehouse_id_fkey FOREIGN KEY (warehouse_id) REFERENCES warehouses(id) ON DELETE RESTRICT;
+
+-- inventory_lines · inventory_lines_article_id_fkey (f)
+alter table public.inventory_lines add constraint inventory_lines_article_id_fkey FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE;
+
+-- inventory_lines · inventory_lines_counted_check (c)
+alter table public.inventory_lines add constraint inventory_lines_counted_check CHECK (((counted IS NULL) OR (counted >= (0)::numeric)));
+
+-- inventory_lines · inventory_lines_inventory_id_article_id_key (u)
+alter table public.inventory_lines add constraint inventory_lines_inventory_id_article_id_key UNIQUE (inventory_id, article_id);
+
+-- inventory_lines · inventory_lines_inventory_id_fkey (f)
+alter table public.inventory_lines add constraint inventory_lines_inventory_id_fkey FOREIGN KEY (inventory_id) REFERENCES inventories(id) ON DELETE CASCADE;
+
+-- inventory_lines · inventory_lines_org_id_fkey (f)
+alter table public.inventory_lines add constraint inventory_lines_org_id_fkey FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+-- inventory_lines · inventory_lines_pkey (p)
+alter table public.inventory_lines add constraint inventory_lines_pkey PRIMARY KEY (id);
 
 -- invitations · invitations_email_check (c)
 alter table public.invitations add constraint invitations_email_check CHECK ((POSITION(('@'::text) IN (email)) > 1));

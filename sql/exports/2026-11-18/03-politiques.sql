@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:16
+-- Export : 2026-11-18 07:29
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- app_errors · app_errors_insert (INSERT, PERMISSIVE)
@@ -272,6 +272,22 @@ create policy dashboard_preferences_own on public.dashboard_preferences
   to {authenticated}
   using ((user_id = auth.uid()))
   with check ((user_id = auth.uid()));
+
+-- inventories · inventories_r (SELECT, PERMISSIVE)
+create policy inventories_r on public.inventories
+  as permissive
+  for select
+  to {authenticated}
+  using ((org_id = my_org()))
+  ;
+
+-- inventory_lines · inventory_lines_r (SELECT, PERMISSIVE)
+create policy inventory_lines_r on public.inventory_lines
+  as permissive
+  for select
+  to {authenticated}
+  using ((org_id = my_org()))
+  ;
 
 -- invitations · invitations_d (DELETE, PERMISSIVE)
 create policy invitations_d on public.invitations

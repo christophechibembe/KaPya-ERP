@@ -11,11 +11,12 @@ const schema = await readFile(path.join(root, 'sql', 'schema-production.sql'), '
 const tables = new Set([...schema.matchAll(/^create table public\.(\w+)/gim)].map(m => m[1].toLowerCase()));
 const fonctions = new Set([...schema.matchAll(/^create or replace function public\.(\w+)/gim)].map(m => m[1].toLowerCase()));
 
-// Écarts connus entre le code et la production, relevés le 18 novembre 2026.
-// L'inventaire physique a une interface complète mais ni table ni RPC en production.
+// Écarts connus entre le code et la production. Vide depuis le 18 novembre 2026 :
+// l'inventaire physique et le réglage du code-barres ont été ajoutés en production
+// par supabase/migrations/20261118000000_inventaire_et_code_barres.sql.
 // Toute nouvelle entrée ici doit être justifiée : ce test doit sinon rester vert.
-const TABLES_A_IMPLEMENTER = new Set(['inventories', 'inventory_lines']);
-const RPC_A_IMPLEMENTER = new Set(['create_inventory', 'set_inventory_count', 'validate_inventory', 'set_barcode_enabled']);
+const TABLES_A_IMPLEMENTER = new Set();
+const RPC_A_IMPLEMENTER = new Set();
 
 async function fichiersJs(dossier) {
   const sortie = [];

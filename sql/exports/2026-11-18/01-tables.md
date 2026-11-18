@@ -1,6 +1,6 @@
 # Tables de production
 
-Projet `ttplxlobehmwzfnxviej` — export du 2026-11-18 07:16.
+Projet `ttplxlobehmwzfnxviej` — export du 2026-11-18 07:29.
 
 | Table | Colonnes | RLS | Force RLS | Politiques |
 | --- | --- | --- | --- | --- |
@@ -28,10 +28,12 @@ Projet `ttplxlobehmwzfnxviej` — export du 2026-11-18 07:16.
 | `customers` | 9 | oui | non | 4 |
 | `dashboard_preferences` | 3 | oui | non | 1 |
 | `document_counters` | 3 | oui | non | 0 |
+| `inventories` | 8 | oui | non | 1 |
+| `inventory_lines` | 6 | oui | non | 1 |
 | `invitations` | 9 | oui | non | 3 |
 | `invoice_counters` | 2 | oui | non | 1 |
 | `number_ranges` | 6 | oui | non | 1 |
-| `organizations` | 18 | oui | non | 4 |
+| `organizations` | 19 | oui | non | 4 |
 | `paiements_abonnement` | 8 | oui | non | 2 |
 | `platform_admins` | 1 | oui | non | 1 |
 | `platform_audit` | 7 | oui | non | 1 |

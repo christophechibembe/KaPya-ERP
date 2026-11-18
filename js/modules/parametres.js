@@ -255,7 +255,8 @@ async function openArchived(main) {
 }
 
 // Carte : inventaire physique (comptage réel d'un dépôt, validation des écarts)
-function inventoryCard() {
+function inventoryCard(ctx) {
+  if (!['admin', 'manager'].includes(ctx?.role)) return '';
   return `<section class="card set" id="inv-card"><div class="set-main"><h2>Inventaire physique</h2>
     <p class="muted">Comptez le stock réel d’un dépôt. Les écarts sont corrigés à la validation, avec une trace dans l’historique. Réservé au gérant et au responsable.</p></div>
     <div class="acts"><button class="ghost" id="inv-go" type="button">Ouvrir un inventaire</button></div></section>`;
@@ -370,7 +371,7 @@ export function render(main, ctx) {
     ${thermalUsbCard()}
     ${rangeCard()}
     ${archivedCard()}
-    ${inventoryCard()}
+    ${inventoryCard(ctx)}
     ${rateCard(ctx)}
     ${section('Votre formule', planCard(ctx))}${section('TVA', vatCard(ctx))}${section('Sécurité du compte', '<div id="mfa-box"><p class="muted">Chargement…</p></div>')}${section('Reçus et logo (super administrateur)', receiptCard(ctx))}${section('Erreurs récentes (super administrateur)', errorsCard(ctx))}${section('Journal des actions (super administrateur)', auditCard(ctx))}${section('Fonctionnement de l’entreprise', businessCard(ctx), false)}${section('Mon compte et sécurité', securityCard() + aboutLink())}
     <section class="card set"><div class="set-main"><h2>Espace</h2><p class="muted">Rôle : ${esc(ctx?.role || '—')}</p></div></section>
