@@ -104,6 +104,19 @@ vide, jamais en production active.
 Utiliser la chaîne **Session pooler** (port `5432`, hôte `aws-0-<région>.pooler.supabase.com`,
 utilisateur `postgres.<référence>`), et non la connexion directe, si le réseau refuse IPv6.
 
+## Changer le mot de passe de la base
+
+Depuis le tableau de bord Supabase (*Project Settings → Database → Reset database
+password*), ou avec un jeton personnel complet via
+`PATCH https://api.supabase.com/v1/projects/<référence>/database/password` et un corps
+`{"password": "…"}`. Le point d'entrée `PATCH /v1/projects/<référence>` avec `db_pass`
+répond 200 mais ne change pas le mot de passe : ne pas l'utiliser.
+
+Après la rotation, mettre à jour `%USERPROFILE%\.kapya\db-url.txt` (encoder `@` en
+`%40`, `:` en `%3A`), vérifier la connexion, puis lancer une sauvegarde de contrôle.
+Le 18 novembre 2026, la rotation par le point d'entrée officiel a été appliquée, l'ancien
+mot de passe refusé et une sauvegarde complète a réussi avec le nouveau.
+
 ## Créer une sauvegarde
 
 Dans **Sauvegarde**, choisir **Préparer la sauvegarde**. L’application exporte les tables accessibles, pagine les grands résultats et ajoute une empreinte SHA-256 au fichier JSON. Une table absente ou inaccessible est signalée et rend la sauvegarde incomplète. Ne pas traiter un fichier incomplet comme une copie intégrale.

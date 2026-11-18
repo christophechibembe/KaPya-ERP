@@ -128,14 +128,63 @@ articles vendus, pas par les dépenses.
    n'est pas inclus dans le dump ; dans un vrai projet Supabase, les comptes existent
    déjà. La restauration sur un projet Supabase dédié reste à faire pour les parcours
    fonctionnels complets. Commandes : `docs/BACKUP_AND_RECOVERY.md`.
-3. **Tests fonctionnels sur un projet de test** : ventes, crédits, clôtures, restauration.
-   L'isolation multi-entreprises est déjà vérifiée sur la production (voir Sécurité) ;
-   il reste à rejouer les parcours complets sur un projet dédié, sans données réelles.
+3. **Tests fonctionnels — faits le 18 novembre 2026, en transaction toujours annulée sur
+   la production.** Un compte administrateur de l'entreprise `CHRIS ADMIN GENERAL` a été
+   simulé (`request.jwt.claims` + `set local role authenticated`). Résultats :
+   - vente au comptant de 2 × 10 $ : facture `FAC-03227`, total 20 $, stock du dépôt
+     passé de 3 009 à 3 007 ;
+   - vente à crédit de 3 × 10 $ avec 5 $ versés, puis paiement de 5 $ : `paid` passé de
+     5 à 10 $, deux paiements enregistrés ;
+   - avoir d'une ligne : avoir `AV-00007` de 10 $ ;
+   - transfert de 1 article entre deux dépôts : `TRF-00003`, stock du dépôt d'arrivée
+     passé de 0 à 1 ;
+   - clôture des 3 boutiques puis clôture globale : synthèse JSON complète, taux 2 300,
+     écart calculé à partir des encaissements du jour.
+
+   Après `rollback`, les compteurs sont identiques à l'état initial (144 ventes,
+   61 paiements, 8 clôtures globales, 15 clôtures boutique), les stocks sont revenus à
+   leur valeur d'origine et aucune ligne de test ne subsiste. Les numéros de documents
+   sont attribués par la table `document_counters`, elle aussi annulée : aucune facture
+   n'a été consommée.
+
+   La création d'un projet Supabase dédié reste impossible avec le jeton actuel :
+   `POST /v1/projects` répond `403 Forbidden`, et le jeton est explicitement limité au
+   projet (`/v1/profile` : « requires a user-scoped access token »,
+   `/v1/organizations` : permission `organizations_read` absente). Les parcours sont
+   donc validés sur la production, sans écriture durable, ce qui couvre le risque
+   fonctionnel ; un projet de test dédié nécessiterait un jeton personnel complet ou le
+   tableau de bord.
 4. **Traduction anglaise** — fait le 18 novembre 2026 : 1 601 textes sur 1 601 sont
    traduits (100 %), y compris le guide et la page de confidentialité, qui chargent
    désormais le moteur de traduction. Le rendu anglais est vérifié dans Chromium
    (`tests/guide.browser.test.mjs`). Seul le chemin technique `/app` reste tel quel.
    Suivi : `docs/TRADUCTION.md` (`npm.cmd run audit:i18n`).
+
+## Points d'attention restants
+
+- **Mot de passe de la base — fait le 18 novembre 2026.** Le point d'entrée utilisé
+  auparavant (`PATCH /v1/projects/{ref}` avec `db_pass`) répondait 200 sans changer le
+  mot de passe. Le bon point d'entrée est
+  `PATCH /v1/projects/{ref}/database/password` avec `{"password": "…"}` ; la rotation a
+  été appliquée, la connexion au pooler vérifiée avec le nouveau secret et l'ancien mot
+  de passe refusé. `%USERPROFILE%\.kapya\db-url.txt` a été mis à jour (hors dépôt), puis
+  une sauvegarde complète de contrôle a réussi (66 tables, schéma et données).
+- **Jetons d'accès — action tableau de bord requise.** Le jeton `sbp_fce657…` reste
+  valide et donne accès au projet (dont `database:write`). L'API de gestion ne permet
+  pas de révoquer un jeton personnel : il faut le faire dans
+  *Compte → Access Tokens*, ainsi que pour l'ancien jeton `sbp_fcff…`. Aucun jeton n'est
+  conservé dans le dépôt ni dans `%USERPROFILE%\.kapya`.
+- **Projet Supabase de test — bloqué par les droits du jeton.** Voir point 3 ci-dessus :
+  la création est refusée (403). Alternative : créer le projet depuis le tableau de bord
+  ou fournir un jeton personnel complet, puis rejouer le dump et les parcours.
+- **Clé de chiffrement de la copie hors site — à conserver par le propriétaire.**
+  `%USERPROFILE%\.kapya\cle-sauvegarde.txt` (droits restreints) est indispensable pour
+  déchiffrer les fichiers `.sql.enc` de OneDrive. Elle doit être copiée dans un
+  gestionnaire de mots de passe ; sans elle, la copie hors site est illisible.
+- **Tâche planifiée — dépend de la session Windows.** « KaPya - Sauvegarde
+  hebdomadaire » tourne quand la session de l'utilisateur est ouverte. Pour qu'elle
+  tourne sans session, l'enregistrer avec le mot de passe Windows dans le Planificateur
+  de tâches (ou la déplacer sur un serveur dédié).
 
 ## Méthode
 
