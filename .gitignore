@@ -20,3 +20,6 @@ Thumbs.db
 
 # Dossiers de publication préparés (hors projet, conservés ici par sécurité)
 kapya-cloudflare-*/
+
+# Fichiers temporaires de la CLI Supabase
+supabase/.temp/
