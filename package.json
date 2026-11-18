@@ -14,6 +14,7 @@
     "inventaire": "node scripts/inventaire-base.mjs",
     "audit:sql": "node scripts/auditer-sql.mjs --markdown",
     "audit:i18n": "node scripts/audit-i18n.mjs --markdown",
+    "audit:politiques": "node scripts/auditer-politiques.mjs",
     "exporter": "node scripts/exporter-supabase.mjs",
     "instantane": "node scripts/instantane.mjs"
   }

@@ -48,6 +48,7 @@ npm.cmd run verifier:prod   # vérifie la production en ligne
 npm.cmd run inventaire      # régénère sql/SCHEMA.md depuis le code
 npm.cmd run audit:sql       # audit statique du SQL (RLS, migrations) → docs/AUDIT-STATIQUE-SQL.md
 npm.cmd run audit:i18n      # couverture de la traduction anglaise → docs/TRADUCTION.md
+npm.cmd run audit:politiques # politiques RLS de production vs dépôt → docs/POLITIQUES-RLS.md
 npm.cmd run exporter        # relit la production Supabase → sql/exports/<date>/
 npm.cmd run instantane      # archive datée du projet (sauvegarde du code)
 ```

@@ -88,8 +88,11 @@ articles vendus, pas par les dépenses.
 
 ## Ce qui reste à faire
 
-1. **Comparer les politiques RLS** une à une avec les intentions métier : 47 politiques
-   de production n'ont pas d'équivalent versionné. Elles sont désormais dans l'export.
+1. **Comparer les politiques RLS** — fait le 18 novembre 2026 : les 47 politiques de
+   production sans équivalent versionné sont dans `sql/politiques-production.sql`, avec
+   une relecture et les 7 politiques ouvertes à `public` dans
+   `sql/exports/2026-11-18/13-politiques-publiques-propose.sql`. Détail :
+   `docs/POLITIQUES-RLS.md`. Reste à décider d'appliquer ou non la proposition.
 2. **Obtenir un dump officiel** (`supabase db dump`, qui demande le mot de passe de la base)
    si l'on veut une restauration garantie. `sql/schema-production.sql` est exécutable sur
    un projet vide et vérifié par `tests/schema-rebuild.test.mjs`, mais n'a pas encore été
