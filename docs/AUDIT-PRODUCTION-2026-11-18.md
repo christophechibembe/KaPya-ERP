@@ -76,6 +76,14 @@ en base après annulation.
 - **Aucune politique accordée à `public`.** Les 7 politiques qui visaient `public`
   ont été restreintes à `authenticated` le 18 novembre 2026 (migration
   `20261118000002_restreindre_politiques_publiques.sql`) : 110 politiques, 0 publique.
+- **Isolation multi-entreprises vérifiée le 18 novembre 2026**, en lecture et en écriture,
+  sur la production et dans des transactions toujours annulées : deux comptes de deux
+  entreprises différentes ont été simulés (`request.jwt.claims`). Sur les **53 tables**
+  portant un `org_id`, aucune entreprise ne voit plus de lignes que les siennes
+  (**0 fuite**), aucune ligne de l'autre entreprise n'est visible, et une écriture vers
+  l'autre entreprise est refusée (`insufficient_privilege`). Deux tables renvoient
+  volontairement moins : `audit_log` (option de plan « historique ») et `company_codes`
+  (administrateurs de plateforme). Une écriture dans sa propre entreprise fonctionne.
 - **Aucune politique Storage** : le stockage n'est pas utilisé par l'application
   (les logos sont stockés en base). À confirmer si une fonctionnalité d'import d'images
   est ajoutée.
@@ -113,6 +121,8 @@ articles vendus, pas par les dépenses.
    un projet vide et vérifié par `tests/schema-rebuild.test.mjs`, mais n'a pas encore été
    rejoué sur un vrai projet de test.
 3. **Tests fonctionnels sur un projet de test** : ventes, crédits, clôtures, restauration.
+   L'isolation multi-entreprises est déjà vérifiée sur la production (voir Sécurité) ;
+   il reste à rejouer les parcours complets sur un projet dédié, sans données réelles.
 4. **Traduction anglaise** — fait le 18 novembre 2026 : 1 601 textes sur 1 601 sont
    traduits (100 %), y compris le guide et la page de confidentialité, qui chargent
    désormais le moteur de traduction. Le rendu anglais est vérifié dans Chromium
