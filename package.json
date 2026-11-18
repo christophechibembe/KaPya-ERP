@@ -13,6 +13,7 @@
     "verifier:prod": "node scripts/verifier-production.mjs",
     "inventaire": "node scripts/inventaire-base.mjs",
     "audit:sql": "node scripts/auditer-sql.mjs --markdown",
+    "exporter": "node scripts/exporter-supabase.mjs",
     "instantane": "node scripts/instantane.mjs"
   }
 }

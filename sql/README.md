@@ -59,6 +59,12 @@ Les scripts longtemps cités comme absents ont été récupérés depuis le dép
 - `historique-actions.sql` ;
 - `formules.sql` (`public.plan_allows`).
 
+Ces scripts ne couvrent cependant pas toute la base : la production compte 64 tables
+et 118 fonctions, contre 28 tables avant l'export du 18 novembre 2026.
+Le schéma réel est désormais enregistré dans [`schema-production.sql`](./schema-production.sql),
+généré depuis le catalogue Supabase, et l'inventaire complet est dans
+[`exports/2026-11-18/`](./exports/2026-11-18/00-synthese.md).
+
 Le dossier `supabase/migrations/` contient en plus les 28 migrations datées, dans
 l'ordre d'application.
 

@@ -3,10 +3,10 @@
 Généré par `node scripts/auditer-sql.mjs`. Analyse du SQL versionné uniquement :
 aucune connexion à la base, aucune garantie que ces fichiers sont appliqués en production.
 
-- Tables déclarées : **28**
-- Tables avec RLS activée : **28**
-- Tables avec au moins une politique : **25**
-- Fonctions : **93**, dont **65** en `SECURITY DEFINER`
+- Tables déclarées : **64**
+- Tables avec RLS activée : **64**
+- Tables avec au moins une politique : **63**
+- Fonctions : **211**, dont **172** en `SECURITY DEFINER`
 - Migrations : **28**
 
 ## Tables sans RLS (0)
@@ -17,13 +17,11 @@ Aucune.
 
 Aucune.
 
-## Tables fermées volontairement (3)
+## Tables fermées volontairement (1)
 
 RLS active, aucune politique : seul un accès par fonction `SECURITY DEFINER` est possible.
 
-- `customer_deposit_counters`
-- `invoice_counters`
-- `platform_admins`
+- `document_counters`
 
 ## Fonctions SECURITY DEFINER sans SET search_path (0)
 

@@ -3,6 +3,11 @@
 Chaque fichier suit `AAAAMMJJHHMMSS_nom.sql`. Les fichiers s'appliquent dans l'ordre
 des noms (ordre alphabétique = ordre chronologique).
 
+> **Couverture incomplète.** Ces 28 migrations ne décrivent qu'une partie de la base :
+> la production compte 64 tables et 118 fonctions (audit du 18 novembre 2026). Le schéma
+> réel est enregistré dans `sql/schema-production.sql` et l'inventaire détaillé dans
+> `sql/exports/2026-11-18/`. Ne pas reconstruire une base à partir des seules migrations.
+
 ## Versions en collision (résolues le 18 novembre 2026)
 
 L'audit du 18 octobre avait relevé deux versions portées par deux fichiers différents.

@@ -9,7 +9,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // Tables volontairement fermées : RLS active, aucune politique, accès uniquement
 // par des fonctions SECURITY DEFINER (compteurs de numérotation, liste des super-admins).
-export const SANS_POLITIQUE_VOLONTAIRE = new Set(['invoice_counters', 'customer_deposit_counters', 'platform_admins']);
+export const SANS_POLITIQUE_VOLONTAIRE = new Set(['invoice_counters', 'customer_deposit_counters', 'platform_admins', 'document_counters']);
 
 const sansCommentaires = s => s.replace(/--[^\n]*/g, '');
 
@@ -26,7 +26,7 @@ export async function auditer(base = root) {
   const tout = sources.map(s => s.texte).join('\n');
 
   const tables = new Set();
-  for (const m of tout.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?/gi)) tables.add(m[1].toLowerCase());
+  for (const m of tout.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?"?(\w+)"?\s*\(/gi)) tables.add(m[1].toLowerCase());
 
   const rls = new Set();
   for (const m of tout.matchAll(/alter\s+table\s+(?:only\s+)?(?:public\.)?"?(\w+)"?\s+enable\s+row\s+level\s+security/gi)) rls.add(m[1].toLowerCase());
@@ -54,7 +54,7 @@ export async function auditer(base = root) {
         fichier,
         nom: m[1].toLowerCase(),
         definer: /security\s+definer/i.test(corps),
-        searchPath: /set\s+search_path\s*=/i.test(corps),
+        searchPath: /set\s+search_path\s*(?:=\s*|to\s+)\S/i.test(corps),
         grantAnon: /grant\s+execute[^;]*\bto\b[^;]*\banon\b/i.test(corps),
       });
     });
