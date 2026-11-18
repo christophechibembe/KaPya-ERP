@@ -116,13 +116,18 @@ articles vendus, pas par les dépenses.
    Les 8 fonctions non `SECURITY DEFINER` encore exécutables par `anon` ont elles aussi
    été fermées par la migration `20261118000003_fermer_fonctions_anon.sql` : plus aucune
    fonction de `public` n'est exécutable par `anon`.
-2. **Dump officiel — fait le 18 novembre 2026.** Produit avec `pg_dump` 17.5 sur la
-   chaîne Session pooler (serveur PostgreSQL 17.11), hors dépôt :
+2. **Dump officiel — fait et restauré le 18 novembre 2026.** Produit avec `pg_dump` 17.5
+   sur la chaîne Session pooler (serveur PostgreSQL 17.11), hors dépôt :
    `D:\kapya-sauvegardes\kapya-2026-11-18-schema.sql` (380 Ko, 66 tables) et
-   `D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql` (14,2 Mo, 66 tables). Ces fichiers
-   contiennent des données personnelles et ne doivent jamais être commités. La
-   restauration n'a pas encore été rejouée sur un projet vide ; c'est le prochain
-   contrôle à faire si l'on veut garantir la reprise. Commandes : `docs/BACKUP_AND_RECOVERY.md`.
+   `D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql` (14,3 Mo, 66 tables). Ces fichiers
+   contiennent des données personnelles et ne doivent jamais être commités.
+   Restauration vérifiée dans un PostgreSQL 17 local isolé, avec les rôles Supabase et un
+   schéma `auth` simulés : schéma rejoué (seul l'avertissement attendu « public existe
+   déjà »), 66 tables et **3 389 lignes restaurées, 0 écart** avec la production. Les
+   données ont été rejouées triggers et clés étrangères désactivés, car `auth.users`
+   n'est pas inclus dans le dump ; dans un vrai projet Supabase, les comptes existent
+   déjà. La restauration sur un projet Supabase dédié reste à faire pour les parcours
+   fonctionnels complets. Commandes : `docs/BACKUP_AND_RECOVERY.md`.
 3. **Tests fonctionnels sur un projet de test** : ventes, crédits, clôtures, restauration.
    L'isolation multi-entreprises est déjà vérifiée sur la production (voir Sécurité) ;
    il reste à rejouer les parcours complets sur un projet dédié, sans données réelles.

@@ -33,8 +33,8 @@ Dump produit le 18 novembre 2026 : 66 tables dans chaque fichier (380 Ko de sch�
 ## Sauvegarde automatique hebdomadaire
 
 Le script `scripts/sauvegarde-production.mjs` produit chaque semaine le schéma et les
-données, vérifie que chaque fichier est complet, applique une rotation et peut copier le
-résultat hors site.
+données, vérifie que chaque fichier est complet, applique une rotation, copie le résultat
+hors site **chiffré** et alerte en cas d'échec.
 
 **Préparer une fois**
 
@@ -52,6 +52,8 @@ résultat hors site.
    (`@` devient `%40`, `:` devient `%3A`).
 3. Facultatif : indiquer un dossier de copie hors site dans
    `%USERPROFILE%\.kapya\copie-sauvegarde.txt`.
+4. Facultatif : indiquer un webhook d'alerte (Slack, Discord ou autre URL acceptant un
+   JSON `{"text": …}`) dans `%USERPROFILE%\.kapya\webhook-sauvegarde.txt`.
 
 **Lancer et vérifier**
 
@@ -64,6 +66,24 @@ Les fichiers vont dans `D:\kapya-sauvegardes\` (ou `KAPYA_SAUVEGARDES`) :
 `kapya-AAAA-MM-JJ-schema.sql`, `kapya-AAAA-MM-JJ-donnees.sql`, et le journal
 `sauvegarde.log`. Le script échoue si un dump est vide ou incomplet.
 
+La copie hors site contient les mêmes fichiers en `.sql.enc`, chiffrés en AES-256-GCM.
+La clé est `%USERPROFILE%\.kapya\cle-sauvegarde.txt`, créée au premier passage : la
+conserver dans un gestionnaire de mots de passe. Sans elle, la copie est illisible.
+Déchiffrer avant restauration :
+
+```powershell
+node scripts/dechiffrer-sauvegarde.mjs "C:\Users\...\OneDrive\Sauvegardes-KaPya\kapya-2026-11-18-donnees.sql.enc" "D:\kapya-sauvegardes\donnees.sql"
+```
+
+La rotation s'applique aux fichiers locaux et à la copie hors site.
+
+**Alerte d'échec**
+
+En cas d'échec, le script affiche une notification Windows, écrit `DERNIER-ECHEC.txt` dans
+le dossier de sauvegarde, ajoute la cause au journal et envoie le message au webhook
+configuré. À la sauvegarde suivante réussie, il lève l'alerte et prévient que la
+sauvegarde est rétablie.
+
 **Planifier chaque semaine**
 
 ```powershell
@@ -71,16 +91,18 @@ powershell -ExecutionPolicy Bypass -File scripts\installer-sauvegarde.ps1 -Jour 
 ```
 
 La tâche « KaPya - Sauvegarde hebdomadaire » s'exécute avec la session de l'utilisateur
-connecté. Pour qu'elle tourne même sans session ouverte, l'installer dans le Planificateur
-de tâches avec « Exécuter que l'utilisateur soit connecté ou non » et le mot de passe
-Windows. Tester aussitôt avec `schtasks /Run /TN "KaPya - Sauvegarde hebdomadaire"`.
+connecté, y compris sur batterie. Pour qu'elle tourne même sans session ouverte,
+l'installer dans le Planificateur de tâches avec « Exécuter que l'utilisateur soit
+connecté ou non » et le mot de passe Windows. Tester aussitôt avec
+`schtasks /Run /TN "KaPya - Sauvegarde hebdomadaire"`.
 
 Le dossier de sauvegarde contient des **données personnelles** : le protéger (droits
-restreints), et chiffrer toute copie hors site. Ne jamais le placer dans le dépôt Git.
+restreints), chiffrer toute copie hors site et ne jamais le placer dans le dépôt Git.
+Pour une restauration, déchiffrer puis rejouer le schéma et les données dans un projet
+vide, jamais en production active.
 
 Utiliser la chaîne **Session pooler** (port `5432`, hôte `aws-0-<région>.pooler.supabase.com`,
 utilisateur `postgres.<référence>`), et non la connexion directe, si le réseau refuse IPv6.
-Pour un test, restaurer d'abord dans un projet vide, jamais en production active.
 
 ## Créer une sauvegarde
 

@@ -17,6 +17,7 @@
     "audit:politiques": "node scripts/auditer-politiques.mjs",
     "exporter": "node scripts/exporter-supabase.mjs",
     "sauvegarde": "node scripts/sauvegarde-production.mjs",
+    "dechiffrer": "node scripts/dechiffrer-sauvegarde.mjs",
     "instantane": "node scripts/instantane.mjs"
   }
 }
