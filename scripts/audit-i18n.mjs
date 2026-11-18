@@ -8,15 +8,62 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export function clesDictionnaire(source) {
+// Lit le dictionnaire EN avec un petit analyseur : les expressions régulières
+// confondent les valeurs et les clés quand une valeur contient « : ».
+export function entreesDictionnaire(source) {
   const debut = source.indexOf('const EN = {');
   if (debut < 0) return [];
   const fin = source.indexOf('\n};', debut);
-  const bloc = source.slice(debut, fin);
-  return [...bloc.matchAll(/'((?:[^'\\]|\\.)*)'\s*:/g)].map(m => m[1].replace(/\\'/g, "'"));
+  const corps = source.slice(source.indexOf('{', debut) + 1, fin)
+    .split('\n').filter(ligne => !ligne.trimStart().startsWith('//')).join('\n');
+
+  const entrees = [];
+  let i = 0;
+  const lireChaine = () => {
+    const guillemet = corps[i];
+    let j = i + 1, valeur = '';
+    while (j < corps.length) {
+      const c = corps[j];
+      if (c === '\\') {
+        const suivant = corps[j + 1];
+        valeur += suivant === 'n' ? '\n' : suivant === 't' ? '\t' : suivant;
+        j += 2;
+        continue;
+      }
+      if (c === guillemet) return { valeur, fin: j + 1, ok: true };
+      valeur += c;
+      j++;
+    }
+    return { valeur, fin: j, ok: false };
+  };
+
+  while (i < corps.length) {
+    const c = corps[i];
+    if (c !== "'" && c !== '"') { i++; continue; }
+    const cle = lireChaine();
+    i = cle.fin;
+    while (i < corps.length && /\s/.test(corps[i])) i++;
+    if (corps[i] !== ':') continue;
+    i++;
+    while (i < corps.length && /\s/.test(corps[i])) i++;
+    if (corps[i] !== "'" && corps[i] !== '"') continue;
+    const valeur = lireChaine();
+    i = valeur.fin;
+    entrees.push({ cle: cle.valeur, valeur: valeur.valeur });
+  }
+  return entrees;
 }
 
-const propre = texte => texte.replace(/\s+/g, ' ').trim();
+export function clesDictionnaire(source) {
+  return entreesDictionnaire(source).map(entree => entree.cle);
+}
+
+const ENTITES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+const decoderEntites = texte => texte
+  .replace(/&(amp|lt|gt|quot|apos|nbsp);/g, (_, nom) => ENTITES[nom])
+  .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+  .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)));
+const propre = texte => decoderEntites(texte).replace(/\s+/g, ' ').trim();
 
 // Un texte est candidat s'il ressemble à du contenu affiché, pas à du code.
 export function candidat(texte) {
@@ -24,12 +71,20 @@ export function candidat(texte) {
   if (t.length < 3 || t.length > 180) return false;
   if (!/[a-zA-ZàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/.test(t)) return false;
   if (/^[\d\s.,;:%$€+()/-]+$/.test(t)) return false;
-  if (/[<>{}]|=>|\$\{|\b(function|const|let|var|return|import|export|await|async)\b/.test(t)) return false;
+  // « > » reste autorisé : il sépare les chemins de menu (« Ventes > Nouvelle facture »).
+  if (/[<{}]|=>|\$\{|\b(function|const|let|var|return|import|export|await|async)\b/.test(t)) return false;
+  // Fragments de code pris pour du texte : opérateurs, appels de méthode, gabarits.
+  if (/[`;]|===|!==|&&|\|\|/.test(t)) return false;
+  if (/\.[a-zA-Z_$][\w$]*\s*\(/.test(t)) return false;
+  if (/^[A-Za-z_$][\w$]*\([^()]*\)$/.test(t)) return false; // appel de fonction nu
+  if (/^[A-Za-z_$][\w$]*\.[A-Za-z_$][\w$]*$/.test(t)) return false; // accès à une propriété
+  if (/^'|'$/.test(t)) return false; // fragment de chaîne entre guillemets droits
+  if (/^[=,]/.test(t)) return false; // fragment d'expression
   if (/^(https?:|mailto:|\/|\.\/|#)/.test(t)) return false;
   return true;
 }
 
-async function textesHtml(fichier) {
+export async function textesHtml(fichier) {
   const html = await readFile(fichier, 'utf8');
   const sansCode = html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ');
   const trouves = new Set();

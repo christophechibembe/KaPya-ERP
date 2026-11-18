@@ -180,4 +180,9 @@ footer a{color:var(--blue)}
   KaPya ERP et KaPya app · <a href="guide.html">Guide d'utilisation</a> · <a href="./">Ouvrir l'application</a><br>
   Développé par Christophe Cibembe · KaPya Digital
 </footer>
+<script type="module">
+// La langue choisie dans l'application s'applique aussi à cette page.
+import { watchLanguage } from './js/i18n.js';
+watchLanguage(document.body);
+</script>
 </body></html>

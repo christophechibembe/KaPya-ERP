@@ -30,7 +30,8 @@ const { APP_VERSION } = await import(pathToFileURL(path.join(root, 'js', 'versio
 for (const name of ['index.html', 'guide.html']) {
   const file = path.join(out, name);
   const source = await readFile(file, 'utf8');
-  const patched = source.replace(/((?:id="splash-version"|data-app-version)>)(?:Version\s+)?[\d.]+/g, `$1Version ${APP_VERSION}`);
+  // Le HTML peut contenir « Version » seule : la préparation ajoute le numéro.
+  const patched = source.replace(/((?:id="splash-version"|data-app-version)>)(?:Version(?:\s+[\d.]+)?|[\d.]+)/g, `$1Version ${APP_VERSION}`);
   if (patched !== source) await writeFile(file, patched, 'utf8');
 }
 await mkdir(path.join(out, 'app'));

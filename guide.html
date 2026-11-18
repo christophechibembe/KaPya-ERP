@@ -35,7 +35,7 @@ footer{text-align:center;color:var(--mute);font-size:.85rem;padding:2rem 1rem;bo
 <header class="cover">
   <h1>Guide d'utilisation</h1>
   <p><b>KaPya ERP</b> (ordinateur) et <b>KaPya app</b> (téléphone)</p>
-  <p><span data-app-version>Version 1.45.9</span></p>
+  <p><span data-app-version>Version</span></p>
   <p>Développé par Christophe Cibembe, ingénieur en informatique · KaPya Digital</p>
 </header>
 <main>
@@ -246,10 +246,13 @@ footer{text-align:center;color:var(--mute);font-size:.85rem;padding:2rem 1rem;bo
 </section>
 
 </main>
-<footer>KaPya ERP et KaPya app · <span data-app-version>Version 1.45.9</span> · Développé par Christophe Cibembe · KaPya Digital<br>Les captures de ce guide proviennent d'une démonstration : les noms et les montants affichés sont fictifs.<br><a href="confidentialite.html">Confidentialité et conditions d'utilisation</a></footer>
+<footer>KaPya ERP et KaPya app · <span data-app-version>Version</span> · Développé par Christophe Cibembe · KaPya Digital<br>Les captures de ce guide proviennent d'une démonstration : les noms et les montants affichés sont fictifs.<br><a href="confidentialite.html">Confidentialité et conditions d'utilisation</a></footer>
 <script type="module">
 // Le guide suit la version de l'application : une seule source (js/version.js).
 import { APP_VERSION } from './js/version.js';
+import { watchLanguage } from './js/i18n.js';
 document.querySelectorAll('[data-app-version]').forEach(el => { el.textContent = `Version ${APP_VERSION}`; });
+// La langue choisie dans l'application s'applique aussi au guide.
+watchLanguage(document.body);
 </script>
 </body></html>
