@@ -73,7 +73,7 @@ export async function auditer(base = root) {
     resume: {
       tables: tables.size,
       avecRls: rls.size,
-      politiques: politiques.size,
+      tablesAvecPolitique: politiques.size,
       fonctions: fonctions.length,
       definer: fonctions.filter(f => f.definer).length,
       migrations: migrations.length,
@@ -101,7 +101,7 @@ export function rapportMarkdown(a) {
     '',
     `- Tables déclarées : **${a.resume.tables}**`,
     `- Tables avec RLS activée : **${a.resume.avecRls}**`,
-    `- Politiques RLS : **${a.resume.politiques}**`,
+    `- Tables avec au moins une politique : **${a.resume.tablesAvecPolitique}**`,
     `- Fonctions : **${a.resume.fonctions}**, dont **${a.resume.definer}** en \`SECURITY DEFINER\``,
     `- Migrations : **${a.resume.migrations}**`,
     '',

@@ -5,7 +5,7 @@ aucune connexion à la base, aucune garantie que ces fichiers sont appliqués en
 
 - Tables déclarées : **28**
 - Tables avec RLS activée : **28**
-- Politiques RLS : **25**
+- Tables avec au moins une politique : **25**
 - Fonctions : **93**, dont **65** en `SECURITY DEFINER`
 - Migrations : **28**
 
