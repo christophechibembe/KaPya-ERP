@@ -74,14 +74,18 @@ Le dépôt Git est initialisé sur la branche `main`. Git est installé en versi
 `D:\outils\MinGit` (sans droits administrateur) et son dossier `cmd` est ajouté au `PATH` de
 l'utilisateur : rouvrez un terminal pour utiliser `git`.
 
-L'identité locale de départ est `KaPya Digital <kapya@example.invalid>`. Personnalisez-la une fois
-pour que l'historique porte votre nom :
+Le premier commit et l'étiquette `v1.45.9` portent l'identité de départ
+`KaPya Digital <kapya@example.invalid>`. Définissez votre identité dans le dossier du projet ;
+elle s'appliquera aux commits suivants :
 
 ```powershell
-git config user.name "Votre nom"
-git config user.email "votre@adresse"
-git commit --amend --reset-author          # corrige le premier commit, s'il n'y a pas encore d'autre commit
+cd /d D:\kapya-erp
+git config user.name "Prénom Nom"
+git config user.email "vous@exemple.com"
+git config --get user.name
 ```
+
+Ne réécrivez pas l'historique sans nécessité : l'étiquette de version pointe sur le premier commit.
 
 Après chaque changement important :
 
