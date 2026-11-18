@@ -98,9 +98,11 @@ articles vendus, pas par les dépenses.
    un projet vide et vérifié par `tests/schema-rebuild.test.mjs`, mais n'a pas encore été
    rejoué sur un vrai projet de test.
 3. **Tests fonctionnels sur un projet de test** : ventes, crédits, clôtures, restauration.
-4. **Traduction anglaise** : la page de connexion est couverte ; il reste 1 549 textes,
-   dont 308 dans le guide. Suivi et priorités dans `docs/TRADUCTION.md`
-   (`npm.cmd run audit:i18n`).
+4. **Traduction anglaise** — fait le 18 novembre 2026 : 1 601 textes sur 1 601 sont
+   traduits (100 %), y compris le guide et la page de confidentialité, qui chargent
+   désormais le moteur de traduction. Le rendu anglais est vérifié dans Chromium
+   (`tests/guide.browser.test.mjs`). Seul le chemin technique `/app` reste tel quel.
+   Suivi : `docs/TRADUCTION.md` (`npm.cmd run audit:i18n`).
 
 ## Méthode
 
