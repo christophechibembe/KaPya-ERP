@@ -1,0 +1,36 @@
+/* Écran de bienvenue KaPya ERP — version normes (scopée sur #splash.kp-welcome) */
+#splash.kp-welcome:not([hidden]) { display: block; position: fixed; inset: 0; overflow-y: auto; background: #f5f8fd; padding: 0; text-align: left; justify-content: flex-start; align-items: stretch; gap: 0; }
+#splash.kp-welcome { --navy: #071b50; --blue: #0a5fd6; --blue-dark: #074bb0; --ink: #1f2d4a; --muted: #4a5a78; --line: #dfe7f4; --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+#splash.kp-welcome *, #splash.kp-welcome *::before, #splash.kp-welcome *::after { box-sizing: border-box; }
+#splash.kp-welcome .kw-page { min-height: 100%; display: flex; flex-direction: column; }
+#splash.kp-welcome .kw-header { padding: 20px 24px 0; max-width: 1120px; width: 100%; margin: 0 auto; }
+#splash.kp-welcome .kw-logo { width: 180px; height: auto; display: block; }
+#splash.kp-welcome .kw-main { flex: 1; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 48px; max-width: 1120px; width: 100%; margin: 0 auto; padding: 32px 24px 48px; }
+#splash.kp-welcome .kw-eyebrow { margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); }
+#splash.kp-welcome .kw-title { margin: 0 0 16px; font-size: clamp(32px, 4.4vw, 48px); line-height: 1.12; font-weight: 800; color: var(--navy); letter-spacing: -.01em; }
+#splash.kp-welcome .kw-lead { margin: 0 0 28px; font-size: 18px; line-height: 1.6; color: var(--muted); max-width: 34em; }
+#splash.kp-welcome .kw-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+#splash.kp-welcome .kw-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 28px; border-radius: 12px; font-family: var(--font); font-size: 17px; font-weight: 700; text-decoration: none; border: 2px solid transparent; cursor: pointer; transition: background-color .15s ease, transform .15s ease; }
+#splash.kp-welcome .kw-btn-primary { background: var(--blue); color: #fff; }
+#splash.kp-welcome .kw-btn-primary:hover { background: var(--blue-dark); }
+#splash.kp-welcome .kw-btn-primary:active { transform: translateY(1px); }
+#splash.kp-welcome .kw-btn-secondary { background: #fff; color: var(--blue); border-color: var(--blue); }
+#splash.kp-welcome .kw-btn-secondary:hover { background: #eef5ff; }
+#splash.kp-welcome .kw-note { margin: 18px 0 0; font-size: 15px; color: var(--muted); }
+#splash.kp-welcome .kw-visual { background: #fff; border: 1px solid var(--line); border-radius: 24px; padding: 20px; box-shadow: 0 18px 40px -26px rgba(7,27,80,.45); }
+#splash.kp-welcome .kw-visual img { border-radius: 16px; width: 100%; height: auto; display: block; }
+#splash.kp-welcome .kw-footer { border-top: 1px solid var(--line); background: #fff; }
+#splash.kp-welcome .kw-foot { max-width: 1120px; margin: 0 auto; padding: 18px 24px; display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; font-size: 14px; color: var(--muted); }
+#splash.kp-welcome :focus-visible { outline: 3px solid #7fb0ff; outline-offset: 3px; border-radius: 8px; }
+@media (max-width: 760px) {
+  #splash.kp-welcome .kw-header { padding: 16px 20px 0; }
+  #splash.kp-welcome .kw-logo { width: 150px; }
+  #splash.kp-welcome .kw-main { grid-template-columns: 1fr; gap: 28px; padding: 20px 20px 32px; }
+  #splash.kp-welcome .kw-title { font-size: 32px; }
+  #splash.kp-welcome .kw-lead { font-size: 16px; margin-bottom: 22px; }
+  #splash.kp-welcome .kw-actions { flex-direction: column; }
+  #splash.kp-welcome .kw-btn { width: 100%; }
+  #splash.kp-welcome .kw-visual { order: 2; padding: 12px; border-radius: 18px; }
+  #splash.kp-welcome .kw-foot { flex-direction: column; align-items: center; text-align: center; padding: 16px 20px; }
+}
+@media (prefers-reduced-motion: reduce) { #splash.kp-welcome * { transition: none !important; } }

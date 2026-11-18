@@ -1,0 +1,10 @@
+# Edition mobile : app/index.html est copié à la publication ; les ressources restent partagées.
+/app/js/* /js/:splat 200
+/app/css/* /css/:splat 200
+/app/assets/* /assets/:splat 200
+/app/icons/* /icons/:splat 200
+/app/sw.js /sw.js 200
+/app/manifest.webmanifest /manifest-app.webmanifest 200
+/app/manifest-app.webmanifest /manifest-app.webmanifest 200
+/app/guide.html /guide.html 200
+/app/confidentialite.html /confidentialite.html 200

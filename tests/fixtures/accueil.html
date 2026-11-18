@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/css/theme.css"><title>Test Tableau de bord</title></head>
+<body><div id="root"><div class="shell">
+  <nav id="nav" aria-label="Navigation principale"><div class="brand"><span class="bname"><b>KaPya</b><small>ERP</small></span></div><a href="#/accueil" aria-current="page">Tableau de bord</a><a href="#/vente">Vente</a><a href="#/ventes">Historique</a><a href="#/stocks">Stocks</a></nav>
+  <div class="content"><header class="topbar"><span class="rate-chip">1 $ = 2 800 FC</span><span class="avatar">KT</span></header><main id="main" data-page="accueil" tabindex="-1"></main></div>
+</div></div>
+<script type="module">
+  import { render } from '/js/modules/accueil.js';
+  import { fixture, resetDashboard, addSale } from '/js/api.js';
+  window.fixture = fixture;
+  window.addSale = addSale;
+  window.text = () => document.querySelector('#owner-content')?.textContent || '';
+  window.fireSync = () => document.dispatchEvent(new Event('kp:sync'));
+  window.waitFor = (needle, timeout = 6000) => new Promise(resolve => {
+    const started = Date.now();
+    const tick = () => {
+      if (window.text().includes(needle)) return resolve(true);
+      if (Date.now() - started > timeout) return resolve(false);
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+  window.boot = async () => {
+    localStorage.clear();
+    resetDashboard();
+    // Une vente normale du jour, puis une vente dont la date contient une heure :
+    // les deux doivent compter dans le chiffre d'affaires du jour.
+    addSale({ qty: 2, unit: 10 });
+    addSale({ qty: 1, unit: 5, soldAt: new Date().toLocaleDateString('sv-SE') + 'T09:30:00' });
+    const main = document.querySelector('#main');
+    main.dataset.page = 'accueil';
+    await render(main, { role: 'admin' });
+  };
+  window.ready = window.boot();
+</script></body></html>

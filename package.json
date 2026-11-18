@@ -1,0 +1,17 @@
+{
+  "name": "kapya-erp",
+  "version": "1.45.9",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/verifier-version.mjs && node --test tests/*.test.mjs",
+    "start": "node scripts/lancer.mjs",
+    "lancer": "node scripts/lancer.mjs",
+    "preparer": "node scripts/preparer-cloudflare.mjs",
+    "publier": "node scripts/publier.mjs",
+    "verifier:version": "node scripts/verifier-version.mjs",
+    "verifier:prod": "node scripts/verifier-production.mjs",
+    "inventaire": "node scripts/inventaire-base.mjs",
+    "instantane": "node scripts/instantane.mjs"
+  }
+}

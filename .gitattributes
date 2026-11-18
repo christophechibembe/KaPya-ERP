@@ -1,0 +1,11 @@
+# Normalisation des fins de ligne et fichiers binaires
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff2 binary
+*.zip binary
+*.gz binary
+*.tar binary

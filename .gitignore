@@ -1,0 +1,22 @@
+# Dépendances et outils locaux
+node_modules/
+.wrangler/
+*.log
+
+# Secrets et fichiers d'environnement
+.env
+.env.*
+!.env.example
+
+# Sauvegardes et archives générées
+sauvegardes/
+*.tar.gz
+*.zip
+
+# Captures et fichiers temporaires
+*.png.tmp
+Thumbs.db
+.DS_Store
+
+# Dossiers de publication préparés (hors projet, conservés ici par sécurité)
+kapya-cloudflare-*/

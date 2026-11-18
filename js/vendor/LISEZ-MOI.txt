@@ -1,0 +1,10 @@
+Ce dossier reçoit le lecteur de codes-barres ZXing, pour le scan sans Internet.
+
+Fichier attendu : zxing.min.js
+Source : @zxing/library version 0.21.3, fichier umd/index.min.js (npm ou jsDelivr).
+Dépôt : https://github.com/zxing-js/library
+
+Pour l'ajouter :
+1. Télécharger https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js
+2. Renommer le fichier en zxing.min.js
+3. Le placer ici (js/vendor/zxing.min.js) puis redéployer.

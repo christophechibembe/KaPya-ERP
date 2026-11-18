@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guide d'utilisation KaPya ERP et KaPya app</title>
+<style>
+:root{--navy:#0b2550;--blue:#1d6fe8;--ink:#1e293b;--mute:#64748b;--line:#e2e8f0;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#fff;line-height:1.6}
+header.cover{background:linear-gradient(135deg,#0a2a8f,#0066ff 60%,#00c6ff);color:#fff;padding:3.5rem 1.5rem;text-align:center}
+header.cover h1{margin:0 0 .4rem;font-size:2.2rem}
+header.cover p{margin:.2rem 0;opacity:.92}
+main{max-width:880px;margin:0 auto;padding:1.5rem}
+nav.toc{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:1.2rem 1.5rem;margin:1.5rem 0}
+nav.toc h2{margin:0 0 .5rem;font-size:1.05rem}
+nav.toc ol{margin:0;padding-left:1.2rem;columns:2}
+nav.toc a{color:var(--blue);text-decoration:none}
+section{margin:2.2rem 0;padding-top:.5rem;border-top:1px solid var(--line)}
+h2{color:var(--navy);font-size:1.5rem;margin:.2rem 0 .8rem}
+h3{color:var(--navy);font-size:1.12rem;margin:1.3rem 0 .4rem}
+.tip{background:#ecfdf5;border-left:4px solid #10b981;padding:.7rem 1rem;border-radius:8px;margin:1rem 0}
+.warn{background:#fff7ed;border-left:4px solid #f59e0b;padding:.7rem 1rem;border-radius:8px;margin:1rem 0}
+.step{display:flex;gap:.8rem;margin:.5rem 0}
+.step b.n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.9rem}
+table{width:100%;border-collapse:collapse;margin:.8rem 0;font-size:.95rem}
+th,td{border:1px solid var(--line);padding:.5rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--bg)}
+figure{margin:1.2rem auto;text-align:center}
+figure img{max-width:100%;border:1px solid var(--line);border-radius:12px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
+figure.phone img{max-width:280px}
+figcaption{font-size:.88rem;color:var(--mute);margin-top:.4rem}
+footer{text-align:center;color:var(--mute);font-size:.85rem;padding:2rem 1rem;border-top:1px solid var(--line)}
+@media (max-width:640px){nav.toc ol{columns:1}header.cover h1{font-size:1.7rem}}
+@media print{header.cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}figure{page-break-inside:avoid}}
+</style></head>
+<body>
+<header class="cover">
+  <h1>Guide d'utilisation</h1>
+  <p><b>KaPya ERP</b> (ordinateur) et <b>KaPya app</b> (téléphone)</p>
+  <p><span data-app-version>Version 1.45.9</span></p>
+  <p>Développé par Christophe Cibembe, ingénieur en informatique · KaPya Digital</p>
+</header>
+<main>
+<nav class="toc"><h2>Sommaire</h2><ol>
+  <li><a href="#s1">Présentation et choix de la version</a></li>
+  <li><a href="#s2">Première connexion</a></li>
+  <li><a href="#s3">Les rôles</a></li>
+  <li><a href="#s4">Ventes et factures</a></li>
+  <li><a href="#s5">Crédits et versements</a></li>
+  <li><a href="#s6">Stock, achats et dépôts</a></li>
+  <li><a href="#s7">Boutiques et transferts</a></li>
+  <li><a href="#s8">Clôture de caisse</a></li>
+  <li><a href="#s9">Tableau de bord et rapports</a></li>
+  <li><a href="#s10">Équipe et paramètres</a></li>
+  <li><a href="#s11">Sécurité : verrouillage et mot de passe</a></li>
+  <li><a href="#s12">Utiliser KaPya app sur téléphone</a></li>
+  <li><a href="#s13">Sauvegarde</a></li>
+  <li><a href="#s14">Documents et fonctions complémentaires</a></li>
+  <li><a href="#s15">En cas de problème</a></li>
+</ol></nav>
+
+<section id="s1"><h2>1. Présentation et choix de la version</h2>
+<p>KaPya est un logiciel de gestion commerciale : <b>ventes, achats, stocks, caisse, crédits et rapports</b>. Il existe en deux versions qui utilisent les mêmes comptes et les mêmes données :</p>
+<table><tr><th>Version</th><th>Pour qui</th><th>Où l'ouvrir</th></tr>
+<tr><td><b>KaPya ERP</b></td><td>Ordinateur, entreprises à plusieurs boutiques</td><td>L'adresse habituelle du site</td></tr>
+<tr><td><b>KaPya app</b></td><td>Téléphone, petites entreprises</td><td>L'adresse du site suivie de <code>/app</code></td></tr></table>
+<div class="tip">Vos données sont les mêmes dans les deux versions : une vente faite sur téléphone apparaît sur ordinateur, et inversement.</div>
+<figure><img src="assets/guide/img-c42e50bbeee7.jpg" alt="Le numéro de version et son nom sont affichés en bas du menu."><figcaption>Le numéro de version et son nom sont affichés en bas du menu.</figcaption></figure>
+</section>
+
+<section id="s2"><h2>2. Première connexion</h2>
+<div class="step"><b class="n">1</b><div>Ouvrez l'application, puis cliquez sur <b>Créer un compte</b> et saisissez votre adresse e-mail.</div></div>
+<div class="step"><b class="n">2</b><div>Choisissez un mot de passe d'au moins 8 caractères, avec des lettres et des chiffres. Les mots trop courants, comme <code>password123</code>, sont refusés.</div></div>
+<div class="step"><b class="n">3</b><div>Si l'écran affiche <b>« Activer votre accès »</b>, saisissez le <b>code d'activation</b> ou le <b>code d'invitation</b> donné par le gérant. Sans ce code, votre compte n'est rattaché à aucune entreprise.</div></div>
+<div class="step"><b class="n">4</b><div>À la première connexion, un écran de bienvenue s'affiche. Cliquez sur <b>Commencer</b>. Il ne reviendra plus.</div></div>
+<div class="warn">Un nouveau compte ne peut pas créer d'entreprise. Seul le super administrateur de KaPya accorde l'accès.</div>
+<figure class="phone"><img src="assets/guide/img-49b5325663ae.jpg" alt="Écran de bienvenue, affiché une seule fois à la première connexion."><figcaption>Écran de bienvenue, affiché une seule fois à la première connexion.</figcaption></figure>
+</section>
+
+<section id="s3"><h2>3. Les rôles</h2>
+<p>Chaque personne a un rôle, qui détermine ce qu'elle voit et ce qu'elle peut faire.</p>
+<table><tr><th>Rôle</th><th>Ce qu'il peut faire</th></tr>
+<tr><td><b>Gérant (admin)</b></td><td>Tout : ventes, achats, stock, dépôts, équipe, rapports, coûts, sauvegardes.</td></tr>
+<tr><td><b>Responsable</b></td><td>Presque tout, sauf les sauvegardes et les exports comptables.</td></tr>
+<tr><td><b>Comptable</b></td><td>Rapports, caisse et chiffres de l'entreprise, sans les sauvegardes.</td></tr>
+<tr><td><b>Facturier</b></td><td>Ventes, factures (modifier et supprimer celles de sa boutique), encaissements, clients, clôture de sa boutique.</td></tr>
+<tr><td><b>Lecture seule</b></td><td>Consultation des ventes, des stocks et des rapports, sans modification.</td></tr></table>
+<div class="tip">Les modifications et suppressions de factures sont enregistrées dans l'historique, avec le nom de la personne et la date.</div>
+</section>
+
+<section id="s4"><h2>4. Ventes et factures</h2>
+<h3>Faire une vente</h3>
+<div class="step"><b class="n">1</b><div>Ouvrez <b>Ventes &gt; Nouvelle facture</b> (ou le bouton <b>+</b> sur téléphone).</div></div>
+<div class="step"><b class="n">2</b><div>Choisissez le <b>client</b> ou saisissez un nom de passage.</div></div>
+<div class="step"><b class="n">3</b><div>Ajoutez les <b>articles</b> et les <b>quantités</b>. Seul le stock disponible dans la boutique peut être vendu.</div></div>
+<div class="step"><b class="n">4</b><div>Choisissez le mode de paiement : <b>cash</b> (payé maintenant) ou <b>crédit</b> (payé plus tard).</div></div>
+<div class="step"><b class="n">5</b><div>Si l'entreprise a plusieurs boutiques, choisissez le <b>Dépôt de sortie</b>. Le facturier vend automatiquement dans sa boutique.</div></div>
+<div class="step"><b class="n">6</b><div>Enregistrez. Le numéro de facture est attribué automatiquement.</div></div>
+<h3>Modifier ou supprimer une facture</h3>
+<p>Ouvrez la facture dans <b>Ventes</b>, puis cliquez sur <b>Modifier</b> ou <b>Supprimer</b>. Une facture supprimée remet les quantités dans la boutique.</p>
+</section>
+
+<section id="s5"><h2>5. Crédits et versements</h2>
+<p>Les ventes à crédit apparaissent dans <b>Crédits</b>. Le facturier voit tous les crédits de l'entreprise, pour pouvoir les recouvrer.</p>
+<div class="step"><b class="n">1</b><div>Ouvrez la facture à crédit concernée.</div></div>
+<div class="step"><b class="n">2</b><div>Cliquez sur <b>Encaisser</b>, saisissez le montant versé, puis enregistrez.</div></div>
+<p>Le solde du client se met à jour automatiquement. Les <b>acomptes</b> (sommes versées à l'avance) se gèrent dans <b>Acomptes clients</b>.</p>
+</section>
+
+<section id="s6"><h2>6. Stock, achats et dépôts</h2>
+<p>Les <b>articles</b> sont communs à toute l'entreprise. Les <b>quantités</b> sont propres à chaque dépôt (boutique).</p>
+<h3>Enregistrer un achat</h3>
+<p><b>Achats &gt; Nouvel achat</b> : choisissez le fournisseur, les articles, les quantités et le dépôt de réception. Le numéro d'achat est automatique (<code>ACH-…</code>).</p>
+<figure><img src="assets/guide/img-0e93c65289b7.jpg" alt="Le formulaire d'achat : pas de champ numéro, il est attribué automatiquement."><figcaption>Le formulaire d'achat : pas de champ numéro, il est attribué automatiquement.</figcaption></figure>
+<h3>Unités des articles</h3>
+<p>Dans <b>Produits &amp; Stocks</b>, l'unité se choisit dans une liste (pièce, carton, bidon, sac, kilogramme, litre…). Pour une unité qui n'existe pas, choisissez <b>« + Ajouter une unité »</b>.</p>
+<figure><img src="assets/guide/img-2a5acab572e9.jpg" alt="Le choix de l'unité, avec la possibilité d'en ajouter une."><figcaption>Le choix de l'unité, avec la possibilité d'en ajouter une.</figcaption></figure>
+<h3>Ajouter une boutique (dépôt)</h3>
+<p><b>Plus &gt; Dépôts &gt; Ajouter un dépôt</b> : saisissez le nom et l'adresse. Cette fonction n'existe qu'en formule Standard ou Premium.</p>
+</section>
+
+<section id="s7"><h2>7. Boutiques et transferts</h2>
+<p>Une boutique est un dépôt. Elle a son propre stock, ses propres ventes et sa propre clôture de caisse.</p>
+<h3>Transférer du stock d'un dépôt à un autre</h3>
+<div class="step"><b class="n">1</b><div>Ouvrez <b>Plus &gt; Dépôts</b>, section <b>Transfert entre dépôts</b>.</div></div>
+<div class="step"><b class="n">2</b><div>Choisissez le dépôt de départ (<b>Depuis</b>) et le dépôt d'arrivée (<b>Vers</b>).</div></div>
+<div class="step"><b class="n">3</b><div>Choisissez le produit et la quantité, puis enregistrez.</div></div>
+<p>Un transfert n'est pas une vente : il ne crée pas de facture et ne touche pas à la caisse.</p>
+<figure><img src="assets/guide/img-fb9c6767c6d4.jpg" alt="Un dépôt sans stock ne peut pas être la source d'un transfert. L'écran indique comment faire."><figcaption>Un dépôt sans stock ne peut pas être la source d'un transfert. L'écran indique comment faire.</figcaption></figure>
+<figure><img src="assets/guide/img-931db19bbcee.jpg" alt="Le contrôle de cohérence signale les écarts entre les dépôts et le stock total."><figcaption>Le contrôle de cohérence signale les écarts entre les dépôts et le stock total.</figcaption></figure>
+<div class="tip">Un facturier ne peut transférer que depuis sa boutique, sauf si le gérant lui a donné l'autorisation de transférer depuis tous les dépôts (case dans <b>Paramètres &gt; Membres</b>).</div>
+</section>
+
+<section id="s8"><h2>8. Clôture de caisse</h2>
+<p>La clôture se fait en deux temps, chaque jour :</p>
+<div class="step"><b class="n">1</b><div><b>Par boutique</b> : chaque boutique clôture sa caisse (ventes comptant, versements de crédits, montant compté). Le facturier clôture sa boutique ; le gérant peut clôturer toutes les boutiques.</div></div>
+<div class="step"><b class="n">2</b><div><b>Globale</b> : une fois toutes les boutiques clôturées, la clôture globale de l'entreprise peut être faite. Elle ajoute les acomptes reçus, les dépenses et les paiements aux fournisseurs.</div></div>
+<div class="warn">La clôture globale est refusée tant qu'une boutique active n'a pas clôturé. Une boutique sans activité doit tout de même être clôturée, avec des montants à zéro.</div>
+<figure><img src="assets/guide/img-ccb4f2f171de.jpg" alt="La section Clôture par boutique : une carte par boutique, avec les encaissements du jour."><figcaption>La section Clôture par boutique : une carte par boutique, avec les encaissements du jour.</figcaption></figure>
+<h3>Hors connexion</h3>
+<p>Si la connexion est coupée, vous pouvez saisir la clôture. Elle est gardée sur l'appareil et envoyée au retour de la connexion.</p>
+</section>
+
+<section id="s9"><h2>9. Tableau de bord et rapports</h2>
+<h3>Tableau de bord</h3>
+<p>Le tableau de bord affiche le <b>résumé de caisse du jour</b>, les indicateurs clés, les graphiques et les points à surveiller. Le gérant y trouve aussi les <b>modifications du jour</b> (factures créées, modifiées ou supprimées). Vous pouvez choisir les blocs affichés avec le bouton <b>Personnaliser</b>.</p>
+<h3>Rapports</h3>
+<table><tr><th>Rapport</th><th>Contenu</th><th>Qui</th></tr>
+<tr><td>Journalier</td><td>Ventes, encaissements et achats du jour</td><td>Tous</td></tr>
+<tr><td>Entre deux dates</td><td>Même rapport sur une période (un mois, par exemple)</td><td>Tous</td></tr>
+<tr><td>Inventaire, entrées et sorties de stock, synthèse 6 mois</td><td>Stock et coûts</td><td>Gérant, responsable, comptable, lecture seule</td></tr></table>
+<p>Pour imprimer : <b>Imprimer / PDF</b>, au format A4 (recommandé). Pour l'envoyer : <b>Envoyer par WhatsApp</b>. Sur téléphone, choisissez WhatsApp dans la liste de partage.</p>
+</section>
+
+<section id="s10"><h2>10. Équipe et paramètres</h2>
+<h3>Ajouter un membre</h3>
+<div class="step"><b class="n">1</b><div>Ouvrez <b>Paramètres &gt; Inviter un membre</b>. Un code est créé, valable 7 jours.</div></div>
+<div class="step"><b class="n">2</b><div>Donnez ce code à la personne. Elle crée son compte et saisit le code.</div></div>
+<div class="step"><b class="n">3</b><div>Dans <b>Paramètres &gt; Membres</b>, changez son rôle et attribuez-lui sa <b>boutique</b>.</div></div>
+<h3>Taux du jour</h3>
+<p>Mettez à jour le taux du dollar dans les paramètres chaque jour : il sert aux montants en francs congolais et à la clôture.</p>
+<figure><img src="assets/guide/img-94f7ade66fae.jpg" alt="Paramètres : le numéro de version et la mention du développeur sont en bas de la page."><figcaption>Paramètres : le numéro de version et la mention du développeur sont en bas de la page.</figcaption></figure>
+</section>
+
+<section id="s11"><h2>11. Sécurité : verrouillage et mot de passe</h2>
+<h3>Verrouiller l'application</h3>
+<p>Quand vous quittez votre poste, cliquez sur <b>Verrouiller</b> (menu latéral sur ordinateur, icône cadenas en haut sur téléphone). Saisissez votre code pour revenir.</p>
+<h3>Activer le code</h3>
+<p><b>Paramètres &gt; Code de verrouillage</b> : saisissez un code de 4 à 6 chiffres, deux fois. Le verrouillage automatique après inactivité se règle dans la même carte. Le code est propre à chaque appareil.</p>
+<figure><img src="assets/guide/img-b7213c1425ef.jpg" alt="L'écran verrouillé : seul le code permet de revenir."><figcaption>L'écran verrouillé : seul le code permet de revenir.</figcaption></figure>
+<div class="warn">Ne partagez jamais votre mot de passe ni votre code de verrouillage. En cas de perte du code, déconnectez-vous puis reconnectez-vous avec votre mot de passe.</div>
+</section>
+
+<section id="s12"><h2>12. Utiliser KaPya app sur téléphone</h2>
+<p>KaPya app est la version pour téléphone. Elle utilise les mêmes comptes et les mêmes données.</p>
+<div class="step"><b class="n">1</b><div>Ouvrez le lien <b>…/app</b> dans votre navigateur (Chrome sur Android, Safari sur iPhone).</div></div>
+<div class="step"><b class="n">2</b><div>Installez l'application : sur Android, menu <b>⋮</b> puis <b>Ajouter à l'écran d'accueil</b> ; sur iPhone, bouton <b>Partager</b> puis <b>Sur l'écran d'accueil</b>.</div></div>
+<div class="step"><b class="n">3</b><div>L'icône <b>KaPya app</b> apparaît sur votre téléphone. Ouvrez-la comme n'importe quelle application.</div></div>
+<div class="tip">KaPya app est conçue pour le téléphone. Sur ordinateur, elle affiche un message et renvoie vers KaPya ERP.</div>
+<figure class="phone"><img src="assets/guide/img-94db6a70e413.jpg" alt="KaPya app sur téléphone : la navigation se fait par les boutons du bas."><figcaption>KaPya app sur téléphone : la navigation se fait par les boutons du bas.</figcaption></figure>
+<h3>Recherche et écrans</h3>
+<p>La barre de recherche est en haut de chaque liste. Les boutons du bas donnent accès au tableau de bord, aux ventes, aux produits et au menu <b>Plus</b>.</p>
+<figure class="phone"><img src="assets/guide/img-1c2dda04deeb.jpg" alt="Sur téléphone, la recherche occupe toute la largeur, au-dessus des boutons."><figcaption>Sur téléphone, la recherche occupe toute la largeur, au-dessus des boutons.</figcaption></figure>
+</section>
+
+<section id="s13"><h2>13. Sauvegarde</h2>
+<p>Le gérant peut exporter une sauvegarde depuis <b>Plus &gt; Sauvegarde</b>.</p>
+<div class="warn">Conservez la sauvegarde hors de l'appareil (clé USB, disque externe, messagerie). Une sauvegarde doit être testée de temps en temps.</div>
+</section>
+
+<section id="s14"><h2>14. Documents et fonctions complémentaires</h2>
+
+<h3>Proformas (devis)</h3>
+<p><b>Ventes et encaissements &gt; Proformas</b>. Un proforma présente un devis au client : il ne change pas le stock et ne prend pas de numéro de facture. Depuis la liste, utilisez <b>Aperçu</b>, <b>Imprimer</b> ou <b>WhatsApp</b>. Quand le client accepte, <b>Facturer comptant</b> ou <b>Facturer à crédit</b> crée la facture et déduit le stock ; <b>Annuler</b> clôt un devis sans suite.</p>
+<div class="tip">Un devis peut être préparé sans client enregistré. La facture, elle, suit les règles habituelles : un crédit exige un client identifié.</div>
+
+<h3>Bons de commande</h3>
+<p><b>Clients et stock &gt; Bons de commande</b> (gérant et responsable). Un bon est une demande d'achat envoyée au fournisseur : le stock ne change pas. À la livraison, <b>Recevoir (créer l'achat)</b> enregistre l'achat réel et fait entrer les quantités dans le dépôt choisi. <b>Annuler</b> ferme un bon qui ne sera pas livré.</p>
+
+<h3>Avoirs</h3>
+<p><b>Ventes et encaissements &gt; Avoirs</b>. Un avoir corrige une facture (prix erroné, remise, reprise financière) sans la supprimer et sans modifier le stock. Choisissez la facture, la quantité à corriger sur chaque ligne, puis enregistrez. Le solde de la facture ou du client est corrigé du montant de l'avoir.</p>
+
+<h3>Retours</h3>
+<p><b>Ventes et encaissements &gt; Retours</b>.</p>
+<ul>
+  <li><b>Retour client</b> : choisissez la facture et les quantités rendues. Le stock revient dans la boutique de la facture. Le gérant ou le responsable peut établir un <b>avoir</b> pour créditer le client ; un facturier enregistre le retour, puis l'avoir se fait dans la page Avoirs.</li>
+  <li><b>Retour fournisseur</b> (gérant et responsable) : le stock sort du dépôt choisi, avec le fournisseur et le motif.</li>
+</ul>
+
+<h3>Lots et péremption</h3>
+<p><b>Clients et stock &gt; Lots et péremption</b>. Pour un produit périssable, cochez le suivi de la péremption sur sa fiche.</p>
+<div class="step"><b class="n">1</b><div>Saisissez un lot : produit, dépôt, quantité, numéro de lot et date de péremption.</div></div>
+<div class="step"><b class="n">2</b><div>Ou rattachez les lots d'un achat déjà enregistré : chaque produit suivi reçoit son numéro et sa date.</div></div>
+<p>Les sorties consomment d'abord les lots qui périment le plus tôt. La page signale les lots qui arrivent à échéance dans les 30 jours.</p>
+<div class="warn">Un achat sans numéro de lot ne sera pas suivi par date. Saisissez les lots dès la réception.</div>
+
+<h3>Inventaire physique</h3>
+<p><b>Paramètres &gt; Inventaire physique</b> (gérant). Choisissez un dépôt, saisissez les quantités réellement comptées, puis <b>Valider l'inventaire</b>. Les écarts corrigent le stock de façon définitive. Un inventaire en cours peut être repris plus tard.</p>
+<div class="warn">En cas d'alerte « Écart de stock » sur la page Dépôts, vérifiez les dépôts avant de valider un inventaire.</div>
+
+<h3>Personnel et paiements</h3>
+<p><b>Administration &gt; Personnel et paiements</b> (formule Premium, gérant). Ajoutez une personne avec un salaire fixe par mois ou une paie par jour ou par tâche, enregistrez les paiements et consultez le total du mois. Ces paiements ne touchent pas la caisse : ils sont suivis séparément.</p>
+
+<h3>Exports comptables</h3>
+<p><b>Analyse &gt; Exports comptables</b> (formule Standard ou Premium). Choisissez la période, puis <b>Ventes</b>, <b>Achats</b> ou <b>Inventaire</b> au format Excel. Les boutons PDF sont réservés à la formule Premium. L'inventaire est calculé à la date du jour ; les fichiers reprennent l'en-tête et le logo de l'entreprise.</p>
+
+<h3>Alertes et rappels</h3>
+<p><b>Plus &gt; Alertes et rappels</b>. La page rassemble, en lecture seule : les produits en <b>rupture</b> ou sous le stock minimum, les <b>crédits clients en retard de plus de 30 jours</b> et les <b>factures fournisseur à payer</b>. Les montants ne sont affichés qu'aux rôles autorisés à consulter les rapports.</p>
+</section>
+
+<section id="s15"><h2>15. En cas de problème</h2>
+<table><tr><th>Ce que vous voyez</th><th>Que faire</th></tr>
+<tr><td>La page ne s'affiche pas</td><td>Vérifiez la connexion, puis rechargez la page (Ctrl+F5 sur ordinateur).</td></tr>
+<tr><td>« Activer votre accès »</td><td>Saisissez le code donné par le gérant.</td></tr>
+<tr><td>« Vous ne pouvez transférer que depuis votre boutique »</td><td>Demandez au gérant l'autorisation de transférer depuis les autres dépôts.</td></tr>
+<tr><td>« Clôturez d'abord chaque boutique »</td><td>Clôturez la caisse de chaque boutique avant la clôture globale.</td></tr>
+<tr><td>« Aucune boutique n'est attribuée à votre compte »</td><td>Le gérant doit vous attribuer une boutique dans Paramètres &gt; Membres.</td></tr>
+<tr><td>Le stock ne correspond pas</td><td>Le gérant regarde l'alerte « Écart de stock » sur la page Dépôts.</td></tr>
+<tr><td>Un message d'erreur inconnu</td><td>Notez le texte exact et prévenez le gérant ou le support KaPya.</td></tr></table>
+</section>
+
+</main>
+<footer>KaPya ERP et KaPya app · <span data-app-version>Version 1.45.9</span> · Développé par Christophe Cibembe · KaPya Digital<br>Les captures de ce guide proviennent d'une démonstration : les noms et les montants affichés sont fictifs.<br><a href="confidentialite.html">Confidentialité et conditions d'utilisation</a></footer>
+<script type="module">
+// Le guide suit la version de l'application : une seule source (js/version.js).
+import { APP_VERSION } from './js/version.js';
+document.querySelectorAll('[data-app-version]').forEach(el => { el.textContent = `Version ${APP_VERSION}`; });
+</script>
+</body></html>
