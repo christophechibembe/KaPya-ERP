@@ -30,6 +30,54 @@ pg_dump -h aws-0-eu-west-1.pooler.supabase.com -p 5432 -U postgres.ttplxlobehmwz
 Dump produit le 18 novembre 2026 : 66 tables dans chaque fichier (380 Ko de schéma,
 14,2 Mo de données), serveur PostgreSQL 17.11.
 
+## Sauvegarde automatique hebdomadaire
+
+Le script `scripts/sauvegarde-production.mjs` produit chaque semaine le schéma et les
+données, vérifie que chaque fichier est complet, applique une rotation et peut copier le
+résultat hors site.
+
+**Préparer une fois**
+
+1. Avoir `pg_dump` (version majeure identique au serveur). Le script le cherche dans
+   `%USERPROFILE%\.kapya\pg\bin`, dans `C:\Program Files\PostgreSQL\*\bin`, puis dans le
+   `PATH`. Sinon, définir `PG_DUMP`.
+2. Écrire l'URL de connexion **Session pooler** dans
+   `%USERPROFILE%\.kapya\db-url.txt` (une seule ligne, hors dépôt) :
+
+   ```text
+   postgresql://postgres.<reference>:<mot-de-passe>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres
+   ```
+
+   Si le mot de passe contient des caractères spéciaux, les encoder dans l'URL
+   (`@` devient `%40`, `:` devient `%3A`).
+3. Facultatif : indiquer un dossier de copie hors site dans
+   `%USERPROFILE%\.kapya\copie-sauvegarde.txt`.
+
+**Lancer et vérifier**
+
+```powershell
+npm.cmd run sauvegarde            # 8 sauvegardes conservées par défaut
+node scripts/sauvegarde-production.mjs --garder 12
+```
+
+Les fichiers vont dans `D:\kapya-sauvegardes\` (ou `KAPYA_SAUVEGARDES`) :
+`kapya-AAAA-MM-JJ-schema.sql`, `kapya-AAAA-MM-JJ-donnees.sql`, et le journal
+`sauvegarde.log`. Le script échoue si un dump est vide ou incomplet.
+
+**Planifier chaque semaine**
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\installer-sauvegarde.ps1 -Jour Dimanche -Heure 03:00 -Garder 8 -Copie "E:\sauvegardes-kapya"
+```
+
+La tâche « KaPya - Sauvegarde hebdomadaire » s'exécute avec la session de l'utilisateur
+connecté. Pour qu'elle tourne même sans session ouverte, l'installer dans le Planificateur
+de tâches avec « Exécuter que l'utilisateur soit connecté ou non » et le mot de passe
+Windows. Tester aussitôt avec `schtasks /Run /TN "KaPya - Sauvegarde hebdomadaire"`.
+
+Le dossier de sauvegarde contient des **données personnelles** : le protéger (droits
+restreints), et chiffrer toute copie hors site. Ne jamais le placer dans le dépôt Git.
+
 Utiliser la chaîne **Session pooler** (port `5432`, hôte `aws-0-<région>.pooler.supabase.com`,
 utilisateur `postgres.<référence>`), et non la connexion directe, si le réseau refuse IPv6.
 Pour un test, restaurer d'abord dans un projet vide, jamais en production active.
