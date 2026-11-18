@@ -181,6 +181,8 @@ articles vendus, pas par les dépenses.
   `%USERPROFILE%\.kapya\cle-sauvegarde.txt` (droits restreints) est indispensable pour
   déchiffrer les fichiers `.sql.enc` de OneDrive. Elle doit être copiée dans un
   gestionnaire de mots de passe ; sans elle, la copie hors site est illisible.
+  `D:\kapya-sauvegardes` et le dossier OneDrive sont restreints au compte Windows
+  (`icacls`), comme l'URL de connexion et la clé.
 - **Tâche planifiée — dépend de la session Windows.** « KaPya - Sauvegarde
   hebdomadaire » tourne quand la session de l'utilisateur est ouverte. Pour qu'elle
   tourne sans session, l'enregistrer avec le mot de passe Windows dans le Planificateur
