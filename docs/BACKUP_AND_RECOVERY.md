@@ -18,6 +18,18 @@ npx supabase db dump --db-url "postgresql://postgres.ttplxlobehmwzfnxviej:<mot-d
 npx supabase db dump --data-only --db-url "postgresql://postgres.ttplxlobehmwzfnxviej:<mot-de-passe>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres" -f "D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql"
 ```
 
+La CLI Supabase a besoin de Docker. Sans Docker, utiliser directement `pg_dump` (même
+version majeure que le serveur, ici 17) avec `PGPASSWORD` dans l'environnement :
+
+```powershell
+$env:PGPASSWORD='<mot-de-passe>'
+pg_dump -h aws-0-eu-west-1.pooler.supabase.com -p 5432 -U postgres.ttplxlobehmwzfnxviej -d postgres --schema-only --no-owner --schema=public -f "D:\kapya-sauvegardes\kapya-2026-11-18-schema.sql"
+pg_dump -h aws-0-eu-west-1.pooler.supabase.com -p 5432 -U postgres.ttplxlobehmwzfnxviej -d postgres --data-only --no-owner --schema=public -f "D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql"
+```
+
+Dump produit le 18 novembre 2026 : 66 tables dans chaque fichier (380 Ko de schéma,
+14,2 Mo de données), serveur PostgreSQL 17.11.
+
 Utiliser la chaîne **Session pooler** (port `5432`, hôte `aws-0-<région>.pooler.supabase.com`,
 utilisateur `postgres.<référence>`), et non la connexion directe, si le réseau refuse IPv6.
 Pour un test, restaurer d'abord dans un projet vide, jamais en production active.

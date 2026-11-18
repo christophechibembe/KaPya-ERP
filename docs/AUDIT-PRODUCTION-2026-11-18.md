@@ -116,11 +116,13 @@ articles vendus, pas par les dépenses.
    Les 8 fonctions non `SECURITY DEFINER` encore exécutables par `anon` ont elles aussi
    été fermées par la migration `20261118000003_fermer_fonctions_anon.sql` : plus aucune
    fonction de `public` n'est exécutable par `anon`.
-2. **Obtenir un dump officiel** (`supabase db dump`, qui demande le mot de passe de la base)
-   si l'on veut une restauration garantie. `sql/schema-production.sql` est exécutable sur
-   un projet vide et vérifié par `tests/schema-rebuild.test.mjs`, mais n'a pas encore été
-   rejoué sur un vrai projet de test. Commandes prêtes dans `docs/BACKUP_AND_RECOVERY.md` ;
-   il ne manque que le mot de passe de la base pour produire le dump.
+2. **Dump officiel — fait le 18 novembre 2026.** Produit avec `pg_dump` 17.5 sur la
+   chaîne Session pooler (serveur PostgreSQL 17.11), hors dépôt :
+   `D:\kapya-sauvegardes\kapya-2026-11-18-schema.sql` (380 Ko, 66 tables) et
+   `D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql` (14,2 Mo, 66 tables). Ces fichiers
+   contiennent des données personnelles et ne doivent jamais être commités. La
+   restauration n'a pas encore été rejouée sur un projet vide ; c'est le prochain
+   contrôle à faire si l'on veut garantir la reprise. Commandes : `docs/BACKUP_AND_RECOVERY.md`.
 3. **Tests fonctionnels sur un projet de test** : ventes, crédits, clôtures, restauration.
    L'isolation multi-entreprises est déjà vérifiée sur la production (voir Sécurité) ;
    il reste à rejouer les parcours complets sur un projet dédié, sans données réelles.
