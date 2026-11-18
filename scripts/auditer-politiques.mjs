@@ -144,7 +144,14 @@ const rapport = [
         '| --- | --- |',
         ...publiques.map(p => `| \`${p.table}\` | ${p.nom} |`)
       ].join('\n')
-    : 'Aucune politique accordée à `public`.',
+    : [
+        'Aucune politique accordée à `public`.',
+        '',
+        'La restriction a été appliquée le 18 novembre 2026 par la migration',
+        '[`../supabase/migrations/20261118000002_restreindre_politiques_publiques.sql`](../supabase/migrations/20261118000002_restreindre_politiques_publiques.sql).',
+        'Les 110 politiques restent en place ; les 7 anciennement publiques visent désormais',
+        '`authenticated`.'
+      ].join('\n'),
   '',
   '## Politiques versionnées sans équivalent en production',
   '',
@@ -153,7 +160,8 @@ const rapport = [
 ];
 await writeFile(path.join(root, 'docs', 'POLITIQUES-RLS.md'), rapport.join('\n'), 'utf8');
 
-const proposition = `-- KaPya ERP — restriction des politiques accordées au rôle public.
+const proposition = publiques.length
+  ? `-- KaPya ERP — restriction des politiques accordées au rôle public.
 -- PROPOSITION — fichier non appliqué.
 -- Ces ${publiques.length} politiques visent \`public\` (tous les rôles). anon ne peut rien lire
 -- ni écrire : my_org() et auth.uid() renvoient null sans session. Les restreindre à
@@ -162,6 +170,14 @@ const proposition = `-- KaPya ERP — restriction des politiques accordées au r
 -- À relire, tester sur un projet de test, puis appliquer en une transaction.
 
 ${publiques.map(p => `alter policy ${ident(p.nom)} on public.${ident(p.table)} to authenticated;`).join('\n')}
+`
+  : `-- KaPya ERP — restriction des politiques accordées au rôle public.
+-- APPLIQUÉE le 18 novembre 2026 par la migration
+-- supabase/migrations/20261118000002_restreindre_politiques_publiques.sql.
+--
+-- Aucune politique ne vise plus \`public\` : les 110 politiques restent en place, et
+-- les 7 anciennement publiques visent désormais \`authenticated\`. Rien à rejouer.
+-- Ce fichier est conservé comme trace de l'opération.
 `;
 await writeFile(path.join(exportDir, '13-politiques-publiques-propose.sql'), proposition, 'utf8');
 

@@ -1,5 +1,5 @@
 -- KaPya ERP — politiques RLS de production absentes du SQL versionné.
--- Généré le 2026-11-18 08:08 depuis sql/exports/2026-11-18/03-politiques.sql.
+-- Généré le 2026-11-18 08:55 depuis sql/exports/2026-11-18/03-politiques.sql.
 --
 -- Ces politiques existent DÉJÀ en production : ce fichier sert à versionner leur
 -- définition exacte, à la relire et à reconstruire un projet de test. Il n'est pas
@@ -192,30 +192,30 @@ create policy invoice_counters_read on public.invoice_counters
   using ((org_id = my_org()))
   ;
 
--- number_ranges · number_ranges_org (all, public)
+-- number_ranges · number_ranges_org (all, authenticated)
 drop policy if exists number_ranges_org on public.number_ranges;
 create policy number_ranges_org on public.number_ranges
   as permissive
   for all
-  to public
+  to authenticated
   using ((org_id = my_org()))
   with check ((org_id = my_org()));
 
--- paiements_abonnement · pay_insert (insert, public)
+-- paiements_abonnement · pay_insert (insert, authenticated)
 drop policy if exists pay_insert on public.paiements_abonnement;
 create policy pay_insert on public.paiements_abonnement
   as permissive
   for insert
-  to public
+  to authenticated
   
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
--- paiements_abonnement · pay_read_own (select, public)
+-- paiements_abonnement · pay_read_own (select, authenticated)
 drop policy if exists pay_read_own on public.paiements_abonnement;
 create policy pay_read_own on public.paiements_abonnement
   as permissive
   for select
-  to public
+  to authenticated
   using ((org_id = my_org()))
   ;
 
@@ -277,12 +277,12 @@ create policy purchase_orders_r on public.purchase_orders
   using (((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text, 'comptable'::text, 'user'::text]))))
   ;
 
--- push_subscriptions · push_own (all, public)
+-- push_subscriptions · push_own (all, authenticated)
 drop policy if exists push_own on public.push_subscriptions;
 create policy push_own on public.push_subscriptions
   as permissive
   for all
-  to public
+  to authenticated
   using ((user_id = auth.uid()))
   with check (((user_id = auth.uid()) AND (org_id = my_org())));
 
@@ -429,20 +429,20 @@ create policy user_warehouses_w on public.user_warehouses
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
--- worker_payments · worker_payments_admin (all, public)
+-- worker_payments · worker_payments_admin (all, authenticated)
 drop policy if exists worker_payments_admin on public.worker_payments;
 create policy worker_payments_admin on public.worker_payments
   as permissive
   for all
-  to public
+  to authenticated
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
--- workers · workers_admin (all, public)
+-- workers · workers_admin (all, authenticated)
 drop policy if exists workers_admin on public.workers;
 create policy workers_admin on public.workers
   as permissive
   for all
-  to public
+  to authenticated
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));

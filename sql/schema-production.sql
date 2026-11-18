@@ -1,6 +1,6 @@
 -- KaPya ERP — schéma de production (instantané de référence)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Généré le 2026-11-18 07:54 par scripts/generer-schema.mjs
+-- Généré le 2026-11-18 08:56 par scripts/generer-schema.mjs
 --
 -- Ce fichier décrit la base telle qu'elle existe réellement. Il est destiné à la
 -- documentation, à la comparaison et à la reconstruction d'un projet de test.
@@ -6313,7 +6313,7 @@ create policy invoice_counters_read on public.invoice_counters
 create policy number_ranges_org on public.number_ranges
   as permissive
   for all
-  to public
+  to authenticated
   using ((org_id = my_org()))
   with check ((org_id = my_org()));
 
@@ -6346,13 +6346,13 @@ create policy organizations_u on public.organizations
 create policy pay_insert on public.paiements_abonnement
   as permissive
   for insert
-  to public
+  to authenticated
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
 create policy pay_read_own on public.paiements_abonnement
   as permissive
   for select
-  to public
+  to authenticated
   using ((org_id = my_org()));
 
 create policy platform_admins_select on public.platform_admins
@@ -6476,7 +6476,7 @@ create policy purchases_u on public.purchases
 create policy push_own on public.push_subscriptions
   as permissive
   for all
-  to public
+  to authenticated
   using ((user_id = auth.uid()))
   with check (((user_id = auth.uid()) AND (org_id = my_org())));
 
@@ -6728,7 +6728,7 @@ create policy user_warehouses_w on public.user_warehouses
 create policy warehouse_stock_r on public.warehouse_stock
   as permissive
   for select
-  to public
+  to authenticated
   using (((org_id = my_org()) AND ((my_shop() IS NULL) OR (warehouse_id = my_shop()))));
 
 create policy warehouses_i on public.warehouses
@@ -6753,14 +6753,14 @@ create policy warehouses_u on public.warehouses
 create policy worker_payments_admin on public.worker_payments
   as permissive
   for all
-  to public
+  to authenticated
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
 create policy workers_admin on public.workers
   as permissive
   for all
-  to public
+  to authenticated
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
@@ -6992,8 +6992,6 @@ grant execute on function public.backup_now() to authenticated;
 
 grant execute on function public.bump_record_version() to authenticated;
 
--- à durcir : anon peut exécuter public.bump_record_version()
-
 grant execute on function public.cancel_commercial_due(p_id uuid, p_reason text) to authenticated;
 
 grant execute on function public.cancel_credit_payment(p_payment_id uuid) to authenticated;
@@ -7038,13 +7036,9 @@ grant execute on function public.create_supplier_return(p_warehouse uuid, p_supp
 
 grant execute on function public.create_transfer(p_from uuid, p_to uuid, p_destination text, p_date date, p_lines jsonb, p_id uuid, p_note text) to authenticated;
 
--- à durcir : anon peut exécuter public.create_transfer(p_from uuid, p_to uuid, p_destination text, p_date date, p_lines jsonb, p_id uuid, p_note text)
-
 grant execute on function public.create_warehouse_transfer(p_from uuid, p_to uuid, p_date date, p_lines jsonb, p_note text) to authenticated;
 
 grant execute on function public.create_worker(p_name text, p_role text, p_kind text, p_usual numeric) to authenticated;
-
--- à durcir : anon peut exécuter public.create_worker(p_name text, p_role text, p_kind text, p_usual numeric)
 
 grant execute on function public.credit_sales_all() to authenticated;
 
@@ -7060,13 +7054,9 @@ grant execute on function public.delete_company(p_org uuid, p_confirm text) to a
 
 grant execute on function public.delete_worker(p_worker uuid) to authenticated;
 
--- à durcir : anon peut exécuter public.delete_worker(p_worker uuid)
-
 grant execute on function public.find_article_by_barcode(p_code text) to authenticated;
 
 grant execute on function public.freeze_sale_line_cost() to authenticated;
-
--- à durcir : anon peut exécuter public.freeze_sale_line_cost()
 
 grant execute on function public.generate_reseller_commission(p_id uuid, p_payment uuid) to authenticated;
 
@@ -7124,8 +7114,6 @@ grant execute on function public.record_purchase_payment(p_purchase_id uuid, p_a
 
 grant execute on function public.record_worker_payment(p_worker uuid, p_amount numeric, p_date date, p_method text, p_note text) to authenticated;
 
--- à durcir : anon peut exécuter public.record_worker_payment(p_worker uuid, p_amount numeric, p_date date, p_method text, p_note text)
-
 grant execute on function public.redeem_company_code(p_code text) to authenticated;
 
 grant execute on function public.register_purchase_lots(p_purchase uuid, p_lots jsonb) to authenticated;
@@ -7151,8 +7139,6 @@ grant execute on function public.save_customer_setup(p_steps jsonb) to authentic
 grant execute on function public.save_shop_closure(p_day date, p_warehouse uuid, p_open_usd numeric, p_open_fc numeric, p_count_usd numeric, p_count_fc numeric, p_note text) to authenticated;
 
 grant execute on function public.search_sales(p_term text, p_limit integer, p_offset integer) to authenticated;
-
--- à durcir : anon peut exécuter public.search_sales(p_term text, p_limit integer, p_offset integer)
 
 grant execute on function public.set_barcode_enabled(p_on boolean) to authenticated;
 
@@ -7183,8 +7169,6 @@ grant execute on function public.set_vat(p_on boolean, p_rate numeric) to authen
 grant execute on function public.settle_reseller_commission(p_id uuid, p_reference text) to authenticated;
 
 grant execute on function public.touch_updated_at() to authenticated;
-
--- à durcir : anon peut exécuter public.touch_updated_at()
 
 grant execute on function public.update_credit_payment(p_payment_id uuid, p_amount numeric, p_paid_at date) to authenticated;
 

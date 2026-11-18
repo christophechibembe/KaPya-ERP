@@ -148,27 +148,28 @@ await ecrire('10-storage.sql', entete + (storage.length
   ? storage.map(p => `-- storage.${p.tablename} · ${p.policyname} (${p.cmd})\ncreate policy ${ident(p.policyname)} on storage.${ident(p.tablename)} for ${p.cmd.toLowerCase()} to ${p.roles} ${p.qual ? `using (${p.qual})` : ''} ${p.with_check ? `with check (${p.with_check})` : ''};`).join('\n')
   : '-- Aucune politique Storage.\n'));
 
-const aDurcir = fonctions.filter(f => f.security_definer && f.anon_execute);
+const aDurcir = fonctions.filter(f => f.anon_execute);
 await ecrire('11-durcissement-propose.sql', aDurcir.length ? `${entete}
 -- PROPOSITION — fichier non appliqué.
--- Les fonctions SECURITY DEFINER ci-dessous sont exécutables par le rôle anon
--- parce qu'elles héritent du droit PUBLIC par défaut. Elles vérifient toutes
--- auth.uid() ou le rôle en interne, mais il vaut mieux fermer l'accès public
--- et n'autoriser que les comptes connectés.
+-- Les fonctions ci-dessous sont exécutables par le rôle anon. Les fonctions
+-- SECURITY DEFINER vérifient auth.uid() ou le rôle en interne, les autres
+-- s'appuient sur RLS : dans les deux cas le droit lui-même doit être fermé aux
+-- comptes non connectés.
 -- À relire, tester sur un projet de test, puis appliquer en une transaction.
 
 ${aDurcir.map(f => `revoke all on function public.${ident(f.name)}(${f.args}) from public, anon;
 grant execute on function public.${ident(f.name)}(${f.args}) to authenticated;`).join('\n\n')}
 ` : `${entete}
--- Aucune fonction SECURITY DEFINER exécutable par le rôle anon.
--- Le durcissement a été appliqué par supabase/migrations/20261118000001_durcissement_anon.sql.
+-- Aucune fonction exécutable par le rôle anon.
+-- Le durcissement a été appliqué par supabase/migrations/20261118000001_durcissement_anon.sql
+-- et 20261118000003_fermer_fonctions_anon.sql.
 `);
 
 // --- Synthèse --------------------------------------------------------------
 const sansRls = tables.filter(t => !t.rls).map(t => t.table_name);
 const rlsSansPolitique = tables.filter(t => t.rls && t.policies === 0).map(t => t.table_name);
 const definerSansSearchPath = fonctions.filter(f => f.security_definer && !/search_path/.test(f.config)).map(f => f.name);
-const anonExecutable = fonctions.filter(f => f.anon_execute && f.security_definer).map(f => f.name);
+const anonExecutable = fonctions.filter(f => f.anon_execute).map(f => f.name);
 const tablesRepo = new Set();
 const fonctionsRepo = new Set();
 const politiquesRepo = new Set();
@@ -221,7 +222,7 @@ await ecrire('00-synthese.md', [
   `- Tables RLS sans politique : **${rlsSansPolitique.length}**${rlsSansPolitique.length ? ` → ${rlsSansPolitique.map(t => `\`${t}\``).join(', ')}` : ''}`,
   `- Fonctions : **${fonctions.length}**, dont **${fonctions.filter(f => f.security_definer).length}** SECURITY DEFINER`,
   `- SECURITY DEFINER sans search_path : **${definerSansSearchPath.length}**${definerSansSearchPath.length ? ` → ${definerSansSearchPath.map(f => `\`${f}\``).join(', ')}` : ''}`,
-  `- SECURITY DEFINER exécutables par anon : **${anonExecutable.length}**${anonExecutable.length ? ` → ${anonExecutable.map(f => `\`${f}\``).join(', ')}` : ''}`,
+  `- Fonctions exécutables par anon : **${anonExecutable.length}**${anonExecutable.length ? ` → ${anonExecutable.map(f => `\`${f}\``).join(', ')}` : ''}`,
   `- Politiques Storage : **${storage.length}**`,
   `- Tâches planifiées : **${planifications.length}**`,
   '',

@@ -1,13 +1,13 @@
 # Synthèse production
 
-Projet `ttplxlobehmwzfnxviej` — 2026-11-18 07:55.
+Projet `ttplxlobehmwzfnxviej` — 2026-11-18 08:57.
 
 - Tables : **66**
 - Tables sans RLS : **0**
 - Tables RLS sans politique : **1** → `document_counters`
 - Fonctions : **122**, dont **111** SECURITY DEFINER
 - SECURITY DEFINER sans search_path : **0**
-- SECURITY DEFINER exécutables par anon : **0**
+- Fonctions exécutables par anon : **0**
 - Politiques Storage : **0**
 - Tâches planifiées : **1**
 
@@ -136,52 +136,6 @@ Aucune.
 
 Aucune.
 
-## Politiques de production absentes du SQL versionné (47)
+## Politiques de production absentes du SQL versionné (0)
 
-- `app_errors` · app_errors_insert
-- `app_errors` · app_errors_read
-- `auto_backups` · auto_backups_read
-- `cash_closures_shop` · cash_closures_shop_r
-- `commercial_accounts` · commercial_platform_only
-- `commercial_documents` · documents_admin
-- `commercial_dues` · commercial_dues_platform
-- `commercial_payments` · commercial_payments_platform
-- `commercial_resellers` · resellers_insert
-- `commercial_resellers` · resellers_read
-- `commercial_resellers` · resellers_update
-- `commercial_seller` · seller_admin
-- `credit_note_lines` · credit_note_lines_r
-- `credit_notes` · credit_notes_r
-- `customer_deposit_counters` · customer_deposit_counters_read
-- `customer_return_lines` · customer_return_lines_r
-- `customer_returns` · customer_returns_r
-- `customer_setup` · setup_read
-- `dashboard_preferences` · dashboard_preferences_own
-- `invoice_counters` · invoice_counters_read
-- `number_ranges` · number_ranges_org
-- `paiements_abonnement` · pay_insert
-- `paiements_abonnement` · pay_read_own
-- `platform_admins` · platform_admins_select
-- `platform_audit` · platform_audit_read
-- `proforma_lines` · proforma_lines_r
-- `proformas` · proformas_r
-- `purchase_order_lines` · purchase_order_lines_r
-- `purchase_orders` · purchase_orders_r
-- `push_subscriptions` · push_own
-- `reseller_clients` · reseller_clients_insert
-- `reseller_clients` · reseller_clients_read
-- `reseller_clients` · reseller_clients_update
-- `reseller_commissions` · commissions_read
-- `sales_prospects` · prospects_admin
-- `stock_lots` · stock_lots_r
-- `supplier_return_lines` · supplier_return_lines_r
-- `supplier_returns` · supplier_returns_r
-- `support_messages` · messages_read
-- `support_tickets` · tickets_read
-- `unit_options` · unit_options_delete
-- `unit_options` · unit_options_insert
-- `unit_options` · unit_options_select
-- `user_warehouses` · user_warehouses_r
-- `user_warehouses` · user_warehouses_w
-- `worker_payments` · worker_payments_admin
-- `workers` · workers_admin
+Aucune.

@@ -2,9 +2,9 @@
 
 Première comparaison entre la base Supabase réelle et le SQL versionné, faite en
 **lecture seule** via l'API de gestion Supabase (`select` uniquement) le 18 novembre 2026.
-Depuis, deux migrations ont été appliquées (inventaire physique, durcissement des droits) :
-les chiffres ci-dessous décrivent l'état au moment de l'audit, les sections suivantes
-l'état après correction.
+Depuis, trois migrations ont été appliquées (inventaire physique, durcissement des droits,
+restriction des politiques publiques) : les chiffres ci-dessous décrivent l'état au moment
+de l'audit, les sections suivantes l'état après correction.
 
 - Projet : `ttplxlobehmwzfnxviej` (région `eu-west-1`, état `ACTIVE_HEALTHY`).
 - Export complet : `sql/exports/2026-11-18/`.
@@ -66,6 +66,16 @@ en base après annulation.
   `sql/exports/2026-11-18/12-retour-arriere-droits.sql`. Vérifié après application :
   `has_function_privilege('anon', …)` vaut `false` sur les 14, et le nombre total de
   `SECURITY DEFINER` exécutables par `anon` est passé de 14 à 0.
+- **8 fonctions restantes fermées le 18 novembre 2026.** `bump_record_version`,
+  `create_transfer`, `create_worker`, `delete_worker`, `freeze_sale_line_cost`,
+  `record_worker_payment`, `search_sales` et `touch_updated_at` n'étaient pas
+  `SECURITY DEFINER` et s'appuyaient sur RLS, mais restaient exécutables par `anon`.
+  Migration `20261118000003_fermer_fonctions_anon.sql`. Vérifié après application :
+  **0 fonction** de `public` n'est plus exécutable par `anon`, et les 8 le restent
+  pour `authenticated`.
+- **Aucune politique accordée à `public`.** Les 7 politiques qui visaient `public`
+  ont été restreintes à `authenticated` le 18 novembre 2026 (migration
+  `20261118000002_restreindre_politiques_publiques.sql`) : 110 politiques, 0 publique.
 - **Aucune politique Storage** : le stockage n'est pas utilisé par l'application
   (les logos sont stockés en base). À confirmer si une fonctionnalité d'import d'images
   est ajoutée.
@@ -89,10 +99,15 @@ articles vendus, pas par les dépenses.
 ## Ce qui reste à faire
 
 1. **Comparer les politiques RLS** — fait le 18 novembre 2026 : les 47 politiques de
-   production sans équivalent versionné sont dans `sql/politiques-production.sql`, avec
-   une relecture et les 7 politiques ouvertes à `public` dans
-   `sql/exports/2026-11-18/13-politiques-publiques-propose.sql`. Détail :
-   `docs/POLITIQUES-RLS.md`. Reste à décider d'appliquer ou non la proposition.
+   production sans équivalent versionné sont dans `sql/politiques-production.sql`.
+   Les 7 politiques ouvertes à `public` ont été restreintes à `authenticated` par la
+   migration `20261118000002_restreindre_politiques_publiques.sql`, appliquée en
+   production et enregistrée dans `schema_migrations`. Vérifié après application :
+   110 politiques, dont **0 visant `public`**. Détail : `docs/POLITIQUES-RLS.md` ;
+   trace de l'opération : `sql/exports/2026-11-18/13-politiques-publiques-propose.sql`.
+   Les 8 fonctions non `SECURITY DEFINER` encore exécutables par `anon` ont elles aussi
+   été fermées par la migration `20261118000003_fermer_fonctions_anon.sql` : plus aucune
+   fonction de `public` n'est exécutable par `anon`.
 2. **Obtenir un dump officiel** (`supabase db dump`, qui demande le mot de passe de la base)
    si l'on veut une restauration garantie. `sql/schema-production.sql` est exécutable sur
    un projet vide et vérifié par `tests/schema-rebuild.test.mjs`, mais n'a pas encore été

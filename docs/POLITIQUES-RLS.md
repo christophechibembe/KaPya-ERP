@@ -79,16 +79,16 @@ réappliquées. Toute évolution passe par une migration datée.
 | `customer_setup` | setup_read | select | authenticated | `(is_platform_admin() OR (id = customer_org()))` |
 | `dashboard_preferences` | dashboard_preferences_own | all | authenticated | `(user_id = auth.uid())` · check `(user_id = auth.uid())` |
 | `invoice_counters` | invoice_counters_read | select | authenticated | `(org_id = my_org())` |
-| `number_ranges` | number_ranges_org | all | public | `(org_id = my_org())` · check `(org_id = my_org())` |
-| `paiements_abonnement` | pay_insert | insert | public | — · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
-| `paiements_abonnement` | pay_read_own | select | public | `(org_id = my_org())` |
+| `number_ranges` | number_ranges_org | all | authenticated | `(org_id = my_org())` · check `(org_id = my_org())` |
+| `paiements_abonnement` | pay_insert | insert | authenticated | — · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
+| `paiements_abonnement` | pay_read_own | select | authenticated | `(org_id = my_org())` |
 | `platform_admins` | platform_admins_select | select | authenticated | `is_platform_admin()` |
 | `platform_audit` | platform_audit_read | select | authenticated | `is_platform_admin()` |
 | `proforma_lines` | proforma_lines_r | select | authenticated | `((org_id = my_org()) AND (EXISTS ( SELECT 1 FROM proformas p WHERE (p.id = proforma_lines.` |
 | `proformas` | proformas_r | select | authenticated | `((org_id = my_org()) AND ((my_shop() IS NULL) OR (warehouse_id = my_shop())))` |
 | `purchase_order_lines` | purchase_order_lines_r | select | authenticated | `((org_id = my_org()) AND (EXISTS ( SELECT 1 FROM purchase_orders o WHERE (o.id = purchase_` |
 | `purchase_orders` | purchase_orders_r | select | authenticated | `((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text, 'comptabl` |
-| `push_subscriptions` | push_own | all | public | `(user_id = auth.uid())` · check `((user_id = auth.uid()) AND (org_id = my_org()))` |
+| `push_subscriptions` | push_own | all | authenticated | `(user_id = auth.uid())` · check `((user_id = auth.uid()) AND (org_id = my_org()))` |
 | `reseller_clients` | reseller_clients_insert | insert | authenticated | — · check `is_platform_admin()` |
 | `reseller_clients` | reseller_clients_read | select | authenticated | `(is_platform_admin() OR (EXISTS ( SELECT 1 FROM commercial_resellers r WHERE ((r.id = rese` |
 | `reseller_clients` | reseller_clients_update | update | authenticated | `is_platform_admin()` · check `is_platform_admin()` |
@@ -104,8 +104,8 @@ réappliquées. Toute évolution passe par une migration datée.
 | `unit_options` | unit_options_select | select | authenticated | `(org_id = my_org())` |
 | `user_warehouses` | user_warehouses_r | select | authenticated | `((user_id = auth.uid()) OR ((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text,` |
 | `user_warehouses` | user_warehouses_w | all | authenticated | `((org_id = my_org()) AND (my_role() = 'admin'::text))` · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
-| `worker_payments` | worker_payments_admin | all | public | `((org_id = my_org()) AND (my_role() = 'admin'::text))` · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
-| `workers` | workers_admin | all | public | `((org_id = my_org()) AND (my_role() = 'admin'::text))` · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
+| `worker_payments` | worker_payments_admin | all | authenticated | `((org_id = my_org()) AND (my_role() = 'admin'::text))` · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
+| `workers` | workers_admin | all | authenticated | `((org_id = my_org()) AND (my_role() = 'admin'::text))` · check `((org_id = my_org()) AND (my_role() = 'admin'::text))` |
 
 ### Points à vérifier en priorité
 
@@ -114,20 +114,12 @@ réappliquées. Toute évolution passe par une migration datée.
 
 ## Politiques ouvertes au rôle public
 
-7 politiques accordées à `public` (tous les rôles). `anon` reste bloqué
-en pratique : `my_org()` renvoie `null` sans session, donc aucune ligne ne passe. Il vaut
-mieux néanmoins les restreindre à `authenticated`. Proposition non appliquée :
-[`../sql/exports/2026-11-18/13-politiques-publiques-propose.sql`](../sql/exports/2026-11-18/13-politiques-publiques-propose.sql).
+Aucune politique accordée à `public`.
 
-| Table | Politique |
-| --- | --- |
-| `number_ranges` | number_ranges_org |
-| `paiements_abonnement` | pay_insert |
-| `paiements_abonnement` | pay_read_own |
-| `push_subscriptions` | push_own |
-| `warehouse_stock` | warehouse_stock_r |
-| `worker_payments` | worker_payments_admin |
-| `workers` | workers_admin |
+La restriction a été appliquée le 18 novembre 2026 par la migration
+[`../supabase/migrations/20261118000002_restreindre_politiques_publiques.sql`](../supabase/migrations/20261118000002_restreindre_politiques_publiques.sql).
+Les 110 politiques restent en place ; les 7 anciennement publiques visent désormais
+`authenticated`.
 
 ## Politiques versionnées sans équivalent en production
 

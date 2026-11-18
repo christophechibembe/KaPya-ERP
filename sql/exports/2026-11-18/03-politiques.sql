@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:55
+-- Export : 2026-11-18 08:57
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- app_errors · app_errors_insert (INSERT, PERMISSIVE)
@@ -327,7 +327,7 @@ create policy invoice_counters_read on public.invoice_counters
 create policy number_ranges_org on public.number_ranges
   as permissive
   for all
-  to {public}
+  to {authenticated}
   using ((org_id = my_org()))
   with check ((org_id = my_org()));
 
@@ -367,7 +367,7 @@ create policy organizations_u on public.organizations
 create policy pay_insert on public.paiements_abonnement
   as permissive
   for insert
-  to {public}
+  to {authenticated}
   
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
@@ -375,7 +375,7 @@ create policy pay_insert on public.paiements_abonnement
 create policy pay_read_own on public.paiements_abonnement
   as permissive
   for select
-  to {public}
+  to {authenticated}
   using ((org_id = my_org()))
   ;
 
@@ -539,7 +539,7 @@ create policy purchases_u on public.purchases
 create policy push_own on public.push_subscriptions
   as permissive
   for all
-  to {public}
+  to {authenticated}
   using ((user_id = auth.uid()))
   with check (((user_id = auth.uid()) AND (org_id = my_org())));
 
@@ -863,7 +863,7 @@ create policy user_warehouses_w on public.user_warehouses
 create policy warehouse_stock_r on public.warehouse_stock
   as permissive
   for select
-  to {public}
+  to {authenticated}
   using (((org_id = my_org()) AND ((my_shop() IS NULL) OR (warehouse_id = my_shop()))))
   ;
 
@@ -895,7 +895,7 @@ create policy warehouses_u on public.warehouses
 create policy worker_payments_admin on public.worker_payments
   as permissive
   for all
-  to {public}
+  to {authenticated}
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));
 
@@ -903,6 +903,6 @@ create policy worker_payments_admin on public.worker_payments
 create policy workers_admin on public.workers
   as permissive
   for all
-  to {public}
+  to {authenticated}
   using (((org_id = my_org()) AND (my_role() = 'admin'::text)))
   with check (((org_id = my_org()) AND (my_role() = 'admin'::text)));

@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:55
+-- Export : 2026-11-18 08:57
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- accept_invitation [SECURITY DEFINER] [search_path=""]
@@ -208,7 +208,7 @@ end
 $function$
 ;
 
--- bump_record_version [search_path=""] [ANON EXECUTE]
+-- bump_record_version [search_path=""]
 CREATE OR REPLACE FUNCTION public.bump_record_version()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1154,7 +1154,7 @@ end;
 $function$
 ;
 
--- create_transfer [search_path=public] [ANON EXECUTE]
+-- create_transfer [search_path=public]
 CREATE OR REPLACE FUNCTION public.create_transfer(p_from uuid, p_to uuid, p_destination text, p_date date, p_lines jsonb, p_id uuid DEFAULT NULL::uuid, p_note text DEFAULT NULL::text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -1249,7 +1249,7 @@ begin
 end $function$
 ;
 
--- create_worker [search_path=public] [ANON EXECUTE]
+-- create_worker [search_path=public]
 CREATE OR REPLACE FUNCTION public.create_worker(p_name text, p_role text, p_kind text, p_usual numeric)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -1419,7 +1419,7 @@ begin
 end; $function$
 ;
 
--- delete_worker [search_path=public] [ANON EXECUTE]
+-- delete_worker [search_path=public]
 CREATE OR REPLACE FUNCTION public.delete_worker(p_worker uuid)
  RETURNS text
  LANGUAGE plpgsql
@@ -1460,7 +1460,7 @@ AS $function$
 $function$
 ;
 
--- freeze_sale_line_cost [ANON EXECUTE]
+-- freeze_sale_line_cost
 CREATE OR REPLACE FUNCTION public.freeze_sale_line_cost()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2513,7 +2513,7 @@ begin
 end $function$
 ;
 
--- record_worker_payment [search_path=public] [ANON EXECUTE]
+-- record_worker_payment [search_path=public]
 CREATE OR REPLACE FUNCTION public.record_worker_payment(p_worker uuid, p_amount numeric, p_date date, p_method text, p_note text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -3241,7 +3241,7 @@ end;
 $function$
 ;
 
--- search_sales [search_path=public] [ANON EXECUTE]
+-- search_sales [search_path=public]
 CREATE OR REPLACE FUNCTION public.search_sales(p_term text, p_limit integer DEFAULT 100, p_offset integer DEFAULT 0)
  RETURNS SETOF uuid
  LANGUAGE sql
@@ -3579,7 +3579,7 @@ begin
 end $function$
 ;
 
--- touch_updated_at [search_path=""] [ANON EXECUTE]
+-- touch_updated_at [search_path=""]
 CREATE OR REPLACE FUNCTION public.touch_updated_at()
  RETURNS trigger
  LANGUAGE plpgsql
