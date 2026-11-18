@@ -19,11 +19,14 @@ export const artifactDir = process.platform === 'win32'
 export async function openBrowser(t) {
   await mkdir(artifactDir, { recursive: true });
   const profile = await mkdtemp(path.join(artifactDir, 'kapya-browser-'));
-  const processHandle = spawn(browserPath, [
+  const options = [
     '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`,
     '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
     '--disable-component-update', '--disable-extensions', 'about:blank'
-  ], { stdio: ['ignore', 'ignore', 'pipe'] });
+  ];
+  // Les runners Linux n'autorisent pas le bac à sable de Chromium et ont un /dev/shm réduit.
+  if (process.platform !== 'win32') options.unshift('--no-sandbox', '--disable-dev-shm-usage');
+  const processHandle = spawn(browserPath, options, { stdio: ['ignore', 'ignore', 'pipe'] });
   t.after(async () => {
     if (processHandle.exitCode == null && processHandle.signalCode == null) {
       processHandle.kill();
