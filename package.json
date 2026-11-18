@@ -12,6 +12,7 @@
     "verifier:version": "node scripts/verifier-version.mjs",
     "verifier:prod": "node scripts/verifier-production.mjs",
     "inventaire": "node scripts/inventaire-base.mjs",
+    "audit:sql": "node scripts/auditer-sql.mjs --markdown",
     "instantane": "node scripts/instantane.mjs"
   }
 }

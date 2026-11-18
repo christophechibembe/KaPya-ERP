@@ -46,6 +46,7 @@ Autres commandes :
 npm.cmd run preparer        # prépare le dossier de publication sans déployer
 npm.cmd run verifier:prod   # vérifie la production en ligne
 npm.cmd run inventaire      # régénère sql/SCHEMA.md depuis le code
+npm.cmd run audit:sql       # audit statique du SQL (RLS, migrations) → docs/AUDIT-STATIQUE-SQL.md
 npm.cmd run instantane      # archive datée du projet (sauvegarde du code)
 ```
 
@@ -55,8 +56,12 @@ Cloudflare ni de clé privée Supabase dans le projet : seul `js/config.js` cont
 ## Base de données
 
 Le schéma réel (tables, RPC, RLS) vit dans Supabase. `sql/SCHEMA.md` recense ce que le code utilise,
-et `sql/README.md` explique comment exporter et versionner le schéma. **Ne pas modifier la base
-sans avoir exporté le schéma au préalable.**
+`sql/README.md` explique comment exporter et versionner le schéma, et `supabase/migrations/`
+contient les 28 migrations datées. **Ne pas modifier la base sans avoir exporté le schéma au préalable.**
+
+`npm test` contrôle en plus : versions de migration uniques, RLS sur chaque table,
+`SECURITY DEFINER` toujours accompagné de `search_path`, et scripts cités réellement présents.
+Le détail est régénérable dans `docs/AUDIT-STATIQUE-SQL.md`.
 
 ## Versions
 

@@ -42,3 +42,29 @@
 ## Conclusion
 
 La configuration et les fonctions visibles comportent des protections utiles, mais les collisions de migrations sont un risque sérieux avant déploiement. Ne pas déployer les migrations avant d’avoir réconcilié leurs versions avec l’historique distant. Aucun changement de base ou déploiement n’a été effectué.
+
+## Mises à jour du 18 novembre 2026
+
+Le dossier de travail a été réuni avec l’instantané GitHub de l’audit, ce qui a rendu
+disponibles les scripts SQL et les migrations qui manquaient.
+
+- **Versions de migrations en collision : résolu dans le dépôt.** `20261015000004_taux_historique.sql`
+  devient `…000006` et `20261017000007_cloture_caisse_rate_date.sql` devient `…0018` ; deux
+  doublons stricts ont été supprimés. Aucune ligne de SQL n’a changé. Le détail et la
+  procédure de vérification sont dans `supabase/migrations/README.md`.
+  L’historique distant (`supabase_migrations.schema_migrations`) reste à confronter avant
+  toute application : ce point ne peut pas être vérifié sans accès à la base.
+- **Préchargement hors ligne : étendu.** En plus de `js/print.js`, le test importé a révélé
+  que `js/push.js` et `js/localdb.js` étaient chargés au démarrage sans être précachés.
+  Corrigé en 1.45.11 (build 131).
+- **Scripts cités mais absents : retrouvés.** `couts-et-tresorerie`, `cloture-caisse`,
+  `depots`, `historique-actions` et `formules` sont désormais dans `sql/`.
+- **Contrôles automatiques ajoutés.** `npm test` vérifie l’unicité des versions de migration,
+  la RLS sur chaque table (28/28), l’absence de `SECURITY DEFINER` sans `search_path`
+  (65/65 conformes) et l’absence de fonction `SECURITY DEFINER` ouverte à `anon`.
+  Le rapport est régénérable dans `docs/AUDIT-STATIQUE-SQL.md`.
+
+Les constats suivants restent ouverts, faute d’accès à la base et à ses réglages :
+comparaison du schéma réel, tests IDOR/BOLA entre deux organisations, audit Storage/Auth,
+limitation de débit, tests XSS/CSRF dynamiques.
+

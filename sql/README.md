@@ -44,24 +44,35 @@ order by p.proname;
 select jobid, schedule, command, active from cron.job;
 ```
 
-Enregistrer ensuite les exports avec un préfixe d'ordre :
+Enregistrer chaque export dans `sql/exports/`, avec la date de l'export dans le nom
+(par exemple `20261118-tables.sql`, `20261118-rls.sql`). Ces fichiers datés servent de
+photographie de la base ; `sql/schema.sql` reste la référence versionnée du schéma.
 
-```
-sql/001-tables.sql
-sql/002-fonctions.sql
-sql/003-rls.sql
-sql/004-planifications.sql
-```
+## Scripts retrouvés
 
-## Scripts cités par le code mais absents
+Les scripts longtemps cités comme absents ont été récupérés depuis le dépôt GitHub
+(instantané de l'audit du 18 octobre 2026) et sont désormais versionnés :
 
-- `couts-et-tresorerie.sql` (coûts, dépenses, paiements fournisseurs)
-- `cloture-caisse.sql`
-- `depots.sql`
-- `historique-actions.sql`
-- `formules.sql` (`public.plan_allows`)
+- `couts-et-tresorerie.sql` (coûts, dépenses, paiements fournisseurs) ;
+- `cloture-caisse.sql` ;
+- `depots.sql` ;
+- `historique-actions.sql` ;
+- `formules.sql` (`public.plan_allows`).
 
-Ils doivent être retrouvés ou réécrits avant toute nouvelle installation.
+Le dossier `supabase/migrations/` contient en plus les 28 migrations datées, dans
+l'ordre d'application.
+
+## Vérification automatique
+
+`npm test` exécute un audit statique du SQL (`scripts/auditer-sql.mjs`) :
+
+- versions de migration uniques et noms conformes ;
+- RLS activée sur chaque table, avec politique ou fermeture volontaire documentée ;
+- `SECURITY DEFINER` toujours accompagné de `set search_path` et jamais ouvert à `anon` ;
+- scripts cités dans la documentation réellement présents.
+
+Le rapport détaillé se régénère avec `node scripts/auditer-sql.mjs --markdown`
+(écrit dans `docs/AUDIT-STATIQUE-SQL.md`).
 
 ## Règles
 
