@@ -423,6 +423,7 @@ export async function render(main, ctx) {
       const received = canSeeCosts ? sales.filter(sale => sale.payment !== 'credit').reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0) - advanceAppliedToCashSales + customerPayments.filter(payment => payment.kind !== 'advance').reduce((sum, payment) => sum + Number(payment.amount || 0), 0) + customerDeposits.reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0) : 0;
       const supplierPaid = supplierPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
       const expenseTotal = expenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+      const netProfit = gross - expenseTotal;
       const paidByPurchase = new Map();
       supplierPaymentsAll.forEach(payment => paidByPurchase.set(payment.purchase_id, (paidByPurchase.get(payment.purchase_id) || 0) + Number(payment.amount || 0)));
       const supplierDebt = supplierBalances.reduce((sum, balance) => sum + Math.max(Number(balance.opening_balance || 0) - (paidByPurchase.get(balance.purchase_id) || 0), 0), 0);
@@ -443,7 +444,7 @@ export async function render(main, ctx) {
       const salesSub = `${sales.length} vente(s) · ${fcOnly(revenue)}`;
       lastSummary = { sales, revenue, outstanding, lowStock, expiring, cashNet, canSeeCosts, from, to, dateText: dateLabel };
       const profitDetail = !saleCostsAvailable ? 'Configuration SQL des coûts manquante' : salesCost > 0 ? `Marge brute · ${revenue ? (gross / revenue * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '0'} %` : 'Aucun coût de vente enregistré sur cette période';
-      const costHint = canSeeCosts ? `<p class="owner-note">${!saleCostsAvailable ? 'Le calcul du bénéfice sera disponible après installation du script SQL « couts-et-tresorerie.sql » dans Supabase.' : `Le coût est figé au moment de la vente. ${estimatedCostLines ? `${estimatedCostLines} ligne(s) ancienne(s) utilisent une estimation basée sur le prix d’achat actuel.` : 'Les coûts des ventes affichées sont enregistrés au moment de la vente.'} Le bénéfice brut ne déduit pas les dépenses.`}</p>` : '';
+      const costHint = canSeeCosts ? `<p class="owner-note">${!saleCostsAvailable ? 'Le calcul du bénéfice sera disponible après installation du script SQL « couts-et-tresorerie.sql » dans Supabase.' : `Le coût est figé au moment de la vente. ${estimatedCostLines ? `${estimatedCostLines} ligne(s) ancienne(s) utilisent une estimation basée sur le prix d’achat actuel.` : 'Les coûts des ventes affichées sont enregistrés au moment de la vente.'} Le résultat net déduit du bénéfice brut les dépenses saisies dans Caisse sur la période.`}</p>` : '';
       const recentMoves = moves.slice(0, 8);
       const recentCashOut = [
         ...supplierPayments.map(payment => ({ date: payment.paid_at, label: `Paiement ${payment.purchases?.number || 'fournisseur'} · ${payment.purchases?.suppliers?.name || 'Fournisseur'}`, amount: Number(payment.amount), type: 'Fournisseur' })),
@@ -455,6 +456,7 @@ export async function render(main, ctx) {
           ${metric('Chiffre d’affaires', usdOnly(revenue), salesSub, 'sales', 't-blue')}
           ${canSeeCosts ? metric('Coût des articles vendus', saleCostsAvailable ? usdOnly(salesCost) : '—', saleCostsAvailable ? 'Coût d’achat enregistré au moment de la vente' : 'Configuration SQL des coûts requise', 'purchases', 't-green') : ''}
           ${canSeeCosts ? metric('Bénéfice brut', saleCostsAvailable ? usdOnly(gross) : '—', profitDetail, 'coins', 't-purple') : ''}
+          ${canSeeCosts ? metric('Résultat net', saleCostsAvailable ? usdOnly(netProfit) : '—', saleCostsAvailable ? `Bénéfice brut moins ${usdOnly(expenseTotal)} de dépenses` : 'Configuration SQL des coûts requise', 'coins', netProfit >= 0 ? 't-green' : 't-rose') : ''}
           ${canSeeCosts ? metric('Entrées de trésorerie', usdOnly(received), 'Ventes cash, paiements de crédit et dépôts reçus', 'coins', 't-teal') : ''}
           ${canSeeCosts ? metric('Sorties de trésorerie', usdOnly(cashOut), `Fournisseurs ${usdOnly(supplierPaid)} · dépenses ${usdOnly(expenseTotal)}`, 'purchases', 't-orange') : ''}
           ${canSeeCosts ? metric('Flux net de trésorerie', usdOnly(cashNet), 'Entrées moins sorties enregistrées', 'sales', cashNet >= 0 ? 't-green' : 't-rose') : ''}

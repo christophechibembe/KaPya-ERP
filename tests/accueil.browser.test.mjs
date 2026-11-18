@@ -36,6 +36,15 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     assert.match(text, /2 vente\(s\)/, 'les deux ventes du jour doivent être comptées');
   });
 
+  await t.test('le résultat net déduit les dépenses de la période', async () => {
+    await page.evaluate(`window.addExpense({ amount: 5 })`);
+    await page.evaluate(`window.fireSync()`);
+    assert.equal(await page.evaluate(`window.waitFor('Résultat net')`), true, 'l’indicateur « Résultat net » doit être affiché');
+    assert.equal(await page.evaluate(`window.waitFor('20,00 $')`), true, 'bénéfice brut 25,00 $ moins 5,00 $ de dépenses = 20,00 $');
+    const text = await page.evaluate('window.text()');
+    assert.match(text, /Bénéfice brut moins 5,00 \$ de dépenses/);
+  });
+
   await t.test('un bouton Actualiser est toujours visible et l’heure du dernier calcul est affichée', async () => {
     assert.equal(await page.evaluate(`document.querySelector('#owner-refresh') !== null`), true);
     assert.equal(await page.evaluate(`document.querySelector('#owner-refresh').hidden`), false);

@@ -6,9 +6,10 @@
 </div></div>
 <script type="module">
   import { render } from '/js/modules/accueil.js';
-  import { fixture, resetDashboard, addSale } from '/js/api.js';
+  import { fixture, resetDashboard, addSale, addExpense } from '/js/api.js';
   window.fixture = fixture;
   window.addSale = addSale;
+  window.addExpense = addExpense;
   window.text = () => document.querySelector('#owner-content')?.textContent || '';
   window.fireSync = () => document.dispatchEvent(new Event('kp:sync'));
   window.waitFor = (needle, timeout = 6000) => new Promise(resolve => {

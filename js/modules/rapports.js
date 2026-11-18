@@ -402,12 +402,13 @@ export async function render(main, ctx) {
     return { revenue, cost, profit: revenue - cost, collected };
   }
 
-  // Période : ventes, retours, avoirs et bénéfice net (retours et avoirs déduits)
+  // Période : ventes, retours, avoirs, dépenses et résultat net
   async function periodFigures(from, to) {
-    const [sales, returns, notes] = await Promise.all([
+    const [sales, returns, notes, expenseRows] = await Promise.all([
       db.select('sales', `select=id,number,sold_at,paid,payment,customer_label,customers(name),sale_lines(qty,unit_price,unit_cost,articles(id,sku,name,unit,price_buy))&sold_at=gte.${from}&sold_at=lte.${to}${shopSalesFilter()}&order=sold_at.desc`),
       db.select('customer_returns', `select=sale_id,returned_on,total_usd,customer_return_lines(qty,unit_price,articles(id,price_buy))&returned_on=gte.${from}&returned_on=lte.${to}`).catch(() => []),
-      db.select('credit_notes', `select=sale_id,total_usd,issued_on&issued_on=gte.${from}&issued_on=lte.${to}`).catch(() => [])
+      db.select('credit_notes', `select=sale_id,total_usd,issued_on&issued_on=gte.${from}&issued_on=lte.${to}`).catch(() => []),
+      db.select('business_expenses', `select=id,amount&paid_at=gte.${from}&paid_at=lte.${to}`).catch(() => [])
     ]);
     // Coût de chaque article vendu dans chaque facture : sert à remettre le coût des articles retournés
     const costOf = new Map();
@@ -423,9 +424,11 @@ export async function render(main, ctx) {
       });
     });
     const credits = (notes || []).reduce((t, c) => t + (Number(c.total_usd) || 0), 0);
+    const expenses = (expenseRows || []).reduce((t, e) => t + (Number(e.amount) || 0), 0);
     const netRevenue = base.revenue - returnValue - credits;
     const netCost = base.cost - returnCost;
-    return { sales: sales || [], base, returnValue, returnCost, credits, netRevenue, netCost, netProfit: netRevenue - netCost };
+    const grossProfit = netRevenue - netCost;
+    return { sales: sales || [], base, returnValue, returnCost, credits, expenses, netRevenue, netCost, grossProfit, netProfit: grossProfit - expenses };
   }
 
   // Bénéfice brut des six derniers mois (pour le graphique)
@@ -521,21 +524,23 @@ export async function render(main, ctx) {
     const delta = evolution === null ? '—' : `${evolution >= 0 ? '+' : ''}${n(evolution)} %`;
     result.innerHTML = `<p class="report-range">${fr(from)} au ${fr(to)} · comparé à ${fr(prevFrom)} au ${fr(prevTo)}</p>
       <div class="kpis">
-        ${kpi('Bénéfice net', usdOnly(cur.netProfit), `${n(pct(cur.netProfit, cur.netRevenue))} % du CA net`, 'chart', cur.netProfit >= 0 ? 't-green' : 't-orange')}
+        ${kpi('Résultat net', usdOnly(cur.netProfit), `${n(pct(cur.netProfit, cur.netRevenue))} % du CA net · dépenses déduites`, 'chart', cur.netProfit >= 0 ? 't-green' : 't-orange')}
         ${kpi('Bénéfice encaissé', usdOnly(cur.base.collected), 'part des ventes déjà payée', 'coins', 't-blue')}
-        ${kpi('Évolution du bénéfice net', delta, `période précédente : ${usdOnly(prev.netProfit)}`, 'chart', evolution === null || evolution >= 0 ? 't-green' : 't-orange')}
+        ${kpi('Évolution du résultat net', delta, `période précédente : ${usdOnly(prev.netProfit)}`, 'chart', evolution === null || evolution >= 0 ? 't-green' : 't-orange')}
         ${kpi('Articles à perte', n(losers), losers ? 'à revoir' : 'aucun', 'chart', losers ? 't-orange' : 't-green')}
       </div>
-      <section class="card report-section"><h2>Du chiffre d’affaires au bénéfice net</h2>
+      <section class="card report-section"><h2>Du chiffre d’affaires au résultat net</h2>
         <div class="tw"><table><thead><tr><th>Élément</th><th class="r">Montant</th></tr></thead><tbody>
           <tr><td>Ventes facturées</td><td class="r">${usdOnly(cur.base.revenue)}</td></tr>
           <tr><td>Retours clients</td><td class="r">− ${usdOnly(cur.returnValue)}</td></tr>
           <tr><td>Avoirs</td><td class="r">− ${usdOnly(cur.credits)}</td></tr>
           <tr><td><b>Chiffre d’affaires net</b></td><td class="r"><b>${usdOnly(cur.netRevenue)}</b></td></tr>
           <tr><td>Coût des articles vendus (net des retours)</td><td class="r">− ${usdOnly(cur.netCost)}</td></tr>
-          <tr><td><b>Bénéfice net</b></td><td class="r"><b>${usdOnly(cur.netProfit)}</b></td></tr>
+          <tr><td><b>Bénéfice brut</b></td><td class="r"><b>${usdOnly(cur.grossProfit)}</b></td></tr>
+          <tr><td>Dépenses enregistrées (hors achats de marchandises)</td><td class="r">− ${usdOnly(cur.expenses)}</td></tr>
+          <tr><td><b>Résultat net</b></td><td class="r"><b>${usdOnly(cur.netProfit)}</b></td></tr>
         </tbody></table></div>
-        <p class="muted">Bénéfice facturé brut : ${usdOnly(cur.base.profit)} · encaissé : ${usdOnly(cur.base.collected)}. Les avoirs réduisent le chiffre d’affaires sans changer le coût.</p></section>
+        <p class="muted">Bénéfice facturé brut : ${usdOnly(cur.base.profit)} · encaissé : ${usdOnly(cur.base.collected)}. Les avoirs réduisent le chiffre d’affaires sans changer le coût. Les dépenses saisies dans Caisse sur la période sont déduites du bénéfice brut.</p></section>
       <section class="card report-section"><h2>Bénéfice brut par mois (six derniers mois)</h2>${barSvg(monthly.values, monthly.labels)}</section>
       <div id="perf-detail-zone"></div>
       <section class="card report-section"><h2>Articles : ventes et bénéfice</h2>

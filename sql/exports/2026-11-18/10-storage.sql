@@ -1,5 +1,5 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:29
+-- Export : 2026-11-18 07:55
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 -- Aucune politique Storage.

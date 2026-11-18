@@ -1,6 +1,6 @@
 -- KaPya ERP — schéma de production (instantané de référence)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Généré le 2026-11-18 07:25 par scripts/generer-schema.mjs
+-- Généré le 2026-11-18 07:54 par scripts/generer-schema.mjs
 --
 -- Ce fichier décrit la base telle qu'elle existe réellement. Il est destiné à la
 -- documentation, à la comparaison et à la reconstruction d'un projet de test.
@@ -6988,8 +6988,6 @@ grant delete, insert, references, select, trigger, truncate, update on table pub
 
 grant execute on function public.article_total_stock() to authenticated;
 
--- à durcir : anon peut exécuter public.article_total_stock()
-
 grant execute on function public.backup_now() to authenticated;
 
 grant execute on function public.bump_record_version() to authenticated;
@@ -7012,8 +7010,6 @@ grant execute on function public.cash_close_summary_shop(p_day date, p_warehouse
 
 grant execute on function public.consume_lots_fefo() to authenticated;
 
--- à durcir : anon peut exécuter public.consume_lots_fefo()
-
 grant execute on function public.create_commercial_document(p_id uuid, p_data jsonb) to authenticated;
 
 grant execute on function public.create_commercial_due(p_id uuid, p_org uuid, p_label text, p_amount numeric, p_currency text, p_due_on date, p_period_start date, p_period_end date) to authenticated;
@@ -7022,13 +7018,9 @@ grant execute on function public.create_company_code(p_name text) to authenticat
 
 grant execute on function public.create_credit_note(p_sale uuid, p_lines jsonb, p_note text, p_id uuid) to authenticated;
 
--- à durcir : anon peut exécuter public.create_credit_note(p_sale uuid, p_lines jsonb, p_note text, p_id uuid)
-
 grant execute on function public.create_customer_deposit(p_customer_id uuid, p_amount numeric, p_received_at date, p_id uuid) to authenticated;
 
 grant execute on function public.create_customer_return(p_sale uuid, p_lines jsonb, p_note text, p_credit boolean, p_id uuid) to authenticated;
-
--- à durcir : anon peut exécuter public.create_customer_return(p_sale uuid, p_lines jsonb, p_note text, p_credit boolean, p_id uuid)
 
 grant execute on function public.create_inventory(p_warehouse uuid) to authenticated;
 
@@ -7080,8 +7072,6 @@ grant execute on function public.generate_reseller_commission(p_id uuid, p_payme
 
 grant execute on function public.guard_org_delete() to authenticated;
 
--- à durcir : anon peut exécuter public.guard_org_delete()
-
 grant execute on function public.guard_payment_commissions() to authenticated;
 
 grant execute on function public.initialize_purchase_balance(p_purchase_id uuid, p_remaining numeric) to authenticated;
@@ -7094,21 +7084,13 @@ grant execute on function public.join_org(p_code text) to authenticated;
 
 grant execute on function public.log_org_changes() to authenticated;
 
--- à durcir : anon peut exécuter public.log_org_changes()
-
 grant execute on function public.log_platform_admin_changes() to authenticated;
 
--- à durcir : anon peut exécuter public.log_platform_admin_changes()
-
 grant execute on function public.log_profile_changes() to authenticated;
-
--- à durcir : anon peut exécuter public.log_profile_changes()
 
 grant execute on function public.mark_proforma_converted(p_id uuid, p_sale uuid) to authenticated;
 
 grant execute on function public.mark_welcome_seen() to authenticated;
-
--- à durcir : anon peut exécuter public.mark_welcome_seen()
 
 grant execute on function public.mobile_money_total(p_day date, p_warehouse uuid) to authenticated;
 
@@ -7123,8 +7105,6 @@ grant execute on function public.next_document_number(p_kind text, p_prefix text
 grant execute on function public.open_support_ticket(p_id uuid, p_org uuid, p_subject text, p_category text, p_priority text, p_body text) to authenticated;
 
 grant execute on function public.paiements_en_attente() to authenticated;
-
--- à durcir : anon peut exécuter public.paiements_en_attente()
 
 grant execute on function public.plan_allows(p_feature text) to authenticated;
 
@@ -7152,8 +7132,6 @@ grant execute on function public.register_purchase_lots(p_purchase uuid, p_lots 
 
 grant execute on function public.rejeter_paiement(p_id uuid) to authenticated;
 
--- à durcir : anon peut exécuter public.rejeter_paiement(p_id uuid)
-
 grant execute on function public.remove_member(p_user uuid) to authenticated;
 
 grant execute on function public.renew_commercial_subscription(p_org uuid, p_expected date) to authenticated;
@@ -7162,11 +7140,7 @@ grant execute on function public.reply_support_ticket(p_id uuid, p_ticket uuid, 
 
 grant execute on function public.reserve_invoice_range(p_device text, p_size integer) to authenticated;
 
--- à durcir : anon peut exécuter public.reserve_invoice_range(p_device text, p_size integer)
-
 grant execute on function public.reserve_number_range(p_kind text, p_prefix text, p_device text, p_size integer) to authenticated;
-
--- à durcir : anon peut exécuter public.reserve_number_range(p_kind text, p_prefix text, p_device text, p_size integer)
 
 grant execute on function public.restore_backup(p_data jsonb) to authenticated;
 
@@ -7219,7 +7193,5 @@ grant execute on function public.update_sale(p_id uuid, p_customer uuid, p_custo
 grant execute on function public.validate_inventory(p_inventory uuid) to authenticated;
 
 grant execute on function public.valider_paiement(p_id uuid) to authenticated;
-
--- à durcir : anon peut exécuter public.valider_paiement(p_id uuid)
 
 grant execute on function public.void_commercial_payment(p_id uuid, p_reason text) to authenticated;

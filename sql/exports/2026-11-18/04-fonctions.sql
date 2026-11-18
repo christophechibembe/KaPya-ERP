@@ -1,6 +1,6 @@
 -- KaPya ERP — export de production (lecture seule)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Export : 2026-11-18 07:29
+-- Export : 2026-11-18 07:55
 -- Généré par scripts/exporter-supabase.mjs. Ne contient aucun secret.
 
 -- accept_invitation [SECURITY DEFINER] [search_path=""]
@@ -80,7 +80,7 @@ end
 $function$
 ;
 
--- article_total_stock [SECURITY DEFINER] [search_path=public] [ANON EXECUTE]
+-- article_total_stock [SECURITY DEFINER] [search_path=public]
 CREATE OR REPLACE FUNCTION public.article_total_stock()
  RETURNS TABLE(article_id uuid, total numeric)
  LANGUAGE sql
@@ -507,7 +507,7 @@ end;
 $function$
 ;
 
--- consume_lots_fefo [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- consume_lots_fefo [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.consume_lots_fefo()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -709,7 +709,7 @@ begin
 end $function$
 ;
 
--- create_credit_note [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- create_credit_note [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.create_credit_note(p_sale uuid, p_lines jsonb, p_note text DEFAULT ''::text, p_id uuid DEFAULT NULL::uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -817,7 +817,7 @@ begin
 end $function$
 ;
 
--- create_customer_return [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- create_customer_return [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.create_customer_return(p_sale uuid, p_lines jsonb, p_note text DEFAULT ''::text, p_credit boolean DEFAULT false, p_id uuid DEFAULT NULL::uuid)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -1623,7 +1623,7 @@ end
 $function$
 ;
 
--- guard_org_delete [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- guard_org_delete [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.guard_org_delete()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1878,7 +1878,7 @@ end
 $function$
 ;
 
--- log_org_changes [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- log_org_changes [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.log_org_changes()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1902,7 +1902,7 @@ begin
 end; $function$
 ;
 
--- log_platform_admin_changes [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- log_platform_admin_changes [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.log_platform_admin_changes()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1921,7 +1921,7 @@ begin
 end; $function$
 ;
 
--- log_profile_changes [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- log_profile_changes [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.log_profile_changes()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1988,7 +1988,7 @@ end;
 $function$
 ;
 
--- mark_welcome_seen [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- mark_welcome_seen [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.mark_welcome_seen()
  RETURNS void
  LANGUAGE sql
@@ -2169,7 +2169,7 @@ end;
 $function$
 ;
 
--- paiements_en_attente [SECURITY DEFINER] [search_path=public] [ANON EXECUTE]
+-- paiements_en_attente [SECURITY DEFINER] [search_path=public]
 CREATE OR REPLACE FUNCTION public.paiements_en_attente()
  RETURNS TABLE(id uuid, org_id uuid, org_name text, plan text, montant numeric, reference text, created_at timestamp with time zone)
  LANGUAGE sql
@@ -2596,7 +2596,7 @@ begin
 end; $function$
 ;
 
--- rejeter_paiement [SECURITY DEFINER] [search_path=public] [ANON EXECUTE]
+-- rejeter_paiement [SECURITY DEFINER] [search_path=public]
 CREATE OR REPLACE FUNCTION public.rejeter_paiement(p_id uuid)
  RETURNS void
  LANGUAGE plpgsql
@@ -2762,7 +2762,7 @@ end;
 $function$
 ;
 
--- reserve_invoice_range [SECURITY DEFINER] [search_path=public, pg_temp] [ANON EXECUTE]
+-- reserve_invoice_range [SECURITY DEFINER] [search_path=public, pg_temp]
 CREATE OR REPLACE FUNCTION public.reserve_invoice_range(p_device text, p_size integer DEFAULT 50)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -2783,7 +2783,7 @@ end
 $function$
 ;
 
--- reserve_number_range [SECURITY DEFINER] [search_path=""] [ANON EXECUTE]
+-- reserve_number_range [SECURITY DEFINER] [search_path=""]
 CREATE OR REPLACE FUNCTION public.reserve_number_range(p_kind text, p_prefix text, p_device text, p_size integer DEFAULT 50)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -3785,7 +3785,7 @@ end;
 $function$
 ;
 
--- valider_paiement [SECURITY DEFINER] [search_path=public] [ANON EXECUTE]
+-- valider_paiement [SECURITY DEFINER] [search_path=public]
 CREATE OR REPLACE FUNCTION public.valider_paiement(p_id uuid)
  RETURNS void
  LANGUAGE plpgsql

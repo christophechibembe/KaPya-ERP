@@ -48,6 +48,27 @@ Enregistrer chaque export dans `sql/exports/`, avec la date de l'export dans le 
 (par exemple `20261118-tables.sql`, `20261118-rls.sql`). Ces fichiers datés servent de
 photographie de la base ; `sql/schema.sql` reste la référence versionnée du schéma.
 
+## Reconstruire un projet de test
+
+[`schema-production.sql`](./schema-production.sql) est la photographie exécutable de la
+production : 66 tables, 122 fonctions, 110 politiques, dans l'ordre où elles doivent être
+créées (tables, fonctions, valeurs par défaut, contraintes, index, triggers, RLS,
+politiques, droits).
+
+```powershell
+# Sur un projet Supabase de test, jamais sur la production existante :
+psql "postgresql://postgres:<mot-de-passe>@db.<ref>.supabase.co:5432/postgres" ^
+     -v ON_ERROR_STOP=1 -f sql/schema-production.sql
+
+# Puis les données, si l'on veut partir d'une copie :
+# supabase db dump --data-only -f donnees.sql
+```
+
+Le fichier n'est **jamais** exécuté sur la production : les objets y existent déjà.
+Il sert à ouvrir un projet de test, à comparer deux bases et à préparer une restauration.
+`tests/schema-rebuild.test.mjs` vérifie que l'ordre des dépendances tient (clés étrangères,
+valeurs par défaut, triggers, politiques) ; il ne remplace pas une restauration réelle.
+
 ## Scripts retrouvés
 
 Les scripts longtemps cités comme absents ont été récupérés depuis le dépôt GitHub
@@ -59,14 +80,15 @@ Les scripts longtemps cités comme absents ont été récupérés depuis le dép
 - `historique-actions.sql` ;
 - `formules.sql` (`public.plan_allows`).
 
-Ces scripts ne couvrent cependant pas toute la base : la production compte 64 tables
-et 118 fonctions, contre 28 tables avant l'export du 18 novembre 2026.
+Ces scripts ne couvrent cependant pas toute la base : la production compte 66 tables
+et 122 fonctions (18 novembre 2026), contre 28 tables avant l'export du 18 novembre 2026.
 Le schéma réel est désormais enregistré dans [`schema-production.sql`](./schema-production.sql),
 généré depuis le catalogue Supabase, et l'inventaire complet est dans
 [`exports/2026-11-18/`](./exports/2026-11-18/00-synthese.md).
 
-Le dossier `supabase/migrations/` contient en plus les 28 migrations datées, dans
-l'ordre d'application.
+Le dossier `supabase/migrations/` contient en plus les migrations datées, dans
+l'ordre d'application, y compris celles du 18 novembre 2026 (inventaire physique et
+durcissement des droits `anon`).
 
 ## Vérification automatique
 

@@ -1,6 +1,6 @@
 {
   "name": "kapya-erp",
-  "version": "1.45.12",
+  "version": "1.45.13",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "verifier:prod": "node scripts/verifier-production.mjs",
     "inventaire": "node scripts/inventaire-base.mjs",
     "audit:sql": "node scripts/auditer-sql.mjs --markdown",
+    "audit:i18n": "node scripts/audit-i18n.mjs --markdown",
     "exporter": "node scripts/exporter-supabase.mjs",
     "instantane": "node scripts/instantane.mjs"
   }

@@ -149,7 +149,7 @@ await ecrire('10-storage.sql', entete + (storage.length
   : '-- Aucune politique Storage.\n'));
 
 const aDurcir = fonctions.filter(f => f.security_definer && f.anon_execute);
-await ecrire('11-durcissement-propose.sql', `${entete}
+await ecrire('11-durcissement-propose.sql', aDurcir.length ? `${entete}
 -- PROPOSITION — fichier non appliqué.
 -- Les fonctions SECURITY DEFINER ci-dessous sont exécutables par le rôle anon
 -- parce qu'elles héritent du droit PUBLIC par défaut. Elles vérifient toutes
@@ -159,6 +159,9 @@ await ecrire('11-durcissement-propose.sql', `${entete}
 
 ${aDurcir.map(f => `revoke all on function public.${ident(f.name)}(${f.args}) from public, anon;
 grant execute on function public.${ident(f.name)}(${f.args}) to authenticated;`).join('\n\n')}
+` : `${entete}
+-- Aucune fonction SECURITY DEFINER exécutable par le rôle anon.
+-- Le durcissement a été appliqué par supabase/migrations/20261118000001_durcissement_anon.sql.
 `);
 
 // --- Synthèse --------------------------------------------------------------

@@ -1,5 +1,5 @@
 // API simulée pour le tableau de bord : aucune donnée réelle, aucun accès réseau.
-export const fixture = { sales: [], calls: [] };
+export const fixture = { sales: [], expenses: [], calls: [] };
 
 export const session = () => ({ uid: 'dash-user' });
 export const pendingFor = async () => [];
@@ -18,7 +18,7 @@ export const localToday = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-export const resetDashboard = () => { fixture.sales = []; fixture.calls = []; };
+export const resetDashboard = () => { fixture.sales = []; fixture.expenses = []; fixture.calls = []; };
 
 export const addSale = (options = {}) => {
   const id = fixture.sales.length + 1;
@@ -33,6 +33,16 @@ export const addSale = (options = {}) => {
   });
 };
 
+export const addExpense = (options = {}) => {
+  fixture.expenses.push({
+    id: `e${fixture.expenses.length + 1}`,
+    label: options.label ?? 'Dépense test',
+    category: options.category ?? 'Divers',
+    amount: options.amount ?? 5,
+    paid_at: options.paidAt ?? localToday()
+  });
+};
+
 export const db = {
   async select(table, query = '') {
     fixture.calls.push({ table, query });
@@ -40,6 +50,11 @@ export const db = {
     if (table === 'organizations') return [{ name: 'Entreprise test' }];
     if (table === 'warehouses') return [{ id: 'w1', name: 'Dépôt principal', is_default: true }];
     if (table === 'dashboard_preferences') return [];
+    if (table === 'business_expenses') {
+      const from = query.match(/paid_at=gte\.([^&]+)/)?.[1];
+      const to = query.match(/paid_at=lt\.([^&]+)/)?.[1];
+      return structuredClone(fixture.expenses.filter(expense => (!from || expense.paid_at >= from) && (!to || expense.paid_at < to)));
+    }
     if (table === 'sales') {
       let rows = fixture.sales.slice();
       const from = query.match(/sold_at=gte\.([^&]+)/)?.[1];
