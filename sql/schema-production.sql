@@ -1,6 +1,6 @@
 -- KaPya ERP — schéma de production (instantané de référence)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Généré le 2026-11-18 08:56 par scripts/generer-schema.mjs
+-- Généré le 2026-11-19 11:47 par scripts/generer-schema.mjs
 --
 -- Ce fichier décrit la base telle qu'elle existe réellement. Il est destiné à la
 -- documentation, à la comparaison et à la reconstruction d'un projet de test.
@@ -2004,7 +2004,7 @@ begin
            having sum((l->>'qty')::numeric) > coalesce(s.qty, 0) loop
     raise exception 'Stock insuffisant dans le dépôt source pour % : % disponible(s).', r.name, r.dispo;
   end loop;
-  select 'TRF-' || lpad((count(*) + 1)::text, 5, '0') into v_num from public.transfers where org_id = v_org;
+  v_num := public.next_document_number('transfer', 'TRF');
   insert into public.transfers(id, org_id, number, destination, note, moved_at, from_warehouse_id, to_warehouse_id)
     values (v_tid, v_org, v_num, 'Dépôt : ' || v_dest, nullif(trim(coalesce(p_note, '')), ''), coalesce(p_date, current_date), p_from, p_to);
   insert into public.transfer_lines(org_id, transfer_id, article_id, qty)
@@ -5767,7 +5767,11 @@ CREATE INDEX commercial_dues_org_date ON public.commercial_dues USING btree (org
 
 CREATE INDEX commercial_payments_due ON public.commercial_payments USING btree (due_id);
 
+CREATE UNIQUE INDEX credit_notes_org_number_uniq ON public.credit_notes USING btree (org_id, number) WHERE (number ~ '^AV-[0-9]+$'::text);
+
 CREATE INDEX customer_deposits_org_customer_idx ON public.customer_deposits USING btree (org_id, customer_id, received_at DESC);
+
+CREATE UNIQUE INDEX customer_returns_org_number_uniq ON public.customer_returns USING btree (org_id, number) WHERE (number ~ '^RET-[0-9]+$'::text);
 
 CREATE INDEX idx_articles_org_updated ON public.articles USING btree (org_id, updated_at);
 
@@ -5789,7 +5793,13 @@ CREATE UNIQUE INDEX invitations_pending_uniq ON public.invitations USING btree (
 
 CREATE INDEX platform_audit_created_idx ON public.platform_audit USING btree (created_at DESC);
 
+CREATE UNIQUE INDEX proformas_org_number_uniq ON public.proformas USING btree (org_id, number) WHERE (number ~ '^PRO-[0-9]+$'::text);
+
+CREATE UNIQUE INDEX purchase_orders_org_number_uniq ON public.purchase_orders USING btree (org_id, number) WHERE (number ~ '^BC-[0-9]+$'::text);
+
 CREATE INDEX purchase_payments_org_paid_idx ON public.purchase_payments USING btree (org_id, paid_at DESC);
+
+CREATE UNIQUE INDEX purchases_org_number_uniq ON public.purchases USING btree (org_id, number) WHERE (number ~ '^ACH-[0-9]+$'::text);
 
 CREATE INDEX sale_lines_article_idx ON public.sale_lines USING btree (article_id, sale_id);
 
@@ -5801,9 +5811,13 @@ CREATE UNIQUE INDEX sales_org_number_uniq ON public.sales USING btree (org_id, n
 
 CREATE INDEX sales_sold_at_idx ON public.sales USING btree (org_id, sold_at DESC);
 
+CREATE UNIQUE INDEX supplier_returns_org_number_uniq ON public.supplier_returns USING btree (org_id, number) WHERE (number ~ '^RFO-[0-9]+$'::text);
+
 CREATE INDEX support_messages_ticket ON public.support_messages USING btree (ticket_id, created_at);
 
 CREATE INDEX support_tickets_org ON public.support_tickets USING btree (org_id, updated_at);
+
+CREATE UNIQUE INDEX transfers_org_number_uniq ON public.transfers USING btree (org_id, number) WHERE (number ~ '^TRF-[0-9]+$'::text);
 
 CREATE UNIQUE INDEX warehouses_name_uq ON public.warehouses USING btree (org_id, lower(name));
 

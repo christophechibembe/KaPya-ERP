@@ -1,7 +1,10 @@
 // Génère sql/schema-production.sql : instantané de référence du schéma réel.
 // Lecture seule sur la base. Le fichier produit n'est pas appliqué automatiquement.
 // Usage : node scripts/generer-schema.mjs
+// Sans jeton sbp_, la lecture passe par la connexion PostgreSQL directe de
+// %USERPROFILE%\.kapya\db-url.txt.
 import { readFile, writeFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,11 +12,22 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const config = await readFile(path.join(root, 'js', 'config.js'), 'utf8');
 const projet = config.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1];
-const jeton = process.env.SUPABASE_ACCESS_TOKEN
-  || (await readFile(path.join(os.homedir(), '.kapya', 'supabase-token.txt'), 'utf8')).trim();
-if (!projet || !/^sbp_/.test(jeton)) throw new Error('Projet ou jeton Supabase introuvable.');
+const jeton = (process.env.SUPABASE_ACCESS_TOKEN
+  || (await readFile(path.join(os.homedir(), '.kapya', 'supabase-token.txt'), 'utf8').catch(() => ''))).trim();
+const parPsql = process.argv.includes('--psql') || !/^sbp_/.test(jeton);
+if (!projet) throw new Error('Projet Supabase introuvable.');
 
 async function sql(requete) {
+  if (parPsql) {
+    const url = new URL((await readFile(path.join(os.homedir(), '.kapya', 'db-url.txt'), 'utf8')).trim());
+    const psql = path.join(os.homedir(), '.kapya', 'pg', 'bin', 'psql.exe');
+    const enveloppe = `select coalesce(json_agg(t), '[]'::json) from (${requete}) t;`;
+    const r = spawnSync(psql, ['-h', url.hostname, '-p', url.port || '5432',
+      '-U', decodeURIComponent(url.username), '-d', 'postgres', '-w', '-tA', '-c', enveloppe],
+    { encoding: 'utf8', env: { ...process.env, PGPASSWORD: decodeURIComponent(url.password) }, timeout: 60000 });
+    if (r.status !== 0) throw new Error(r.stderr.trim().slice(0, 300));
+    return JSON.parse(r.stdout);
+  }
   const reponse = await fetch(`https://api.supabase.com/v1/projects/${projet}/database/query`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },

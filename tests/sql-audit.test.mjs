@@ -49,3 +49,22 @@ test('les migrations sont toutes non vides et lisibles', async () => {
     assert.ok(contenu.trim().length > 0, `${fichier} ne doit pas être vide`);
   }
 });
+
+test('la numérotation des transferts passe par le compteur partagé', async () => {
+  const dossier = path.join(root, 'supabase', 'migrations');
+  const fichiers = (await readdir(dossier)).filter(f => f.endsWith('.sql')).sort();
+  let derniere = null;
+  for (const fichier of fichiers) {
+    const contenu = await readFile(path.join(dossier, fichier), 'utf8');
+    const definitions = [...contenu.matchAll(
+      /create\s+or\s+replace\s+function\s+public\.create_warehouse_transfer[\s\S]*?end\s+(\$function\$|\$\$);/gi)];
+    if (definitions.length) {
+      derniere = { fichier, corps: definitions.at(-1)[0] };
+    }
+  }
+  assert.ok(derniere, 'create_warehouse_transfer doit être défini dans une migration');
+  assert.match(derniere.corps, /next_document_number\('transfer'/,
+    `${derniere.fichier} doit numéroter les transferts avec next_document_number`);
+  assert.doesNotMatch(derniere.corps, /count\(\*\)\s*\+\s*1/,
+    `${derniere.fichier} ne doit pas déduire un numéro d'un count(*) + 1`);
+});
