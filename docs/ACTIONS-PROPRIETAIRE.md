@@ -91,13 +91,33 @@ Un projet de test dédié permet de rejouer les parcours sans toucher à la prod
 Le jeton actuellement utilisé était limité au projet et refusait la création (`403`).
 Il faut un jeton **personnel (user-scoped)**, avec accès à l'organisation.
 
+**Vidéo (création d'un jeton personnel)** :
+<https://www.youtube.com/watch?v=c8e8Yyf-Nt8> — « How to Create Personal Access Token
+in Supabase (Step by Step) 2026 », Checkmark Academy.
+Autre version : <https://www.youtube.com/watch?v=Ne33RkbF8l4>.
+Documentation officielle : <https://supabase.com/docs/guides/platform/personal-access-tokens>.
+
+Depuis 2026, un jeton personnel est **scopé** : il faut cocher les permissions utiles.
+Pour créer puis supprimer un projet de test, cocher :
+
+- **Organizations** : Read (lister les organisations) ;
+- **Organization Projects** : Read-write (créer le projet) ;
+- **Project Settings** : Read-write (consulter et supprimer le projet) ;
+- **Projects (account-wide)** : Read (lister les projets) ;
+- **Database** : Read (facultatif, utile pour les vérifications via l'API).
+
+Limiter le jeton à l'organisation KaPya et à une durée courte (1 jour). Si l'interface ne
+propose que l'accès complet (« Legacy »), l'accepter temporairement avec une expiration
+d'un jour, puis le révoquer aussitôt le test terminé.
+
 1. Ouvrir <https://supabase.com/dashboard/account/tokens>.
 2. Cliquer sur **Generate new token**, nommer « KaPya test jetable ».
-3. Si une durée de validité est proposée, choisir la plus courte adaptée (1 jour suffit).
-4. Copier le jeton affiché (il n'est plus visible ensuite).
-5. Windows + R → `notepad %USERPROFILE%\.kapya\supabase-token.txt` → coller le jeton
+3. Choisir l'organisation KaPya, puis les permissions ci-dessus (ou l'accès complet legacy).
+4. Régler l'expiration au plus court (1 jour).
+5. Copier le jeton affiché (il n'est plus visible ensuite).
+6. Windows + R → `notepad %USERPROFILE%\.kapya\supabase-token.txt` → coller le jeton
    seul, sur une ligne, enregistrer.
-6. Me prévenir : je crée le projet, j'y restaure le dump, je rejoue les scénarios, puis
+7. Me prévenir : je crée le projet, j'y restaure le dump, je rejoue les scénarios, puis
    je supprime le projet et vide le fichier. Il restera à révoquer ce jeton ensuite.
 
 Ne pas coller ce jeton dans la conversation.
