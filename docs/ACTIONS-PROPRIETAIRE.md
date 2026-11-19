@@ -145,7 +145,8 @@ suivantes ne l'ont plus. La rotation conserve 8 dates.
 
 ## Suivi
 
-- [ ] Jetons `sbp_fce657…`, `sbp_fcff…` et jeton de test révoqués (à confirmer dans le tableau de bord)
+- [x] Jetons personnels `sbp_fce657…`, `sbp_fcff…` et jeton de test révoqués (page Access Tokens vide le 20/11/2026)
+- [ ] Jeton de projet éventuel révoqué (Project Settings → API → Project access tokens)
 - [x] Clé de chiffrement enregistrée dans le gestionnaire de mots de passe (vérifiée identique au fichier le 20/11/2026)
 - [x] Tâche planifiée en « Exécuter que l'utilisateur soit connecté ou non », testée le 20/11/2026 à 00:16 (résultat `0x0`)
 - [x] Webhook renseigné et testé (HTTP 200 le 19/11/2026)
