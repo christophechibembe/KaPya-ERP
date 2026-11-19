@@ -118,12 +118,12 @@ articles vendus, pas par les dépenses.
    fonction de `public` n'est exécutable par `anon`.
 2. **Dump officiel — fait et restauré le 18 novembre 2026.** Produit avec `pg_dump` 17.5
    sur la chaîne Session pooler (serveur PostgreSQL 17.11), hors dépôt :
-   `D:\kapya-sauvegardes\kapya-2026-11-18-schema.sql` (380 Ko, 66 tables) et
+   `D:\kapya-sauvegardes\kapya-2026-11-18-schema.sql` (371 Ko / 380 139 octets, 66 tables) et
    `D:\kapya-sauvegardes\kapya-2026-11-18-donnees.sql` (14,3 Mo, 66 tables). Ces fichiers
    contiennent des données personnelles et ne doivent jamais être commités.
    Restauration vérifiée dans un PostgreSQL 17 local isolé, avec les rôles Supabase et un
    schéma `auth` simulés : schéma rejoué (seul l'avertissement attendu « public existe
-   déjà »), 66 tables et **3 389 lignes restaurées, 0 écart** avec la production. Les
+   déjà »), 66 tables et **3 390 lignes restaurées, 0 écart** avec la production. Les
    données ont été rejouées triggers et clés étrangères désactivés, car `auth.users`
    n'est pas inclus dans le dump ; dans un vrai projet Supabase, les comptes existent
    déjà. La restauration sur un projet Supabase dédié reste à faire pour les parcours
@@ -147,7 +147,15 @@ articles vendus, pas par les dépenses.
    sont attribués par la table `document_counters`, elle aussi annulée : aucune facture
    n'a été consommée.
 
-   La création d'un projet Supabase dédié reste impossible avec le jeton actuel :
+   Les deux mêmes scénarios ont été rejoués dans un **PostgreSQL 17 isolé local**, sur le
+   dump restauré (66 tables, 3 390 lignes), avec les rôles Supabase et `auth.uid()`
+   simulés : vente comptant, avoir, transfert, vente à crédit, paiement et clôtures
+   donnent les mêmes résultats, et les compteurs reviennent à l'état initial après
+   `rollback`. Cela valide le couple schéma/données/fonctions hors production, en plus
+   du test sur la production annulée.
+
+   La création d'un projet Supabase dédié reste impossible avec le jeton alors disponible
+   (depuis retiré du poste) :
    `POST /v1/projects` répond `403 Forbidden`, et le jeton est explicitement limité au
    projet (`/v1/profile` : « requires a user-scoped access token »,
    `/v1/organizations` : permission `organizations_read` absente). Les parcours sont
@@ -159,6 +167,20 @@ articles vendus, pas par les dépenses.
    désormais le moteur de traduction. Le rendu anglais est vérifié dans Chromium
    (`tests/guide.browser.test.mjs`). Seul le chemin technique `/app` reste tel quel.
    Suivi : `docs/TRADUCTION.md` (`npm.cmd run audit:i18n`).
+5. **Compteurs de documents et unicité des numéros — corrigés le 19 novembre 2026.**
+   L'audit des numéros a révélé deux anomalies : l'entreprise `2f79c9c8…` avait 10
+   transferts (`TRF-00001` à `TRF-00010`) pour un compteur à 2, et l'entreprise
+   `93f2feab…` avait un transfert sans aucun compteur. Cause : `create_warehouse_transfer`
+   calculait son numéro avec `count(*) + 1` au lieu d'appeler `next_document_number()` ;
+   le compteur n'avançait donc jamais, et la suppression d'un transfert aurait réattribué
+   un numéro déjà utilisé. La migration
+   `20261119000000_compteurs_et_unicite_documents.sql`, appliquée en production et
+   enregistrée dans `schema_migrations`, aligne chaque compteur sur le plus grand numéro
+   réellement présent (sans jamais le diminuer), ajoute des index uniques par entreprise
+   sur les numéros formatés des sept types de documents et corrige la fonction. Vérifié
+   après application : aucun écart compteur/numéro réel sur les sept types, prochain
+   transfert `TRF-00011` ; un test annulé (création, suppression, nouvelle création) a
+   attribué `TRF-00011` puis `TRF-00012`, sans réutilisation.
 
 ## Points d'attention restants
 
@@ -173,7 +195,8 @@ articles vendus, pas par les dépenses.
   valide et donne accès au projet (dont `database:write`). L'API de gestion ne permet
   pas de révoquer un jeton personnel : il faut le faire dans
   *Compte → Access Tokens*, ainsi que pour l'ancien jeton `sbp_fcff…`. Aucun jeton n'est
-  conservé dans le dépôt ni dans `%USERPROFILE%\.kapya`.
+  conservé dans le dépôt ; le fichier `%USERPROFILE%\.kapya\supabase-token.txt` a été
+  vidé, le poste n'en stocke donc plus.
 - **Projet Supabase de test — bloqué par les droits du jeton.** Voir point 3 ci-dessus :
   la création est refusée (403). Alternative : créer le projet depuis le tableau de bord
   ou fournir un jeton personnel complet, puis rejouer le dump et les parcours.
@@ -193,6 +216,8 @@ articles vendus, pas par les dépenses.
 - `scripts/exporter-supabase.mjs` : export complet daté dans `sql/exports/`.
 - `scripts/generer-schema.mjs` : reconstruit `sql/schema-production.sql` depuis le catalogue.
 - `scripts/requete-supabase.mjs` : exécute une requête `select`/`with` isolée.
-- `scripts/appliquer-migration.mjs` : applique une migration, avec `--confirmer`.
+- `scripts/appliquer-migration.mjs` : applique une migration, avec `--confirmer` ; utilise
+  le jeton de gestion s'il existe, sinon la connexion PostgreSQL directe (`--psql`), dans
+  une transaction unique.
 - `scripts/audit-i18n.mjs` : mesure la couverture de la traduction anglaise.
 - Jeton lu dans `%USERPROFILE%\.kapya\supabase-token.txt`, jamais dans le dépôt.

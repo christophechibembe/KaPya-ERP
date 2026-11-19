@@ -14,9 +14,15 @@ des noms (ordre alphabétique = ordre chronologique).
 | --- | --- | --- |
 | `20261118000000` | Inventaire physique et réglage du code-barres | appliquée en production le 18 novembre 2026, enregistrée dans `supabase_migrations.schema_migrations` |
 | `20261118000001` | Fermeture de l'exécution anonyme des fonctions `SECURITY DEFINER` | appliquée en production le 18 novembre 2026 ; retour arrière dans `sql/exports/2026-11-18/12-retour-arriere-droits.sql` |
+| `20261118000002` | Restriction des politiques ouvertes à `public` | appliquée en production le 18 novembre 2026 |
+| `20261118000003` | Fermeture des fonctions `public` encore exécutables par `anon` | appliquée en production le 18 novembre 2026 |
+| `20261119000000` | Réparation des compteurs de documents et unicité des numéros | appliquée en production le 19 novembre 2026 ; corrige `create_warehouse_transfer` |
 
 Application contrôlée : `node scripts/appliquer-migration.mjs supabase/migrations/<fichier>.sql --confirmer`
-(jeton Supabase requis dans `%USERPROFILE%\.kapya\supabase-token.txt`).
+(jeton Supabase dans `%USERPROFILE%\.kapya\supabase-token.txt`). Sans jeton `sbp_`, ou avec
+`--psql`, le script passe par la connexion PostgreSQL directe de
+`%USERPROFILE%\.kapya\db-url.txt`, dans une transaction unique, et enregistre la version
+dans `schema_migrations`. Le drapeau `--confirmer` reste obligatoire dans les deux cas.
 
 ## Versions en collision (résolues le 18 novembre 2026)
 
