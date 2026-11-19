@@ -128,6 +128,9 @@ articles vendus, pas par les dépenses.
    n'est pas inclus dans le dump ; dans un vrai projet Supabase, les comptes existent
    déjà. La restauration sur un projet Supabase dédié reste à faire pour les parcours
    fonctionnels complets. Commandes : `docs/BACKUP_AND_RECOVERY.md`.
+   Une sauvegarde de contrôle a été prise le 19 novembre 2026 après la migration des
+   compteurs : schéma 373 Ko, données 15,2 Mo, 66 tables, copie chiffrée déposée sur
+   OneDrive ; la rotation conserve 8 sauvegardes datées.
 3. **Tests fonctionnels — faits le 18 novembre 2026, en transaction toujours annulée sur
    la production.** Un compte administrateur de l'entreprise `CHRIS ADMIN GENERAL` a été
    simulé (`request.jwt.claims` + `set local role authenticated`). Résultats :
