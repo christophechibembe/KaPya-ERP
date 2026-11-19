@@ -143,6 +143,11 @@ sauvegarde du **18 novembre** la contient encore intégralement
 (`D:\kapya-sauvegardes\kapya-2026-11-18-*.sql`, copie chiffrée OneDrive). Les sauvegardes
 suivantes ne l'ont plus. La rotation conserve 8 dates.
 
+Cette sauvegarde a été **archivée le 20 novembre 2026** dans
+`D:\kapya-sauvegardes\archive\` et `OneDrive\Sauvegardes-KaPya\archive\` : un sous-dossier
+n'est pas concerné par la rotation, elle ne sera donc pas supprimée. Sans cet archivage,
+elle aurait disparu vers le 15 janvier 2027.
+
 ## Suivi
 
 - [x] Jetons personnels `sbp_fce657…`, `sbp_fcff…` et jeton de test révoqués (page Access Tokens vide le 20/11/2026)
@@ -151,3 +156,4 @@ suivantes ne l'ont plus. La rotation conserve 8 dates.
 - [x] Tâche planifiée en « Exécuter que l'utilisateur soit connecté ou non », testée le 20/11/2026 à 00:16 (résultat `0x0`)
 - [x] Webhook renseigné et testé (HTTP 200 le 19/11/2026)
 - [x] Projet de test restauré, migration appliquée, scénarios validés (19 contrôles), projet supprimé
+- [x] Sauvegarde du 18/11 archivée hors rotation (local + OneDrive), tâche en double `kapyapass` supprimée
