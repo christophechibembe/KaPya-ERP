@@ -20,7 +20,8 @@ l'application continuent de fonctionner : ils utilisent la clé publique `anon`,
 
 ## 2. Conserver la clé de chiffrement des sauvegardes
 
-Le fichier `%USERPROFILE%\.kapya\cle-sauvegarde.txt` (45 caractères) déchiffre les copies
+Le fichier `%USERPROFILE%\.kapya\cle-sauvegarde.txt` (44 caractères, plus le saut de
+ligne) déchiffre les copies
 `.sql.enc` de OneDrive. Sans lui, ces copies sont définitivement illisibles.
 
 1. Ouvrir le fichier : touche Windows + R, coller
@@ -39,8 +40,12 @@ Ne pas régénérer la clé : les sauvegardes existantes ne seraient plus déchi
 La tâche « KaPya - Sauvegarde hebdomadaire » existe déjà : chaque dimanche à 03:00,
 elle exécute `C:\Program Files\nodejs\node.exe` avec
 `D:\kapya-erp\scripts\sauvegarde-production.mjs --garder 8`.
-Elle est actuellement en mode **Interactive uniquement** : elle ne tourne que si votre
-session Windows est ouverte.
+Elle est configurée en mode **« Exécuter que l'utilisateur soit connecté ou non »**
+depuis le 20/11/2026 : elle tourne même sans session ouverte. Test du 20/11 à 00:16 :
+« Dernier résultat » `0x0`, sauvegarde du jour produite et chiffrée dans OneDrive.
+
+Les étapes ci-dessous restent utiles si le mot de passe Windows change ou si la tâche est
+recréée.
 
 1. Touche Windows + R, taper `taskschd.msc`, valider (accepter l'invite administrateur).
 2. Dans **Bibliothèque du Planificateur de tâches**, cliquer sur la tâche
@@ -140,9 +145,8 @@ suivantes ne l'ont plus. La rotation conserve 8 dates.
 
 ## Suivi
 
-- [ ] Jetons `sbp_fce657…` et `sbp_fcff…` révoqués
-- [ ] Clé de chiffrement enregistrée dans le gestionnaire de mots de passe
-- [ ] Tâche planifiée en « Exécuter que l'utilisateur soit connecté ou non », testée
-- [ ] Webhook renseigné et testé
-- [ ] Jeton de test créé, utilisé puis **révoqué**
+- [ ] Jetons `sbp_fce657…`, `sbp_fcff…` et jeton de test révoqués (à confirmer dans le tableau de bord)
+- [x] Clé de chiffrement enregistrée dans le gestionnaire de mots de passe (vérifiée identique au fichier le 20/11/2026)
+- [x] Tâche planifiée en « Exécuter que l'utilisateur soit connecté ou non », testée le 20/11/2026 à 00:16 (résultat `0x0`)
+- [x] Webhook renseigné et testé (HTTP 200 le 19/11/2026)
 - [x] Projet de test restauré, migration appliquée, scénarios validés (19 contrôles), projet supprimé
