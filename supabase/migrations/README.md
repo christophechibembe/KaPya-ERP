@@ -16,7 +16,7 @@ des noms (ordre alphabétique = ordre chronologique).
 | `20261118000001` | Fermeture de l'exécution anonyme des fonctions `SECURITY DEFINER` | appliquée en production le 18 novembre 2026 ; retour arrière dans `sql/exports/2026-11-18/12-retour-arriere-droits.sql` |
 | `20261118000002` | Restriction des politiques ouvertes à `public` | appliquée en production le 18 novembre 2026 |
 | `20261118000003` | Fermeture des fonctions `public` encore exécutables par `anon` | appliquée en production le 18 novembre 2026 |
-| `20261119000000` | Réparation des compteurs de documents et unicité des numéros | appliquée en production le 19 novembre 2026 ; corrige `create_warehouse_transfer` |
+| `20261119000000` | Réparation des compteurs de documents et unicité des numéros | appliquée en production le 19 novembre 2026 ; corrige `create_warehouse_transfer` ; rejouée le 19 novembre 2026 sur le projet de test restauré (compteurs et `TRF-00011` conformes) |
 
 Application contrôlée : `node scripts/appliquer-migration.mjs supabase/migrations/<fichier>.sql --confirmer`
 (jeton Supabase dans `%USERPROFILE%\.kapya\supabase-token.txt`). Sans jeton `sbp_`, ou avec

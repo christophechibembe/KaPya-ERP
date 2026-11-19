@@ -85,11 +85,20 @@ Ensuite :
 
 L'URL du webhook est un secret : ne pas la partager ni la commiter.
 
-## 5. Jeton pour le projet Supabase de test (facultatif)
+## 5. Jeton Supabase de test — fait le 19 novembre 2026
 
-Un projet de test dédié permet de rejouer les parcours sans toucher à la production.
-Le jeton actuellement utilisé était limité au projet et refusait la création (`403`).
-Il faut un jeton **personnel (user-scoped)**, avec accès à l'organisation.
+Le jeton personnel a permis de créer le projet `kapya-test-20261119`
+(`mqivlbvlerlmjiiouaye`, eu-west-1), d'y restaurer le dump du 18 novembre, d'appliquer la
+migration des compteurs et de rejouer les parcours (`supabase/tests/scenarios-fonctionnels.sql`,
+19 contrôles OK). Le projet a ensuite été supprimé et
+`%USERPROFILE%\.kapya\supabase-token.txt` a été vidé.
+
+**Il reste à révoquer ce jeton**, qui est encore valide côté Supabase : ouvrir
+<https://supabase.com/dashboard/account/tokens>, repérer le jeton nommé
+« KaPya test… » (créé le 19 novembre) et cliquer sur **Revoke**.
+
+Pour un prochain test, créer un jeton **personnel (user-scoped)** avec les permissions
+ci-dessous, puis relancer le scénario.
 
 **Vidéo (création d'un jeton personnel)** :
 <https://www.youtube.com/watch?v=c8e8Yyf-Nt8> — « How to Create Personal Access Token
@@ -135,4 +144,5 @@ suivantes ne l'ont plus. La rotation conserve 8 dates.
 - [ ] Clé de chiffrement enregistrée dans le gestionnaire de mots de passe
 - [ ] Tâche planifiée en « Exécuter que l'utilisateur soit connecté ou non », testée
 - [ ] Webhook renseigné et testé
-- [ ] Jeton de test collé (si projet de test souhaité)
+- [ ] Jeton de test créé, utilisé puis **révoqué**
+- [x] Projet de test restauré, migration appliquée, scénarios validés (19 contrôles), projet supprimé

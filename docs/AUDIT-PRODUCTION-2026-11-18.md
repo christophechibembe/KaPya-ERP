@@ -157,14 +157,10 @@ articles vendus, pas par les dépenses.
    `rollback`. Cela valide le couple schéma/données/fonctions hors production, en plus
    du test sur la production annulée.
 
-   La création d'un projet Supabase dédié reste impossible avec le jeton alors disponible
-   (depuis retiré du poste) :
-   `POST /v1/projects` répond `403 Forbidden`, et le jeton est explicitement limité au
-   projet (`/v1/profile` : « requires a user-scoped access token »,
-   `/v1/organizations` : permission `organizations_read` absente). Les parcours sont
-   donc validés sur la production, sans écriture durable, ce qui couvre le risque
-   fonctionnel ; un projet de test dédié nécessiterait un jeton personnel complet ou le
-   tableau de bord.
+   Un projet Supabase dédié a finalement été créé le 19 novembre 2026 avec un jeton
+   personnel disposant du droit de création (`kapya-test-20261119`,
+   `mqivlbvlerlmjiiouaye`, région eu-west-1), puis supprimé après validation. Voir la
+   section « Validation sur projet de test » ci-dessous.
 4. **Traduction anglaise** — fait le 18 novembre 2026 : 1 601 textes sur 1 601 sont
    traduits (100 %), y compris le guide et la page de confidentialité, qui chargent
    désormais le moteur de traduction. Le rendu anglais est vérifié dans Chromium
@@ -185,6 +181,29 @@ articles vendus, pas par les dépenses.
    transfert `TRF-00011` ; un test annulé (création, suppression, nouvelle création) a
    attribué `TRF-00011` puis `TRF-00012`, sans réutilisation.
 
+## Validation sur projet de test (19 novembre 2026)
+
+- Projet `kapya-test-20261119` (`mqivlbvlerlmjiiouaye`, eu-west-1), créé par l'API. La
+  connexion passe par le pooler `aws-1-eu-west-1.pooler.supabase.com` ; le nom direct
+  `db.<ref>.supabase.co` et le pooler `aws-0` ne répondent pas.
+- Restauration du dump du 18 novembre : schéma en place (66 tables ; 13 erreurs attendues
+  : `public` déjà présent et privilèges par défaut des rôles Supabase), puis données
+  chargées avec `set session_replication_role = replica` dans la même session
+  (`PGOPTIONS` est ignoré par le pooler) : 3 390 lignes, compteurs
+  144|61|14|8|15|20|12.
+- Migration `20261119000000_compteurs_et_unicite_documents.sql` appliquée : compteurs
+  transfert 10/2/1/1, 8 index uniques, `create_warehouse_transfer` appelle bien
+  `next_document_number`, prochain numéro `TRF-00011`.
+- `supabase/tests/scenarios-fonctionnels.sql`, exécuté en transaction annulée : 19
+  contrôles OK — vente comptant, vente à crédit avec acompte puis règlement idempotent,
+  avoir `AV-…`, transfert `TRF-00011`, refus d'une vente au-delà du stock, refus d'un
+  trop-perçu, stocks article et dépôts, clôtures boutique et globale (attendu 50, écart
+  -50), cloisonnement RLS entre entreprises. Après `rollback`, ventes, paiements,
+  transferts, clôtures, stock et compteurs sont revenus à l'état initial.
+- Le dump ne contient pas le schéma `auth` : le compte de test a été ajouté dans
+  `auth.users` pour satisfaire la clé étrangère de `audit_log`. Le projet a ensuite été
+  supprimé (`DELETE /v1/projects/{ref}` → 200) et le fichier de jeton vidé.
+
 ## Points d'attention restants
 
 - **Mot de passe de la base — fait le 18 novembre 2026.** Le point d'entrée utilisé
@@ -200,9 +219,11 @@ articles vendus, pas par les dépenses.
   *Compte → Access Tokens*, ainsi que pour l'ancien jeton `sbp_fcff…`. Aucun jeton n'est
   conservé dans le dépôt ; le fichier `%USERPROFILE%\.kapya\supabase-token.txt` a été
   vidé, le poste n'en stocke donc plus.
-- **Projet Supabase de test — bloqué par les droits du jeton.** Voir point 3 ci-dessus :
-  la création est refusée (403). Alternative : créer le projet depuis le tableau de bord
-  ou fournir un jeton personnel complet, puis rejouer le dump et les parcours.
+- **Projet Supabase de test — fait le 19 novembre 2026.** Créé avec un jeton personnel
+  disposant du droit de création, restauré depuis le dump du 18 novembre, migration
+  appliquée et parcours rejoués (19 contrôles), puis supprimé. Le scénario est conservé
+  dans `supabase/tests/scenarios-fonctionnels.sql` ; il suppose un projet restauré depuis
+  ce dump et le compte de test inséré dans `auth.users`.
 - **Clé de chiffrement de la copie hors site — à conserver par le propriétaire.**
   `%USERPROFILE%\.kapya\cle-sauvegarde.txt` (droits restreints) est indispensable pour
   déchiffrer les fichiers `.sql.enc` de OneDrive. Elle doit être copiée dans un
