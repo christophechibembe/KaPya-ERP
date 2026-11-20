@@ -1,4 +1,8 @@
-.demo-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;background:#fff4cf;color:#493500;border-bottom:1px solid #d2b15a;flex-shrink:0}
+/* --- Barre démo en haut de page --- */
+.demo-bar{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;
+  background:#fff4cf;color:#493500;border-bottom:1px solid #d2b15a;flex-shrink:0
+}
 .demo-bar>div{margin-right:auto}
 .demo-bar strong,.demo-bar span:not(.sr){display:block}
 .demo-bar strong{font-size:12px;letter-spacing:.08em}
@@ -12,5 +16,11 @@
 .demo-steps p{margin:5px 0 9px}
 #demo-guide{max-width:640px;max-height:85vh;overflow:auto}
 .demo-mode [data-act="lock"]{display:none}
-@media(max-width:650px){.demo-bar{padding:8px;gap:7px}.demo-bar>div{width:100%}.demo-bar span:not(.sr){font-size:11px}.demo-bar a,.demo-bar button{font-size:11px}.demo-bar .btn{padding:7px}}
+@media(max-width:650px){
+  .demo-bar{padding:8px;gap:7px}
+  .demo-bar>div{width:100%}
+  .demo-bar span:not(.sr){font-size:11px}
+  .demo-bar a,.demo-bar button{font-size:11px}
+  .demo-bar .btn{padding:7px}
+}
 @media print{.demo-bar{display:none}.demo-mode:before{content:"DÉMONSTRATION — DONNÉES FICTIVES — SANS VALEUR COMMERCIALE";display:block;text-align:center;font-weight:bold;border:2px solid black;padding:6px}}

@@ -66,4 +66,34 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     assert.match(await page.evaluate('window.text()'), /35,00 \$/);
     assert.equal(await page.evaluate(`document.querySelector('#owner-updated').textContent`), before);
   });
+
+  await t.test('le commutateur de présentation change l’habillage sans recharger', async () => {
+    const label = () => page.evaluate(`document.querySelector('#owner-mode').textContent`);
+    const bodyClass = name => page.evaluate(`document.body.classList.contains(${JSON.stringify(name)})`);
+
+    // Sur ordinateur, la présentation moderne est appliquée automatiquement.
+    assert.equal(await bodyClass('dashboard-mode-pc'), true);
+    assert.equal(await label(), 'Présentation : Moderne PC');
+    assert.equal(await page.evaluate(`getComputedStyle(document.querySelector('.owner-head')).display`), 'flex');
+
+    // Clic 1 : version mobile, immédiatement.
+    await page.evaluate(`document.querySelector('#owner-mode').click()`);
+    assert.equal(await bodyClass('dashboard-mode-mobile'), true);
+    assert.equal(await bodyClass('dashboard-mode-pc'), false);
+    assert.equal(await label(), 'Présentation : Moderne mobile');
+
+    // Clic 2 : retour au tableau de bord classique, sans rechargement.
+    await page.evaluate(`document.querySelector('#owner-mode').click()`);
+    assert.equal(await bodyClass('dashboard-mode-mobile'), false);
+    assert.equal(await bodyClass('dashboard-mode-pc'), false);
+    assert.equal(await label(), 'Présentation : Classique');
+    assert.equal(await page.evaluate(`document.querySelector('#owner-content').textContent.includes('35,00 $')`), true,
+      'les chiffres restent identiques après le changement de présentation');
+
+    // Clic 3 : de nouveau la version PC, et le choix est mémorisé.
+    await page.evaluate(`document.querySelector('#owner-mode').click()`);
+    assert.equal(await bodyClass('dashboard-mode-pc'), true);
+    assert.equal(await label(), 'Présentation : Moderne PC');
+    assert.equal(await page.evaluate(`localStorage.getItem('kp.dashboard.mode')`), 'modern_pc');
+  });
 });

@@ -1,8 +1,9 @@
 import { db, session, pendingFor, pendingCount, pendingOps, rejectedItems, lastSyncTime, retryRejected, discardRejected, syncNow, selectArticlesWithTotal } from '../api.js';
 import { dashKey, readDash, writeDash } from '../dash-cache.js';
-import { esc, n, money, usdOnly, fcOnly, ico, openDialog, showDialog, fld, fmtDate, fmtDateTime } from '../ui.js';
+import { esc, n, money, usdOnly, fcOnly, ico, openDialog, showDialog, fld, fmtDate, fmtDateTime, notify } from '../ui.js';
 import { listeOuErreur } from '../ui.js';
 import { can } from '../roles.js';
+import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, nextMode as nextDashboardMode, setMode as setDashboardMode, MODE_LABELS as DASHBOARD_MODE_LABELS } from '../dashboard-modes.js';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
 
 const isoDate = date => {
@@ -124,6 +125,11 @@ async function openRejectedDialog() {
 }
 
 export async function render(main, ctx) {
+  // Présentation du tableau de bord : classique (par défaut) ou moderne.
+  // Les trois présentations utilisent exactement les mêmes données et les mêmes calculs.
+  const dashboardMode = resolveDashboardMode(ctx?.id);
+  applyDashboardMode(dashboardMode);
+
   const today = isoDate(new Date());
   const monthStart = `${today.slice(0, 8)}01`;
   const canSeeCosts = ctx?.role === 'admin';
@@ -180,6 +186,7 @@ export async function render(main, ctx) {
       <button class="btn" id="owner-run" type="button" hidden>Afficher</button>
       <button class="ghost" id="owner-refresh" type="button" title="Recharger les chiffres maintenant">Actualiser</button>
       <button class="ghost" id="owner-customize" type="button">Personnaliser</button>
+      <button class="ghost" id="owner-mode" type="button" title="Changer la présentation du tableau de bord">Présentation : ${DASHBOARD_MODE_LABELS[dashboardMode]}</button>
       <button class="ghost" id="owner-summary" type="button">Résumer la période</button>
       ${canRecordCashOut ? '<button class="ghost" id="owner-expense" type="button">+ Dépense</button><button class="ghost" id="owner-init-supplier" type="button">Solde anciennes factures</button><button class="btn" id="owner-supplier-payment" type="button">+ Paiement fournisseur</button>' : ''}
     </div></div>
@@ -535,6 +542,14 @@ export async function render(main, ctx) {
   $('#owner-run').addEventListener('click', refresh);
   $('#owner-refresh').addEventListener('click', refresh);
   $('#owner-customize')?.addEventListener('click', openCustomizeDialog);
+  // Changement de présentation immédiat, sans recharger l'application.
+  $('#owner-mode')?.addEventListener('click', () => {
+    const mode = nextDashboardMode();
+    const applied = setDashboardMode(mode, ctx?.id);
+    const button = $('#owner-mode');
+    if (button) button.textContent = `Présentation : ${DASHBOARD_MODE_LABELS[applied]}`;
+    notify(`Présentation : ${DASHBOARD_MODE_LABELS[applied]}.`);
+  });
   // Choix de la boutique (dépôt) pour le gérant qui a plusieurs boutiques.
   if (!canSeeAllShops(ctx?.role)) setShop('');
   if (canSeeAllShops(ctx?.role)) loadShops().then(shops => {

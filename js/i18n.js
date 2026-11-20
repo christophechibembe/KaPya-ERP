@@ -811,7 +811,20 @@ const EN = {
   'au format Excel. Les boutons PDF sont réservés à la formule Premium. L\'inventaire est calculé à la date du jour ; les fichiers reprennent l\'en-tête et le logo de l\'entreprise.': 'in Excel format. The PDF buttons are reserved for the Premium plan. The inventory is computed as of today; the files use the business header and logo.',
   'Plus > Alertes et rappels': 'More > Alerts and reminders',
   'Le gérant doit vous attribuer une boutique dans Paramètres > Membres.': 'The manager must assign you a store in Settings > Members.',
-  'Ajoutez d’abord des articles dans Produits & Stocks.': 'First add items in Products & Stock.'
+  'Ajoutez d’abord des articles dans Produits & Stocks.': 'First add items in Products & Stock.',
+  'Présentation du tableau de bord': 'Dashboard presentation',
+  'Choisissez la présentation du tableau de bord. Les chiffres, les rôles et les droits restent identiques.': 'Choose how the dashboard looks. Figures, roles and permissions stay exactly the same.',
+  'Détection automatique selon la taille de l’écran.': 'Automatically detected from the screen size.',
+  'Choix enregistré pour ce compte sur cet appareil.': 'Choice saved for this account on this device.',
+  'Classique': 'Classic',
+  'Moderne PC': 'Modern desktop',
+  'Moderne mobile': 'Modern mobile',
+  'Le tableau de bord actuel, sans changement.': 'The current dashboard, unchanged.',
+  'Cartes aérées et filtres regroupés, pour un grand écran.': 'Roomier cards and grouped filters, for a large screen.',
+  'Grandes cartes et filtres compacts, pour le téléphone.': 'Large cards and compact filters, for phones.',
+  'Présentation : Classique': 'Presentation: Classic',
+  'Présentation : Moderne PC': 'Presentation: Modern desktop',
+  'Présentation : Moderne mobile': 'Presentation: Modern mobile'
 };
 
 export const getLanguage = () => localStorage.getItem(KEY) === 'en' ? 'en' : 'fr';

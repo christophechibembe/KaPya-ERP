@@ -1852,3 +1852,12 @@ img[src="assets/logo-k.png"][width="56"]{width:36px;height:auto}
   .vr-pos .vr-options{max-height:calc(100dvh - 20px)}
   .vr-pos .vr-options input,.vr-pos .vr-options select{font-size:16px}
 }
+
+/* Paramètres — choix de la présentation du tableau de bord. */
+.dash-mode-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0}
+.dash-mode-choice{display:flex;flex-direction:column;gap:.25rem;text-align:left;padding:.75rem .9rem;border:1px solid rgba(11,37,80,.18);border-radius:12px;background:transparent;color:inherit;cursor:pointer;font:inherit}
+.dash-mode-choice b{font-size:.95rem}
+.dash-mode-choice span{font-size:.78rem;opacity:.75;line-height:1.35}
+.dash-mode-choice:hover{border-color:rgba(11,37,80,.45)}
+.dash-mode-choice.on{border-color:#0b2550;box-shadow:0 0 0 2px rgba(11,37,80,.12);background:rgba(11,37,80,.05)}
+.dash-mode-choice:focus-visible{outline:2px solid #0b2550;outline-offset:2px}

@@ -15,6 +15,7 @@ import { BUSINESS_TYPES, TOGGLABLE, getBusinessType, getHiddenFeatures } from '.
 import { getPlan, featuresOf } from '../plans.js';
 import { mfaStatus, mfaEnroll, mfaVerify, mfaUnenroll } from '../api.js';
 import { getVat, saveVat, loadVat } from '../vat.js';
+import { MODE_LABELS, resolveMode as resolveDashboardMode, getStoredMode, setMode as setDashboardMode } from '../dashboard-modes.js';
 
 // Type d'activité de l'entreprise (gérant) : adapte le menu à son métier.
 // Formule de l'entreprise : ce qui est inclus, et ce qui ne l'est pas.
@@ -372,7 +373,7 @@ export function render(main, ctx) {
     ${rangeCard()}
     ${archivedCard()}
     ${inventoryCard(ctx)}
-    ${rateCard(ctx)}
+    ${rateCard(ctx)}${section('Présentation du tableau de bord', dashboardModeCard(ctx), true)}
     ${section('Votre formule', planCard(ctx))}${section('TVA', vatCard(ctx))}${section('Sécurité du compte', '<div id="mfa-box"><p class="muted">Chargement…</p></div>')}${section('Reçus et logo (super administrateur)', receiptCard(ctx))}${section('Erreurs récentes (super administrateur)', errorsCard(ctx))}${section('Journal des actions (super administrateur)', auditCard(ctx))}${section('Fonctionnement de l’entreprise', businessCard(ctx), false)}${section('Mon compte et sécurité', securityCard() + aboutLink())}
     <section class="card set"><div class="set-main"><h2>Espace</h2><p class="muted">Rôle : ${esc(ctx?.role || '—')}</p></div></section>
     ${CFG.demo ? `<section class="card set"><div class="set-main"><h2>Simuler un rôle</h2><p class="muted">Mode local : pour tester les droits de chaque rôle.</p></div><select id="sim" aria-label="Rôle simulé">${Object.keys(ROLES).map(k => `<option value="${k}"${k === ctx?.role ? ' selected' : ''}>${ROLES[k]}</option>`).join('')}</select></section>` : ''}
@@ -408,6 +409,7 @@ export function render(main, ctx) {
   if (pt) pt.onclick = () => { const w = window.open('', '_blank'); if (!w) return notify('Autorisez les fenêtres pop-up pour imprimer la page de test.'); w.document.write(printTestPage(main.querySelector('#pt-fmt').value)); w.document.close(); };
   bindSecurity(main, ctx);
   bindLanguage(main);
+  bindDashboardMode(main, ctx);
   const sim = main.querySelector('#sim');
   if (sim) sim.onchange = () => { localStorage.setItem('kp.demoRole', sim.value); location.reload(); };
   const rst = main.querySelector('#rst');
@@ -418,7 +420,7 @@ async function renderTeam(main, ctx) {
   main.innerHTML = `<div class="page-head"><div><h1>Paramètres</h1><p class="sub">Équipe et invitations.</p></div></div>
     ${languageCard()}
     ${installCard()}
-    ${rateCard(ctx)}
+    ${rateCard(ctx)}${section('Présentation du tableau de bord', dashboardModeCard(ctx), true)}
     ${section('Votre formule', planCard(ctx))}${section('Reçus et logo (super administrateur)', receiptCard(ctx))}${section('Erreurs récentes (super administrateur)', errorsCard(ctx))}${section('Journal des actions (super administrateur)', auditCard(ctx))}${section('Fonctionnement de l’entreprise', businessCard(ctx), false)}${section('Mon compte et sécurité', securityCard() + aboutLink())}
     <details class="pref-sec"><summary>Membres</summary><section class="card set"><div class="set-main"><h2>Membres</h2><p class="muted">Les administrateurs peuvent changer le rôle des membres.</p><div id="members" class="team">Chargement…</div></div></section></details>
     <details class="pref-sec"><summary>Inviter un membre</summary><section class="card set"><div class="set-main"><h2>Inviter un membre</h2><p class="muted">Crée un code valable 7 jours. Le membre le saisit à l’inscription.</p></div>
@@ -429,6 +431,7 @@ async function renderTeam(main, ctx) {
   bindInstall(main);
   bindSecurity(main, ctx);
   bindLanguage(main);
+  bindDashboardMode(main, ctx);
   renderCompany(main, ctx);
   const members = main.querySelector('#members');
   async function loadMembers() {
@@ -593,4 +596,42 @@ async function bindMfa(main) {
   };
   draw();
 }
+
+// Présentation du tableau de bord : choix explicite du compte, sur cet appareil.
+function dashboardModeCard(ctx) {
+  if (CFG.demo) return '';
+  const current = resolveDashboardMode(ctx?.id);
+  const automatic = !getStoredMode(ctx?.id);
+  const choices = [
+    ['classic', 'Classique', 'Le tableau de bord actuel, sans changement.'],
+    ['modern_pc', 'Moderne PC', 'Cartes aérées et filtres regroupés, pour un grand écran.'],
+    ['modern_mobile', 'Moderne mobile', 'Grandes cartes et filtres compacts, pour le téléphone.']
+  ];
+  const buttons = choices.map(([mode, label, help]) =>
+    `<button class="dash-mode-choice${mode === current ? ' on' : ''}" type="button" data-dash-mode="${mode}" aria-pressed="${mode === current}"><b>${label}</b><span>${help}</span></button>`
+  ).join('');
+  return `<p class="muted">Choisissez la présentation du tableau de bord. Les chiffres, les rôles et les droits restent identiques.</p>
+    <div class="dash-mode-pick" id="dash-mode-pick" role="group" aria-label="Présentation du tableau de bord">${buttons}</div>
+    <p class="muted" id="dash-mode-note">${automatic ? 'Détection automatique selon la taille de l’écran.' : 'Choix enregistré pour ce compte sur cet appareil.'}</p>`;
+}
+
+function bindDashboardMode(main, ctx) {
+  const group = main.querySelector('#dash-mode-pick');
+  if (!group) return;
+  group.addEventListener('click', event => {
+    const button = event.target.closest('[data-dash-mode]');
+    if (!button) return;
+    const mode = button.dataset.dashMode;
+    const applied = setDashboardMode(mode, ctx?.id);
+    group.querySelectorAll('[data-dash-mode]').forEach(element => {
+      const active = element.dataset.dashMode === applied;
+      element.classList.toggle('on', active);
+      element.setAttribute('aria-pressed', String(active));
+    });
+    const note = main.querySelector('#dash-mode-note');
+    if (note) note.textContent = 'Choix enregistré pour ce compte sur cet appareil.';
+    notify(`Tableau de bord : ${MODE_LABELS[applied]}.`);
+  });
+}
+
 import { localStore as localStorage } from '../storage.js';

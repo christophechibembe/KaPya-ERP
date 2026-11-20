@@ -1,0 +1,82 @@
+/* ==========================================================================
+   KaPya ERP — présentation « Moderne mobile » du tableau de bord.
+   Vraie lecture au pouce : cartes pleine largeur, filtres qui défilent,
+   tableaux lisibles sans casser la mise en page. Données inchangées.
+   ========================================================================== */
+
+@media (max-width: 767px) {
+  .dashboard-mode-mobile .owner-head {
+    padding: .75rem 0 .5rem;
+    margin-bottom: .5rem;
+  }
+
+  .dashboard-mode-mobile .owner-head h1 { font-size: 1.35rem; line-height: 1.2; }
+  .dashboard-mode-mobile .owner-head .sub { font-size: .82rem; }
+
+  .dashboard-mode-mobile .owner-filters {
+    display: flex;
+    gap: .5rem;
+    overflow-x: auto;
+    padding: 0 0 .4rem;
+    margin: .5rem 0;
+    scrollbar-width: none;
+  }
+
+  .dashboard-mode-mobile .owner-filters::-webkit-scrollbar { display: none; }
+
+  .dashboard-mode-mobile .owner-filters label {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .dashboard-mode-mobile .owner-filters .btn,
+  .dashboard-mode-mobile .owner-filters .ghost {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .dashboard-mode-mobile .owner-updated { font-size: .75rem; }
+  .dashboard-mode-mobile .owner-period-label { font-size: .8rem; margin: .4rem 0 .6rem; }
+
+  .dashboard-mode-mobile .owner-kpis {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .7rem;
+  }
+
+  .dashboard-mode-mobile .owner-kpis .owner-kpi {
+    margin: 0;
+    padding: .9rem 1rem;
+    border-radius: 14px;
+  }
+
+  .dashboard-mode-mobile .owner-kpi .kh { font-size: .8rem; }
+  .dashboard-mode-mobile .owner-kpi b { font-size: 1.5rem; line-height: 1.1; }
+  .dashboard-mode-mobile .owner-kpi > span { font-size: .72rem; }
+
+  .dashboard-mode-mobile .owner-charts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .8rem;
+  }
+
+  .dashboard-mode-mobile .owner-chart-svg { width: 100%; height: auto; }
+
+  .dashboard-mode-mobile .owner-panel {
+    padding: .9rem;
+    border-radius: 14px;
+  }
+
+  .dashboard-mode-mobile .owner-panel .sec-head { align-items: flex-start; }
+  .dashboard-mode-mobile .owner-panel .sec-head h2 { font-size: 1rem; }
+  .dashboard-mode-mobile .owner-panel .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dashboard-mode-mobile .owner-panel table { min-width: 520px; }
+  .dashboard-mode-mobile .owner-note { font-size: .75rem; }
+}
+
+/* Petits téléphones (320 px) : on réduit encore les titres, jamais les chiffres. */
+@media (max-width: 359px) {
+  .dashboard-mode-mobile .owner-head h1 { font-size: 1.15rem; }
+  .dashboard-mode-mobile .owner-kpi b { font-size: 1.3rem; }
+  .dashboard-mode-mobile .owner-panel { padding: .7rem; }
+}

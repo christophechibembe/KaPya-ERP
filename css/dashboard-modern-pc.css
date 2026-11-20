@@ -1,0 +1,99 @@
+/* ==========================================================================
+   KaPya ERP — présentation « Moderne PC » du tableau de bord.
+   Ne change que l'habillage : les blocs, les chiffres et les droits viennent
+   toujours de js/modules/accueil.js (aucune donnée inventée).
+   ========================================================================== */
+
+@media (min-width: 1024px) {
+  .dashboard-mode-pc .owner-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(11, 37, 80, .10);
+    margin-bottom: 1rem;
+  }
+
+  .dashboard-mode-pc .owner-head > div { min-width: 0; }
+
+  .dashboard-mode-pc .owner-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: .5rem;
+    margin: 0;
+  }
+
+  .dashboard-mode-pc .owner-filters label { margin: 0; }
+
+  .dashboard-mode-pc .owner-period-label {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin: .25rem 0 .85rem;
+    padding: .3rem .75rem;
+    border-radius: 999px;
+    background: rgba(11, 37, 80, .06);
+    font-size: .82rem;
+  }
+
+  .dashboard-mode-pc .owner-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .dashboard-mode-pc .owner-kpis .owner-kpi {
+    margin: 0;
+    padding: 1.1rem 1.2rem;
+    border-radius: 16px;
+  }
+
+  .dashboard-mode-pc .owner-kpi b {
+    font-size: clamp(1.35rem, 1.6vw, 1.85rem);
+    line-height: 1.15;
+  }
+
+  .dashboard-mode-pc .owner-charts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .dashboard-mode-pc .owner-panel { border-radius: 16px; }
+  .dashboard-mode-pc .owner-panel .sec-head { align-items: flex-start; }
+  .dashboard-mode-pc .owner-note { font-size: .8rem; }
+}
+
+/* Tablette : même présentation, deux colonnes et graphiques empilés. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .dashboard-mode-pc .owner-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: .75rem;
+    padding-bottom: .85rem;
+    border-bottom: 1px solid rgba(11, 37, 80, .10);
+    margin-bottom: .9rem;
+  }
+
+  .dashboard-mode-pc .owner-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 0;
+  }
+
+  .dashboard-mode-pc .owner-kpis {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .8rem;
+  }
+
+  .dashboard-mode-pc .owner-kpis .owner-kpi { margin: 0; }
+  .dashboard-mode-pc .owner-charts { display: grid; grid-template-columns: 1fr; gap: .8rem; }
+  .dashboard-mode-pc .owner-chart-svg { width: 100%; height: auto; }
+}

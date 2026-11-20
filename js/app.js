@@ -18,6 +18,9 @@ import { setPlan, routeAllowed, planAllows } from './plans.js';
 import { alertCount, paintBadges } from './notifications.js';
 import { initLock, lockNow, hasPin } from './lock.js';
 import { watchLanguage } from './i18n.js';
+// Présentation du tableau de bord : applique le choix du compte ou la détection de l'écran.
+import { initDashboardMode } from './dashboard-modes.js';
+initDashboardMode();
 
 const ROUTES = { abonnes: 'Abonnés', workers: 'Personnel et paiements', vente: 'Vente', facture: 'Vente avancée', accueil: 'Tableau de bord', ventes: 'Historique', proformas: 'Proformas', avoirs: 'Avoirs', retours: 'Retours', lots: 'Lots et péremption', bons: 'Bons de commande', credits: 'Crédits clients', acomptes: 'Acomptes clients', caisse: 'Clôture de caisse', historique: 'Historique des actions', sauvegarde: 'Sauvegarde', depots: 'Dépôts', alertes: 'Alertes et rappels', stocks: 'Produits & Stocks', achats: 'Achats', fournisseurs: 'Fournisseurs', clients: 'Clients', rapports: 'Rapports', exports: 'Exports comptables', parametres: 'Paramètres', plus: 'Plus' };
 const ICON = { workers: 'users', exports: 'download', abonnes: 'users', facture: 'invoice', accueil: 'grid', ventes: 'history', proformas: 'doc', vente: 'cart', avoirs: 'minus', retours: 'return', bons: 'clipboard', credits: 'card', acomptes: 'wallet', caisse: 'cash', historique: 'history', sauvegarde: 'database', depots: 'warehouse', alertes: 'bell', stocks: 'stock', achats: 'purchases', fournisseurs: 'truck', clients: 'user', rapports: 'chart', parametres: 'cog', plus: 'dots' };
