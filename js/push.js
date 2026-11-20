@@ -8,7 +8,7 @@ const toBytes = b64 => {
   return Uint8Array.from(s, c => c.charCodeAt(0));
 };
 
-export const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+export const pushSupported = () => !CFG.demo && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
 // Attend une promesse au plus X ms : évite qu'un bouton reste sans réaction si le service worker ne répond pas
 const avec = (promesse, ms, message) => new Promise((ok, ko) => {

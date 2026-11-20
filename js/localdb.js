@@ -1,6 +1,7 @@
 // Base locale des produits (IndexedDB, un enregistrement par produit, index par référence, code-barres et nom).
 // Permet une recherche rapide même avec des milliers d'articles, sans charger tout le catalogue à chaque écran.
-const DB_NAME = 'kapya-local', DB_VER = 1, STORE = 'articles';
+import { isDemo } from './demo-mode.js';
+const DB_NAME = isDemo ? 'kapya-demo-local' : 'kapya-local', DB_VER = 1, STORE = 'articles';
 const norm = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 function open() {

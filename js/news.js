@@ -5,11 +5,9 @@ export const NEWS = {
   version: APP_VERSION,
   title: 'Nouveautés de KaPya ERP',
   items: [
-    'Une seule entrée « Vente » pour encaisser, avec le bouton Enregistrer toujours visible sur téléphone.',
-    'Mobile money : choisissez l’opérateur (Airtel, M-Pesa, Orange) et notez la référence.',
-    'Nom du client facultatif : sans nom, la vente reste au nom de « Client comptoir ».',
-    'Panier sauvegardé : il revient si l’application se ferme pendant une vente.',
-    'Hors connexion : une vente faite sans réseau est envoyée dès le retour de la connexion.'
+    'Démo sans inscription : essayez une boutique, un restaurant ou un salon avec des données fictives, séparées des comptes réels.',
+    'Crédits : préparez et vérifiez le rappel WhatsApp avant de l’ouvrir. Aucun envoi automatique.',
+    'Alertes : estimez le réapprovisionnement selon les ventes récentes, votre horizon et le délai fournisseur.'
   ]
 };
 
@@ -31,3 +29,4 @@ export function showNews(uid, next = () => {}) {
     next();
   });
 }
+import { localStore as localStorage } from './storage.js';

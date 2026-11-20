@@ -1,10 +1,10 @@
 # Traduction anglaise
 
-Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-18 08:43.
+Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-20 01:11.
 
-- Entrées du dictionnaire : **1354**
-- Textes visibles repérés : **1601**
-- Traduits : **1601** (100.0 %)
+- Entrées du dictionnaire : **1402**
+- Textes visibles repérés : **1647**
+- Traduits : **1647** (100.0 %)
 - Restant à traduire : **0**
 
 La traduction fonctionne par correspondance exacte : un texte absent du dictionnaire
@@ -15,22 +15,25 @@ reste en français. Le mécanisme est dans `js/i18n.js` (aucune dépendance).
 | `404.html` | 1 | 0 |
 | `confidentialite.html` | 117 | 0 |
 | `guide.html` | 312 | 0 |
-| `index.html` | 12 | 0 |
+| `index.html` | 13 | 0 |
+| `demo/index.html` | 3 | 0 |
 | `js\app.js` | 25 | 0 |
-| `js\auth.js` | 14 | 0 |
+| `js\auth.js` | 15 | 0 |
 | `js\bootstrap.js` | 5 | 0 |
+| `js\demo-mode.js` | 1 | 0 |
+| `js\demo-ui.js` | 23 | 0 |
 | `js\global-search.js` | 2 | 0 |
 | `js\lock.js` | 5 | 0 |
 | `js\modules\abonnes.js` | 50 | 0 |
 | `js\modules\accueil.js` | 79 | 0 |
 | `js\modules\acomptes.js` | 21 | 0 |
-| `js\modules\alertes.js` | 19 | 0 |
+| `js\modules\alertes.js` | 27 | 0 |
 | `js\modules\avoirs.js` | 20 | 0 |
 | `js\modules\bons.js` | 30 | 0 |
 | `js\modules\caisse-boutiques.js` | 17 | 0 |
 | `js\modules\caisse.js` | 45 | 0 |
 | `js\modules\clients.js` | 2 | 0 |
-| `js\modules\credits.js` | 40 | 0 |
+| `js\modules\credits.js` | 49 | 0 |
 | `js\modules\depots.js` | 27 | 0 |
 | `js\modules\doc.js` | 39 | 0 |
 | `js\modules\exports.js` | 9 | 0 |

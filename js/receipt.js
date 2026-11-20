@@ -1,4 +1,5 @@
 import { getVat } from './vat.js';
+import { isDemo, demoMark } from './demo-mode.js';
 // Reçu de vente au format ticket 80 mm. Une seule mise en page, utilisée partout.
 // Pure : ne lit ni le réseau ni le DOM. Tous les textes saisis sont échappés.
 import { esc } from './escape.js';
@@ -61,6 +62,7 @@ export function receiptHtml({ org = {}, number = '', date = '', client = 'Client
   img { max-width: 24mm; max-height: 10mm; }
 </style></head>
 <body>
+  ${isDemo ? demoMark : ''}
   ${logo ? `<div class="c"><img src="${esc(logo)}" alt=""></div>` : ''}
   <h1 class="c">${esc(org.name || 'Entreprise')}</h1>
   <div class="c small">${esc(org.address || '')}${org.phone ? '<br>Tél. ' + esc(org.phone) : ''}${org.tax_id ? '<br>NIF : ' + esc(org.tax_id) : ''}${org.rc ? ' · RC : ' + esc(org.rc) : ''}</div>

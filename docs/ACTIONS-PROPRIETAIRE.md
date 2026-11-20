@@ -150,6 +150,21 @@ elle aurait disparu vers le 15 janvier 2027.
 
 ## Suivi
 
+### Version 1.46 — démonstration et copie cloud
+
+- Démo sans inscription : <https://kapya-erp.pages.dev/demo/> (guide et limites dans
+  `docs/DEMONSTRATION.md`).
+- Rappels WhatsApp : **Crédits clients → Préparer un rappel WhatsApp**, relire le message
+  et confirmer le destinataire avant l'ouverture de WhatsApp.
+- Suggestions : **Alertes et rappels → Suggestions de réapprovisionnement**.
+- Deuxième sauvegarde, indépendante du PC : workflow GitHub **Sauvegarde chiffrée**,
+  dimanche **02:17 UTC**, huit dernières exécutions (au plus 56 jours). Procédure de
+  téléchargement dans `docs/BACKUP_AND_RECOVERY.md`.
+- Si le mot de passe PostgreSQL change, mettre à jour aussi le secret GitHub
+  **KAPYA_DB_URL** ; si le webhook change, mettre à jour **KAPYA_WEBHOOK**.
+- Ne pas changer **KAPYA_CLE** sans procédure de rotation : c'est la même clé que celle
+  conservée dans le gestionnaire de mots de passe.
+
 - [x] Jetons personnels `sbp_fce657…`, `sbp_fcff…` et jeton de test révoqués (page Access Tokens vide le 20/11/2026)
 - [ ] Jeton de projet éventuel révoqué (Project Settings → API → Project access tokens)
 - [x] Clé de chiffrement enregistrée dans le gestionnaire de mots de passe (vérifiée identique au fichier le 20/11/2026)

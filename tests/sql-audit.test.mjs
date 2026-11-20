@@ -68,3 +68,10 @@ test('la numérotation des transferts passe par le compteur partagé', async () 
   assert.doesNotMatch(derniere.corps, /count\(\*\)\s*\+\s*1/,
     `${derniere.fichier} ne doit pas déduire un numéro d'un count(*) + 1`);
 });
+test('les rappels de crédits disposent de customer_id sans changement des droits', async () => {
+  const source = await readFile(path.join(root, 'supabase/migrations/20261120000000_identifiant_client_credits.sql'), 'utf8');
+  assert.match(source, /'customer_id',\s*s\.customer_id/);
+  assert.match(source, /where s\.org_id = public\.my_org\(\) and s\.payment = 'credit'/);
+  assert.match(source, /SET search_path TO ''/);
+  assert.doesNotMatch(source, /GRANT|DROP FUNCTION|ALTER TABLE/i);
+});

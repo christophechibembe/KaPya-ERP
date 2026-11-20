@@ -17,6 +17,7 @@ des noms (ordre alphabétique = ordre chronologique).
 | `20261118000002` | Restriction des politiques ouvertes à `public` | appliquée en production le 18 novembre 2026 |
 | `20261118000003` | Fermeture des fonctions `public` encore exécutables par `anon` | appliquée en production le 18 novembre 2026 |
 | `20261119000000` | Réparation des compteurs de documents et unicité des numéros | appliquée en production le 19 novembre 2026 ; corrige `create_warehouse_transfer` ; rejouée le 19 novembre 2026 sur le projet de test restauré (compteurs et `TRF-00011` conformes) |
+| `20261120000000` | Identifiant client dans la liste des crédits (rappels sans mélange des homonymes) | validée sur PostgreSQL isolé restauré (66 tables, 30 crédits identiques hors champ ajouté), appliquée avec `--psql --confirmer` le 20 novembre 2026 ; 30 identifiants sur 30 vérifiés, exécution anonyme toujours interdite |
 
 Application contrôlée : `node scripts/appliquer-migration.mjs supabase/migrations/<fichier>.sql --confirmer`
 (jeton Supabase dans `%USERPROFILE%\.kapya\supabase-token.txt`). Sans jeton `sbp_`, ou avec

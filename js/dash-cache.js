@@ -13,5 +13,6 @@ export function writeDash(key, html) {
   } catch { /* stockage plein : on n'affiche simplement pas le cache */ }
 }
 export function clearDash() {
-  try { Object.keys(localStorage).filter(k => k.startsWith(PREFIX)).forEach(k => localStorage.removeItem(k)); } catch { /* ignoré */ }
+  try { localKeys().filter(k => k.startsWith(PREFIX)).forEach(k => localStorage.removeItem(k)); } catch { /* ignoré */ }
 }
+import { localStore as localStorage, localKeys } from './storage.js';

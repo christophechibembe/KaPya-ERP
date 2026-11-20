@@ -573,3 +573,4 @@ function watchGroup(title, rows) {
   if (!items.length) return '';
   return `<div class="watch-group"><h3>${esc(title)}</h3>${items.map(r => `<a class="watch-row ${r.tone}" href="${r.href}"><span>${esc(r.label)}</span><b>${r.value}</b></a>`).join('')}</div>`;
 }
+import { localStore as localStorage } from '../storage.js';

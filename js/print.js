@@ -2,6 +2,7 @@
 import { esc, money, n, usdOnly, getRate, fmtDate } from './ui.js';
 const usdAfter = v => Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' $';
 import { receiptHtml } from './receipt.js';
+import { isDemo, demoMark } from './demo-mode.js';
 const SIZES = {
   a4: { css: '@page{size:A4;margin:14mm}', cls: 'a4' },
   '85': { css: '@page{size:85mm auto;margin:3mm}', cls: 't85' },
@@ -40,7 +41,7 @@ export function invoiceHtml(d, fmt) {
       ${!isProforma && d.credit ? `${d.paidNow > 0 ? `<div class="row payline"><span>Versé à la création</span>${amount(d.paidNow)}</div>` : ''}${due > 0.005 ? `<div class="tot due"><span>Reste à payer</span>${amount(due)}</div>` : `<div class="tot settled"><span>Reste à payer</span>${amount(0)}</div><div class="row settled-label">Facture soldée</div>`}` : `<div class="tot due"><span>Net à payer</span>${amount(Math.max(Number(d.total || 0) - Number(d.advance || 0), 0))}</div>`}`;
   const i = d.info || {};
   const entete = companyHeader(d, i);
-  return `<div class="doc ${SIZES[fmt].cls}">
+  return `<div class="doc ${SIZES[fmt].cls}">${isDemo ? demoMark : ''}
     <div class="hd"><div class="company-head">${entete}</div><div class="doc-title">${d.title || (sortie ? 'BON DE SORTIE' : 'FACTURE')}</div></div>
     ${d.pickup && !sortie ? '<div class="pickup-banner">À RETIRER</div>' : ''}
     <div class="meta"><div><b>${isProforma ? 'Proforma N°' : 'Facture N°'}</b><span>${esc(d.number)}</span></div>${!sortie ? `<div><b>Nom</b><span>${esc(d.client || 'Client particulier')}</span></div><div><b>Paiement</b><span>${esc(d.paymentLabel || (d.credit ? 'Crédit' : 'Cash'))}</span></div>` : `<div><b>Vers</b><span>${esc(d.dest)}</span></div>`}<div><b>Date</b><span>${esc(fmtDate(String(d.date)))}${d.issueTime ? ` · ${esc(d.issueTime)}` : ''}</span></div></div>
@@ -76,6 +77,7 @@ function fullDocHtml(d, fmt) {
 // Repli : si le cadre ne peut pas imprimer (certains navigateurs mobiles et iPhone),
 // le document s'ouvre dans un onglet et lance la boîte d'impression une fois chargé.
 export function printHtml(html) {
+  if (isDemo && !html.includes('SANS VALEUR COMMERCIALE')) html = html.replace(/<body([^>]*)>/i, `<body$1>${demoMark}`);
   const fallback = () => {
     const w = window.open('', '_blank', 'noopener');
     if (!w) { alert('Autorisez les fenêtres pop-up pour imprimer, puis réessayez.'); return; }
@@ -124,7 +126,7 @@ export function previewDoc(d, fmt) {
 export function printDoc(d, fmt) {
   if (d.transfer && fmt !== 'a4') fmt = 'a4';
   // Ticket : d'abord l'imprimante USB enregistrée (ESC/POS), sinon la boîte d'impression du navigateur
-  if ((fmt === '80' || fmt === '85' || fmt === '55') && !d.transfer) {
+  if (!isDemo && (fmt === '80' || fmt === '85' || fmt === '55') && !d.transfer) {
     import('./thermal-usb.js').then(async m => {
       // Le logo est envoyé en image 1 bit : sans cela, le ticket USB sortait sans logo.
       const logo = await m.rasterizeLogo(companyLogo(d.info?.logo));

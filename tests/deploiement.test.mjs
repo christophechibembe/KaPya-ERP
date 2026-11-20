@@ -14,6 +14,11 @@ test('publication Cloudflare : fichiers publics uniquement et entrée mobile ide
     assert.ok(files > 0);
     const html = await readFile(path.join(directory, 'index.html'), 'utf8');
     assert.equal(await readFile(path.join(directory, 'app', 'index.html'), 'utf8'), html);
+    const demo = await readFile(path.join(directory, 'demo', 'index.html'), 'utf8');
+    assert.match(demo, /connect-src 'none'/);
+    assert.match(demo, /worker-src 'none'/);
+    assert.match(demo, /<base href="\/">/);
+    assert.match(html, /href="\/demo\/"/);
     // La version affichée même sans JavaScript est réécrite depuis js/version.js à la préparation.
     const version = (await readFile(path.join(root, 'js', 'version.js'), 'utf8')).match(/APP_VERSION\s*=\s*'([^']+)'/)?.[1];
     assert.ok(version, 'APP_VERSION introuvable');

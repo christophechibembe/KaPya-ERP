@@ -1,3 +1,4 @@
+import { isDemo } from './demo-mode.js';
 // Génère un PDF texte (A4) sans bibliothèque externe. Corps en Courier (chasse fixe) : les colonnes restent alignées.
 // Les tableaux du rapport sont envoyés sous forme de lignes alignées par le navigateur.
 const WIN = { '€': 0x80, '…': 0x85, '‘': 0x91, '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97, 'Œ': 0x8C, 'œ': 0x9C, '«': 0xAB, '»': 0xBB, '\u00a0': 0xA0 };
@@ -41,6 +42,7 @@ export async function logoForPdf(url) {
 }
 
 export function textPdf(title, lines, footer = '', logo = null) {
+  if (isDemo) title = `DEMONSTRATION - ${title}`;
   const W = 595, H = 842, LH = 13, TOP = 790, BOTTOM = 60, PER_PAGE = Math.floor((TOP - BOTTOM) / LH);
   const LOGO_W = 120, logoH = logo ? Math.round(LOGO_W * logo.h / logo.w) : 0;
   const headRows = logo ? Math.ceil((logoH + 16) / LH) : 0; // place réservée au logo sur la première page
@@ -93,7 +95,7 @@ export function textPdf(title, lines, footer = '', logo = null) {
       }
     });
     stream += 'ET\n';
-    stream += `BT /F1 8 Tf 50 30 Td (Page ${i + 1} / ${pages.length} - KaPya ERP) Tj ET\n`;
+    stream += `BT /F1 8 Tf 50 30 Td (Page ${i + 1} / ${pages.length} - KaPya ERP${isDemo ? ' - DONNEES FICTIVES - SANS VALEUR COMMERCIALE' : ''}) Tj ET\n`;
     const xobj = withLogo ? ` /XObject << /Im1 ${imgId} 0 R >>` : '';
     object(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>${xobj} >> /Contents ${contentId} 0 R >>`);
     const bytes = bytesOf(stream);

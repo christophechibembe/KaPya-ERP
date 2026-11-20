@@ -1,6 +1,6 @@
 {
   "name": "kapya-erp",
-  "version": "1.45.14",
+  "version": "1.46.0",
   "private": true,
   "type": "module",
   "scripts": {

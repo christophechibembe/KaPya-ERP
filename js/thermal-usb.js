@@ -256,3 +256,4 @@ function loadImage(source) {
     image.src = source;
   });
 }
+import { localStore as localStorage } from './storage.js';

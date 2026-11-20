@@ -54,3 +54,4 @@ export function startOnboarding(allowed, go) {
   };
   draw();
 }
+import { localStore as localStorage } from './storage.js';

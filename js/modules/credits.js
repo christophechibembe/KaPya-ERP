@@ -1,29 +1,19 @@
 import { db, newId } from '../api.js';
 import { ownOrgRows } from '../own-org.js';
-import { esc, n, usdOnly, fld, openDialog, showDialog, ico, getRate, notify } from '../ui.js';
+import { esc, n, usdOnly, fld, openDialog, showDialog, ico, getRate, notify, askConfirm } from '../ui.js';
 import { can } from '../roles.js';
 import { printCreditPaymentReceipt } from '../print.js';
 import { planAllows } from '../plans.js';
+import { isDemo } from '../demo-mode.js';
+import { creditReminder, whatsappLink } from '../credit-reminder.mjs';
 
 const today = () => new Date().toLocaleDateString('sv-SE');
 const fr = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('fr-FR') : '—';
 const norm = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr');
 const totalOf = sale => Math.round((sale.sale_lines || []).reduce((sum, line) => sum + Number(line.qty) * Number(line.unit_price), 0) * 100) / 100;
 
-// WhatsApp : numéro en chiffres seulement (avec indicatif pays, ex. 243…)
-const waNumber = phone => String(phone || '').replace(/\D/g, '');
-const waLink = (phone, text) => `https://wa.me/${waNumber(phone)}?text=${encodeURIComponent(text)}`;
-// Bouton d'envoi du rappel : solde TOTAL du client (toutes ses factures à crédit impayées)
-function waButton(row, all, org) {
-  if (!planAllows('whatsapp')) return '';
-  const debt = all.filter(r => r.customer === row.customer && r.balance > 0.005).reduce((sum, r) => sum + r.balance, 0);
-  if (debt <= 0.005) return '';
-  if (!waNumber(row.phone)) return ` <span class="wa" aria-disabled="true" title="Ajoutez le numéro du client">WhatsApp</span>`;
-  const rate = getRate();
-  const fc = rate ? ` (≈ ${Math.round(debt * rate.usd_cdf).toLocaleString('fr-FR')} FC)` : '';
-  const text = `Bonjour ${row.customer}, votre solde impayé chez ${org.name || 'notre entreprise'} est de ${usdOnly(debt)}${fc}. Dernière facture ${row.number || ''}, reste à payer ${usdOnly(row.balance)}. Merci de bien vouloir régulariser. Merci.`;
-  return ` <a class="wa" href="${waLink(row.phone, text)}" target="_blank" rel="noopener">WhatsApp</a>`;
-}
+const waButton = row => planAllows('whatsapp') && row.balance > .005
+  ? ` <button class="lnk" type="button" data-remind="${esc(row.id)}">Préparer un rappel WhatsApp</button>` : '';
 export async function render(main, ctx) {
   const writable = can(ctx?.role, 'credits.write');
   let rows = [], org = {};
@@ -61,7 +51,7 @@ export async function render(main, ctx) {
     try {
       const [sales, organizations] = await Promise.all([
         // Liste complète des crédits de l'entreprise (toutes boutiques), même pour un facturier ; repli sur la requête normale hors ligne.
-        db.rpc('credit_sales_all').catch(() => db.select('sales', 'select=id,number,sold_at,customer_label,payment,paid,usd_cdf,customers(name,phone),sale_lines(qty,unit_price,articles(sku,name)),sale_payments(id,amount,paid_at,kind,created_at,customer_deposit_id,customer_deposits(receipt_number))&payment=eq.credit&order=sold_at.desc,created_at.desc')),
+         db.rpc('credit_sales_all').catch(() => db.select('sales', 'select=id,customer_id,number,sold_at,customer_label,payment,paid,usd_cdf,customers(name,phone),sale_lines(qty,unit_price,articles(sku,name)),sale_payments(id,amount,paid_at,kind,created_at,customer_deposit_id,customer_deposits(receipt_number))&payment=eq.credit&order=sold_at.desc,created_at.desc')),
         ownOrgRows('name,address,phone,email,tax_id,rc,logo,receipt_footer').catch(() => [])
       ]);
       org = organizations[0] || {};
@@ -83,6 +73,34 @@ export async function render(main, ctx) {
       $('#credit-table').setAttribute('aria-busy', 'false');
       $('#credit-table').textContent = 'Chargement impossible : ' + error.message;
     }
+  }
+
+  function reminder(sale) {
+    const dialog = $('#credit-dlg');
+    showDialog(dialog, 'Préparer un rappel WhatsApp',
+      `<p>Vérifiez le destinataire et le solde avant de partager. Aucun message n’est envoyé automatiquement.</p>
+      ${isDemo ? '<p class="notice">Démonstration : l’ouverture de WhatsApp est désactivée. Vous pouvez seulement essayer la préparation du message.</p>' : ''}
+      <label for="reminder-phone">Téléphone avec indicatif pays (ex. +243…)</label><input id="reminder-phone" type="tel" maxlength="30" value="${esc(sale.phone || '')}">
+      <label for="reminder-text">Message modifiable</label><textarea id="reminder-text" rows="9" maxlength="3500">${esc(creditReminder(sale, rows, org.name, getRate()?.usd_cdf))}</textarea>
+      <label><input id="reminder-checked" type="checkbox"> J’ai vérifié le destinataire et le solde.</label>
+      <p class="muted">WhatsApp s’ouvrira avec ce texte. Vous devrez encore appuyer sur Envoyer dans WhatsApp.</p>
+      <p id="reminder-error" class="err" role="alert"></p><div class="acts"><button class="ghost" id="reminder-copy" type="button">Copier le message</button><a id="reminder-open" class="btn" aria-disabled="true" target="_blank" rel="noopener noreferrer">Ouvrir WhatsApp</a></div>`);
+    const phone = dialog.querySelector('#reminder-phone'), text = dialog.querySelector('#reminder-text');
+    const checked = dialog.querySelector('#reminder-checked'), link = dialog.querySelector('#reminder-open'), error = dialog.querySelector('#reminder-error');
+    const refresh = () => {
+      const url = whatsappLink(phone.value, text.value);
+      const enabled = !isDemo && checked.checked && !!url;
+      link.setAttribute('aria-disabled', String(!enabled));
+      if (enabled) link.href = url; else link.removeAttribute('href');
+      error.textContent = phone.value && !url ? 'Numéro international invalide ou message vide. Ajoutez l’indicatif pays.' : '';
+    };
+    for (const field of [phone, text, checked]) field.addEventListener('input', refresh);
+    link.onclick = event => { if (link.getAttribute('aria-disabled') === 'true') event.preventDefault(); };
+    dialog.querySelector('#reminder-copy').onclick = async () => {
+      try { await navigator.clipboard.writeText(text.value); notify('Message copié. Aucun envoi effectué.'); }
+      catch { error.textContent = 'Copie indisponible. Sélectionnez le texte puis copiez-le manuellement.'; }
+    };
+    refresh();
   }
 
   function details(sale) {
@@ -179,9 +197,10 @@ export async function render(main, ctx) {
   $('#credit-table').addEventListener('click', event => {
     const detail = event.target.closest('[data-detail]');
     const pay = event.target.closest('[data-pay]');
+    const remind = event.target.closest('[data-remind]');
     if (detail) { const sale = rows.find(row => row.id === detail.dataset.detail); if (sale) details(sale); }
     else if (pay && writable) { const sale = rows.find(row => row.id === pay.dataset.pay); if (sale) collect(sale); }
+    else if (remind && planAllows('whatsapp')) { const sale = rows.find(row => row.id === remind.dataset.remind); if (sale) reminder(sale); }
   });
   await load();
 }
-

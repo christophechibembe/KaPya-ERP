@@ -33,7 +33,7 @@ export function renderAuth(root, done, mode = 'in') {
       const r = await signUp(v.email, v.password);
       if (r.confirm) { root.innerHTML = '<div class="auth"><div class="card"><h1>Vérifiez votre boîte mail</h1><p>Cliquez sur le lien de confirmation, puis connectez-vous.</p></div></div>'; return; }
       done();
-    }, swap);
+    }, swap + '<p><a class="btn ghost" href="/demo/">Essayer la démo sans inscription</a></p>');
   root.querySelector('#sw').addEventListener('click', e => { e.preventDefault(); renderAuth(root, done, mode === 'in' ? 'up' : 'in'); });
   root.querySelector('#forgot')?.addEventListener('click', e => { e.preventDefault(); renderReset(root, done); });
 }

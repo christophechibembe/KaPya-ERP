@@ -119,3 +119,4 @@ export async function render(main, ctx) {
   };
   load();
 }
+import { sessionStore as sessionStorage } from '../storage.js';

@@ -119,6 +119,7 @@ const parFichier = new Map();
 for (const nom of (await readdir(root)).filter(f => f.endsWith('.html')).sort()) {
   parFichier.set(nom, await textesHtml(path.join(root, nom)));
 }
+parFichier.set('demo/index.html', await textesHtml(path.join(root, 'demo', 'index.html')));
 await parcourir(path.join(root, 'js'), parFichier);
 
 let total = 0, traduits = 0;

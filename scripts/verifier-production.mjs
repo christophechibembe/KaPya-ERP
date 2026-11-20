@@ -38,6 +38,9 @@ const checks = [
   { url: '/app/confidentialite.html', status: 200, match: /KaPya Digital/ },
   { url: '/app/', status: 200, match: new RegExp(`id="splash-version">Version ${appVersion.replace(/\./g, '\\.')}<`) },
   { url: '/app/js/print.js', status: 200, match: /companyLogo/ },
+  { url: '/demo/', status: 200, match: /connect-src 'none'/, headers: { 'content-security-policy': /connect-src 'none'/, 'x-robots-tag': 'noindex' } },
+  { url: '/js/credit-reminder.mjs', status: 200, match: /customerCredits/ },
+  { url: '/js/modules/credits.js', status: 200, match: /reminder-checked/ },
   { url: '/tests/fixtures/vente-api.mjs', status: 404 },
   { url: '/scripts/lancer.mjs', status: 404 },
   { url: '/package.json', status: 404 },
@@ -83,6 +86,16 @@ if (!browserPath) {
     assert.equal(state.legalLinks, 2, 'Liens guide et confidentialité absents de l’écran de connexion.');
     assert.equal(state.horizontalOverflow, false, 'Débordement horizontal sur l’écran de connexion.');
     console.log('Écran de connexion vérifié (titre, formulaire, liens légaux, largeur).');
+    const requestStart = page.requests.length;
+    await page.goto(base + '/demo/');
+    await page.evaluate(`new Promise((resolve,reject)=>{
+      const deadline=Date.now()+15000;
+      const check=()=>{if(document.querySelector('#demo-bar')&&document.querySelector('#main h1'))resolve();else if(Date.now()>deadline)reject(new Error('Démo non chargée'));else setTimeout(check,50)};check();
+    })`);
+    const demo = await page.evaluate(`import('/js/config.js').then(({CFG})=>({demo:CFG.demo,url:CFG.url,key:CFG.key,login:!!document.querySelector('.auth form')}))`);
+    assert.deepEqual(demo, { demo: true, url: '', key: '', login: false });
+    assert.deepEqual(page.requests.slice(requestStart).filter(url => /supabase\./.test(url)), []);
+    console.log('Démo publique vérifiée : sans compte, configuration serveur neutralisée, aucun appel Supabase.');
   } finally {
     for (const fn of cleanup.reverse()) await fn();
   }

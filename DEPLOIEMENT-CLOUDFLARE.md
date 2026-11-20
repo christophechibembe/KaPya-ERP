@@ -5,6 +5,7 @@
 - Application : https://kapya-erp.pages.dev/
 - Vente rapide : https://kapya-erp.pages.dev/#/vente
 - Entrée téléphone : https://kapya-erp.pages.dev/app/
+- Démo sans inscription : https://kapya-erp.pages.dev/demo/
 
 Le frontend utilise la configuration Supabase existante, sans modifier la base,
 les comptes ou les permissions. La connexion à Cloudflare ne connecte pas

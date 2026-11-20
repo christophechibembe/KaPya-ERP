@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { decodeKey, encryptBackup } from './crypto-sauvegarde.mjs';
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const home = os.homedir();
@@ -131,9 +132,14 @@ async function trouverPgDump() {
 }
 
 function dump(pgDump, url, mode, fichier) {
-  const options = ['--no-owner', '--schema=public', '--dbname', url, '--file', fichier];
+  const connection = new URL(url);
+  if (!['postgres:', 'postgresql:'].includes(connection.protocol)) throw new Error('URL PostgreSQL invalide.');
+  // Le mot de passe n'apparaît pas dans les arguments du processus ni dans les journaux.
+  const options = ['--no-owner', '--schema=public', '--host', connection.hostname, '--port', connection.port || '5432',
+    '--username', decodeURIComponent(connection.username), '--dbname', connection.pathname.slice(1) || 'postgres', '--file', fichier, '--no-password'];
   options.unshift(mode === 'schema' ? '--schema-only' : '--data-only');
-  const r = spawnSync(pgDump, options, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  const r = spawnSync(pgDump, options, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 10 * 60 * 1000,
+    env: { ...process.env, PGPASSWORD: decodeURIComponent(connection.password), PGSSLMODE: connection.searchParams.get('sslmode') || 'require', PGCONNECT_TIMEOUT: '30' } });
   if (r.status !== 0) {
     throw new Error(`pg_dump (${mode}) a échoué : ${(r.stderr || '').split('\n').slice(-3).join(' ')}`);
   }
@@ -152,9 +158,10 @@ async function verifier(fichier, motif) {
 
 async function cleChiffrement() {
   const depuisEnv = process.env.KAPYA_CLE;
-  if (depuisEnv) return Buffer.from(depuisEnv, 'base64');
+  if (depuisEnv) return decodeKey(depuisEnv);
   const existante = await lireFichier(cleFichier);
-  if (existante) return Buffer.from(existante, 'base64');
+  if (existante) return decodeKey(existante);
+  if (process.env.GITHUB_ACTIONS) throw new Error('Clé de chiffrement absente : génération automatique interdite dans le cloud.');
   const cle = crypto.randomBytes(32);
   await mkdir(path.dirname(cleFichier), { recursive: true });
   await writeFile(cleFichier, cle.toString('base64') + '\n', { mode: 0o600 });
@@ -164,17 +171,8 @@ async function cleChiffrement() {
 }
 
 async function chiffrer(fichier, sortie, cle) {
-  const iv = crypto.randomBytes(12);
-  const chiffreur = crypto.createCipheriv('aes-256-gcm', cle, iv);
   const clair = await readFile(fichier);
-  const chiffre = Buffer.concat([chiffreur.update(clair), chiffreur.final()]);
-  const contenu = Buffer.concat([
-    Buffer.from('KAPYA1'),
-    iv,
-    chiffreur.getAuthTag(),
-    chiffre,
-  ]);
-  await writeFile(sortie, contenu);
+  await writeFile(sortie, encryptBackup(clair, cle));
 }
 
 async function rotation() {

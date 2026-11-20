@@ -1,4 +1,5 @@
 import { replayOutcome } from './replay.js';
+import { localStore as localStorage } from './storage.js';
 import { clearDash } from './dash-cache.js';
 import { isVersionConflict, conflictError } from './conflict.js';
 // Client Supabase (Auth + PostgREST), sans dépendance.
@@ -35,6 +36,7 @@ const INSERT_TABLE = { insert_customer: 'customers', insert_supplier: 'suppliers
 const UPDATE_TABLE = { update_customer: 'customers', update_supplier: 'suppliers', update_article: 'articles' };
 
 async function raw(path, { method = 'GET', body, token, prefer } = {}) {
+  if (CFG.demo) throw new Error('Connexion au serveur désactivée dans la démonstration.');
   // Content-Type seulement quand il y a un corps (les lectures GET n'en ont pas besoin)
   const h = { apikey: CFG.key };
   if (body) h['Content-Type'] = 'application/json';
@@ -476,6 +478,7 @@ function deviceId() {
 }
 // Numéro réservé pour la prochaine facture de cet appareil (ou null : le serveur numérotera au moment de l'envoi)
 export function takeInvoiceNumber() {
+  if (CFG.demo) return null;
   const r = JSON.parse(localStorage.getItem(RANGE_KEY) || 'null');
   if (!r || r.next > r.to) return null;
   const n = r.next++;
@@ -570,7 +573,7 @@ export async function dropRejected() { for (const it of await rejectedItems()) a
 export const clearOffline = () => clearAll();
 
 export const session = () => CFG.demo ? { uid: 'demo' } : S;
-export const signOut = () => { clearDash(); save(null); };
+export const signOut = () => { clearDash(); if (!CFG.demo) save(null); };
 export async function signIn(email, password) {
   save(toS(await raw('/auth/v1/token?grant_type=password', { method: 'POST', body: { email, password } })));
 }
@@ -613,6 +616,7 @@ export const setNewPassword = (token, password) => raw('/auth/v1/user', { method
 const aalOf = token => { try { return JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).aal || 'aal1'; } catch { return 'aal1'; } };
 // needs : le compte a une double authentification active et la session n'a pas encore reçu le second facteur
 export async function mfaStatus() {
+  if (CFG.demo) return { needs: false, factors: [] };
   const s = session();
   if (!s) return { needs: false, factors: [] };
   const u = await raw('/auth/v1/user', { token: s.access });
