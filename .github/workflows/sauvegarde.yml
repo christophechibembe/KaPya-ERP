@@ -21,9 +21,6 @@ jobs:
     permissions:
       contents: read
       actions: write
-    env:
-      KAPYA_SAUVEGARDES: ${{ runner.temp }}/kapya-clair
-      KAPYA_COPIE: ${{ runner.temp }}/kapya-chiffre
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,6 +34,8 @@ jobs:
           sudo apt-get install -y postgresql-client-17
       - name: Sauvegarder puis vérifier le déchiffrement
         env:
+          KAPYA_SAUVEGARDES: ${{ runner.temp }}/kapya-clair
+          KAPYA_COPIE: ${{ runner.temp }}/kapya-chiffre
           KAPYA_DB_URL: ${{ secrets.KAPYA_DB_URL }}
           KAPYA_CLE: ${{ secrets.KAPYA_CLE }}
           KAPYA_WEBHOOK: ${{ secrets.KAPYA_WEBHOOK }}
@@ -71,4 +70,4 @@ jobs:
       - name: Effacer les fichiers temporaires du runner
         if: ${{ always() }}
         run: |
-          rm -rf -- "$KAPYA_SAUVEGARDES" "$KAPYA_COPIE"
+          rm -rf -- "${{ runner.temp }}/kapya-clair" "${{ runner.temp }}/kapya-chiffre"

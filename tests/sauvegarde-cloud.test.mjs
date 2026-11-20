@@ -26,6 +26,10 @@ test('sauvegarde cloud : pas de secrets dans le workflow, seulement les copies c
   assert.doesNotMatch(workflow, /kapya-clair\/\*|sbp_|postgresql:\/\/|https:\/\/hooks/);
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /verifier-copie-chiffree/);
+  // Le contexte `runner` n'existe qu'à l'intérieur d'une étape : au niveau du job
+  // il rend le fichier invalide et la sauvegarde planifiée ne démarre jamais.
+  const jobEnv = workflow.match(/^ {4}env:\n((?: {6}.*\n)+)/m)?.[1] || '';
+  assert.doesNotMatch(jobEnv, /runner\./);
 });
 test('rotation cloud : huit sauvegardes, aucun artefact étranger ni archive supprimé', () => {
   const rows = Array.from({ length: 10 }, (_, i) => ({ id: i + 1, name: `kapya-sauvegarde-${i + 1}`, created_at: `2026-11-${String(i + 1).padStart(2, '0')}`, expired: false }));
