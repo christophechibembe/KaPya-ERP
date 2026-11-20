@@ -9,10 +9,10 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const out = path.join(os.tmpdir(), 'kapya-erp-local-test');
+const temp = process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA, 'Temp', 'opencode') : os.tmpdir();
+const out = fs.mkdtempSync(path.join(temp, 'kapya-erp-local-'));
 const port = Number(process.argv[2]) || 8080;
 
-fs.rmSync(out, { recursive: true, force: true });
 fs.cpSync(root, out, {
   recursive: true,
   filter: src => {
@@ -21,13 +21,11 @@ fs.cpSync(root, out, {
   }
 });
 
-const cfgPath = path.join(out, 'js', 'config.js');
-fs.writeFileSync(cfgPath, fs.readFileSync(cfgPath, 'utf8').replace('demo: false', 'demo: true'));
-
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
 
 http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p === '/' || p === '/demo') { res.writeHead(302, { Location: '/demo/' }); return res.end(); }
   if (p.endsWith('/')) p += 'index.html';
   const file = path.join(out, p);
   if (!file.startsWith(out)) { res.writeHead(403); return res.end(); }
@@ -45,6 +43,6 @@ http.createServer((req, res) => {
   });
 }).listen(port, () => {
   console.log('KaPya ERP lancé en local (mode démo, données dans le navigateur).');
-  console.log('Ouvrez : http://localhost:' + port);
+  console.log('Ouvrez : http://localhost:' + port + '/demo/');
   console.log('Pour arrêter : Ctrl+C');
 });

@@ -104,3 +104,4 @@ export function openGlobalSearch({ pages }) {
   document.addEventListener('keydown', onKey);
   input.focus();
 }
+import { sessionStore as sessionStorage } from './storage.js';

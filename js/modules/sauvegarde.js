@@ -237,3 +237,4 @@ export async function render(main, ctx) {
     }
   });
 }
+import { localStore as localStorage } from '../storage.js';

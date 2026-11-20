@@ -107,3 +107,4 @@ export function initLock({ logout }) {
   ['pointerdown', 'keydown', 'touchstart'].forEach(name => addEventListener(name, () => { if (!locked) resetIdle(); }, { passive: true }));
   resetIdle();
 }
+import { localStore as localStorage } from './storage.js';

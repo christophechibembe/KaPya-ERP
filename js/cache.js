@@ -1,7 +1,8 @@
 // Stockage hors ligne (IndexedDB, sans dépendance) :
 // - kv : réponses de lecture mises en cache (clé = chemin de la requête) ;
 // - outbox : pièces (ventes, achats) enregistrées hors ligne, en attente d'envoi.
-const NAME = 'kapya-offline', VER = 1;
+import { isDemo } from './demo-mode.js';
+const NAME = isDemo ? 'kapya-demo-offline' : 'kapya-offline', VER = 1;
 let dbp = null;
 const open = () => dbp ||= new Promise((ok, ko) => {
   const r = indexedDB.open(NAME, VER);

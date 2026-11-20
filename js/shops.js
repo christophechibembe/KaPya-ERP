@@ -17,3 +17,4 @@ export function shopSelectHtml(shops, id = 'shop-select') {
   const current = getShop();
   return `<label class="shop-pick" for="${id}">${shopLabel()}<select id="${id}"><option value="">Toutes les boutiques</option>${shops.map(s => `<option value="${esc(s.id)}"${s.id === current ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>`;
 }
+import { localStore as localStorage } from './storage.js';

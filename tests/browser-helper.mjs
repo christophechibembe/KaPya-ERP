@@ -67,16 +67,26 @@ export async function openBrowser(t) {
   const { sessionId } = await send('Target.attachToTarget', { targetId: target.targetId, flatten: true });
   const command = (method, params) => send(method, params, sessionId);
   await command('Page.enable');
-  const errors = [];
+  const waitForLoad = () => new Promise(resolve => {
+    const listener = message => {
+      if (message.sessionId === sessionId && message.method === 'Page.loadEventFired') {
+        listeners.delete(listener); resolve();
+      }
+    };
+    listeners.add(listener);
+  });
+  const errors = [], requests = [];
+  await command('Network.enable');
   await command('Runtime.enable');
   listeners.add(message => {
+    if (message.sessionId === sessionId && message.method === 'Network.requestWillBeSent') requests.push(message.params.request.url);
     if (message.sessionId === sessionId && message.method === 'Runtime.exceptionThrown') {
       const details = message.params.exceptionDetails;
       errors.push(details.exception?.description || details.text);
     }
   });
   return {
-    command, errors,
+    command, errors, requests, waitForLoad,
     async viewport(width, height) {
       await command('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
     },

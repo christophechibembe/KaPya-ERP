@@ -1,3 +1,4 @@
+import { isDemo, DEMO_ROUTES } from './demo-mode.js';
 // Type d'activité : libellés et fonctions affichées. Chaque entreprise peut ajuster la liste des
 // fonctions masquées (Paramètres > Type d'activité). Si elle n'a rien réglé, la liste par défaut du type s'applique.
 export const BUSINESS_TYPES = [['commerce', 'Commerce général'], ['alimentation', 'Alimentation et boissons'], ['services', 'Services (sans stock)'], ['restauration', 'Restauration'], ['autre', 'Autre']];
@@ -28,5 +29,5 @@ export function setBusinessConfig(businessType, hiddenFeatures) {
 }
 export const getBusinessType = () => type;
 export const getHiddenFeatures = () => (hidden ?? DEFAULT_HIDDEN[type] ?? []);
-export const businessAllows = route => !getHiddenFeatures().includes(route);
+export const businessAllows = route => (!isDemo || DEMO_ROUTES.has(route)) && !getHiddenFeatures().includes(route);
 export const shopLabel = () => SHOP_LABEL[type] || 'Boutique';

@@ -2,6 +2,7 @@
 import { esc } from './ui.js';
 import { ownOrgRows } from './own-org.js';
 import { db } from './api.js';
+import { isDemo, demoMark } from './demo-mode.js';
 
 const safe = value => {
   if (value == null) return '';
@@ -20,7 +21,7 @@ export async function downloadCsv(filename, headers, rows) {
   const content = `<!doctype html><html><head><meta charset="utf-8"><style>
     body{font-family:Arial,sans-serif;color:#172b4d}h1{font-size:20px;margin:8px 0}p{margin:4px 0;color:#52647a}
     table{border-collapse:collapse;margin-top:16px}th,td{border:1px solid #b8c5d3;padding:6px 9px;text-align:left}th{background:#eaf1f8;font-weight:bold}
-    </style></head><body><table><tr><td colspan="${headers.length}">${logo}<h1>${html(org?.name || 'KaPya ERP')}</h1>${details.map(item => `<p>${html(item)}</p>`).join('')}<h2>${html(titleCase(filename))}</h2></td></tr></table>
+    </style></head><body>${isDemo ? demoMark : ''}<table><tr><td colspan="${headers.length}">${logo}<h1>${html(org?.name || 'KaPya ERP')}</h1>${details.map(item => `<p>${html(item)}</p>`).join('')}<h2>${html(titleCase(filename))}</h2></td></tr></table>
     <table><thead><tr>${headers.map(value => `<th>${html(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(value => `<td>${html(value)}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;
   const blob = new Blob(['\ufeff', content], { type: 'application/vnd.ms-excel;charset=utf-8' });
   const url = URL.createObjectURL(blob);

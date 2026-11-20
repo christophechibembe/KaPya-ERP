@@ -1,11 +1,13 @@
 import { CFG } from './config.js';
-import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline } from './api.js';
+import { localStore as localStorage } from './storage.js';
+import { mountDemoBar } from './demo-ui.js';
+import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline, lastSyncTime } from './api.js';
 import { clearCache } from './cache.js';
 import { renderAuth, renderOrg, renderMfa, recoveryFromLink } from './auth.js';
 import { mfaStatus } from './api.js';
 import { loadVat } from './vat.js';
 import { loadRate } from './rate.js';
-import { getRate, ico, showDialog, esc } from './ui.js';
+import { getRate, ico, showDialog, esc, askConfirm, notify } from './ui.js';
 // Thème clair/sombre mémorisé sur cet appareil.
 const THEME = localStorage.getItem('kp.theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 function applyTheme(t) { document.documentElement.dataset.theme = t; localStorage.setItem('kp.theme', t); const b = document.getElementById('themebtn'); if (b) { b.innerHTML = ico(t === 'dark' ? 'sun' : 'moon'); b.setAttribute('aria-label', t === 'dark' ? 'Passer au thème clair' : 'Passer au thème sombre'); b.title = b.getAttribute('aria-label'); } }
@@ -149,6 +151,7 @@ function shell() {
   document.getElementById('themebtn').onclick = () => applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
   applyTheme(document.documentElement.dataset.theme || THEME);
   const logout = async () => {
+    if (CFG.demo) { location.href = '/'; return; }
     const n = await pendingCount().catch(() => 0);
     if (n && !(await askConfirm(`${n} pièce(s) ne sont pas encore synchronisées. Elles seront perdues si vous vous déconnectez. Continuer ?`))) return;
     await clearOffline(); signOut(); start();
@@ -167,6 +170,7 @@ function shell() {
   const lockButton = () => { if (!hasPin()) location.hash = '#/parametres'; else lockNow(); };
   document.getElementById('lock-now').onclick = lockButton;
   document.getElementById('lock-m').onclick = lockButton;
+  if (CFG.demo) mountDemoBar();
   route(); updateSync();
   // Notifications : compteur sur la cloche, liste au clic
   const refreshBell = async () => {
@@ -277,7 +281,7 @@ async function ownOrgRow() {
 async function start() {
   if (!CFG.demo && CFG.url.includes('VOTRE')) { root.innerHTML = '<div class="auth"><div class="card"><h1>Configuration requise</h1><p>Renseignez l’URL et la clé publique Supabase dans <code>js/config.js</code>.</p></div></div>'; return; }
   if (recoveryFromLink(root, start)) return;
-  if (!session()) return renderAuth(root, start);
+  if (!session()) return renderAuth(root, start, new URLSearchParams(location.search).has('inscription') ? 'up' : 'in');
   const gate = await mfaStatus().catch(() => ({ needs: false }));
   if (gate.needs) return renderMfa(root, start, gate.factorId);
   loadVat();
@@ -321,7 +325,7 @@ async function start() {
   const [platform, orgRows, rate] = await Promise.all([
     // Super administrateur : détecté côté base (table platform_admins)
     CFG.demo ? false : db.rpc('is_platform_admin').then(v => v === true).catch(() => false),
-    CFG.demo ? [{ plan: 'premium', status: 'active' }] : ownOrgRow(),
+    CFG.demo ? db.select('organizations') : ownOrgRow(),
     loadRate().catch(() => null)
   ]);
   ctx.platform = platform;
@@ -341,10 +345,10 @@ async function start() {
   const startGuide = () => startOnboarding(allowedRoute, goRoute);
   // Les nouveautés ne concernent que le gérant ; les autres passent directement au guide
   const afterWelcome = () => (ctx?.role === 'admin' ? showNews(session().uid, startGuide) : startGuide());
-  if (!showWelcomeOnce(afterWelcome)) afterWelcome();
+  if (!CFG.demo && !showWelcomeOnce(afterWelcome)) afterWelcome();
   syncNow().then(updateSync);
   setInterval(updateSync, 30000);
 }
 initMonitor();
-initLock({ logout: () => document.getElementById('out')?.click() });
+if (!CFG.demo) initLock({ logout: () => document.getElementById('out')?.click() });
 autoClean().then(reloaded => { if (reloaded) location.reload(); else start(); });

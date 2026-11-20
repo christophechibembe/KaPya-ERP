@@ -13,6 +13,10 @@
   Cache-Control: no-cache
 /css/*
   Cache-Control: no-cache
+/demo/*
+  Cache-Control: no-cache
+  Content-Security-Policy: connect-src 'none'; worker-src 'none'; form-action 'none'
+  X-Robots-Tag: noindex
 /assets/*
   Cache-Control: public, max-age=604800
 /icons/*

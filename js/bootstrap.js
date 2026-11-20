@@ -31,7 +31,7 @@ if (splash) {
   };
   if (document.readyState === 'complete') hideSplash(); else addEventListener('load', hideSplash);
 }
-if('serviceWorker' in navigator && location.protocol.startsWith('http'))addEventListener('load',()=>{
+if(!/^\/demo(?:\/|$)/.test(location.pathname) && 'serviceWorker' in navigator && location.protocol.startsWith('http'))addEventListener('load',()=>{
   const local = ['localhost','127.0.0.1'].includes(location.hostname);
   if(local) navigator.serviceWorker.getRegistrations().then(registrations => registrations.forEach(registration => registration.unregister()));
   else navigator.serviceWorker.register('sw.js');

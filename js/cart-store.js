@@ -15,3 +15,4 @@ export function rememberCustomer(uid, id) {
   if (!id) return;
   try { localStorage.setItem(RECENT(uid), JSON.stringify([id, ...recentCustomers(uid).filter(x => x !== id)].slice(0, 5))); } catch { /* ignoré */ }
 }
+import { localStore as localStorage } from './storage.js';

@@ -104,6 +104,48 @@ vide, jamais en production active.
 Utiliser la chaîne **Session pooler** (port `5432`, hôte `aws-0-<région>.pooler.supabase.com`,
 utilisateur `postgres.<référence>`), et non la connexion directe, si le réseau refuse IPv6.
 
+## Copie cloud indépendante du PC
+
+Le workflow `.github/workflows/sauvegarde.yml` réalise une deuxième sauvegarde sur un
+runner GitHub hébergé, chaque dimanche à **02:17 UTC**. Il peut être lancé manuellement :
+
+1. Ouvrir <https://github.com/christophechibembe/KaPya-ERP/actions>.
+2. Choisir **Sauvegarde chiffrée** → **Run workflow** → branche **main**.
+3. Ouvrir l'exécution réussie puis télécharger l'artefact `kapya-sauvegarde-…`.
+4. Extraire le ZIP : seuls les deux `.sql.enc` et `manifest.json` doivent s'y trouver.
+5. Déchiffrer avec `scripts/dechiffrer-sauvegarde.mjs` et la clé habituelle.
+
+La clé existante est réutilisée : **ne pas la régénérer**. Avant téléversement, chaque
+fichier chiffré est déchiffré en mémoire et comparé au dump original. Le manifeste
+contient les empreintes SHA-256 des fichiers chiffrés, pas de données métier.
+
+Les secrets `KAPYA_DB_URL`, `KAPYA_CLE`, `KAPYA_WEBHOOK` sont dans
+**Settings → Secrets and variables → Actions**, jamais dans le code ni les artefacts.
+Les dumps en clair restent dans un dossier temporaire du runner, nettoyé en fin de
+travail. Le mot de passe PostgreSQL passe par l'environnement, pas les arguments.
+
+La rotation conserve au maximum **8 exécutions**, chacune pendant au plus **56 jours**.
+Les archives locales et OneDrive du 18 novembre restent indépendantes de cette rotation.
+La sauvegarde Windows hebdomadaire reste en place comme seconde voie.
+
+Le webhook reçoit le résultat et un lien vers l'exécution. Si le runner ne démarre pas,
+ne pas attendre une alerte d'un travail qui n'a pas tourné : vérifier périodiquement la
+date de la dernière exécution et maintenir la sauvegarde Windows. GitHub peut retarder
+une planification et désactive les tâches planifiées d'un dépôt public après une longue
+inactivité (60 jours). Ce n'est pas un service de sauvegarde avec garantie contractuelle.
+
+Le dépôt étant public, les artefacts peuvent être téléchargés par d'autres personnes :
+**leur contenu doit rester chiffré**, et l'accès administrateur au dépôt doit être
+protégé (authentification à deux facteurs). Les utilisateurs capables de modifier les
+workflows peuvent potentiellement accéder aux secrets ; limiter ces droits.
+
+Le dump couvre le schéma `public`, comme la sauvegarde locale : il ne remplace pas une
+copie des utilisateurs `auth`, du stockage de fichiers et de la configuration Supabase.
+Tester périodiquement une restauration dans un projet isolé.
+
+En cas de changement du mot de passe de la base, mettre à jour **également**
+`KAPYA_DB_URL` dans les secrets GitHub, puis lancer le workflow manuellement.
+
 ## Changer le mot de passe de la base
 
 Depuis le tableau de bord Supabase (*Project Settings → Database → Reset database

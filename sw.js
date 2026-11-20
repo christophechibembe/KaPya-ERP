@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.45.14-build134';
+const VERSION = 'kapya-erp-1.46.0-build135';
 const SHELL = [
   './',
   './404.html',
@@ -11,6 +11,7 @@ const SHELL = [
   './assets/logo.png',
   './assets/welcome-portrait.jpg',
   './css/theme.css',
+  './css/demo.css',
   './css/welcome.css',
   './guide.html',
   './confidentialite.html',
@@ -33,6 +34,11 @@ const SHELL = [
   './js/csv.js',
   './js/dash-cache.js',
   './js/demo.js',
+  './js/demo-mode.js',
+  './js/demo-ui.js',
+  './js/storage.js',
+  './js/credit-reminder.mjs',
+  './js/replenishment.mjs',
   './js/escape.js',
   './js/export.js',
   './js/full-report.js',
@@ -109,6 +115,11 @@ self.addEventListener('activate', e => {
 });
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // Une navigation démo ne doit jamais retomber sur la connexion réelle hors ligne.
+  if (/^\/demo(?:\/|$)/.test(url.pathname)) {
+    e.respondWith(fetch(e.request).catch(() => new Response('La démonstration nécessite une connexion pour son premier chargement. Rechargez cette page après reconnexion.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } })));
+    return;
+  }
   // Ne jamais intercepter les appels vers Supabase ni les requêtes non GET
   if (e.request.method !== 'GET' || url.origin !== location.origin) return;
   // Pages (navigation) : réseau d'abord, pour toujours obtenir la version la plus récente, cache en secours hors-ligne

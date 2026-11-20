@@ -26,3 +26,4 @@ export async function saveVat(enabled, rate) {
   await db.rpc('set_vat', { p_on: enabled, p_rate: rate });
   localStorage.setItem(K, JSON.stringify({ enabled, rate }));
 }
+import { localStore as localStorage } from './storage.js';

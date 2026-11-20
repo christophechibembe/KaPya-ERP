@@ -13,7 +13,7 @@ const publicFiles = [
   'index.html', '404.html', 'guide.html', 'confidentialite.html', 'sw.js', '_headers', '_redirects',
   'manifest.webmanifest', 'manifest-app.webmanifest'
 ];
-const publicDirectories = ['assets', 'css', 'icons', 'js'];
+const publicDirectories = ['assets', 'css', 'icons', 'js', 'demo'];
 
 await mkdir(temp, { recursive: true });
 const out = await mkdtemp(path.join(temp, 'kapya-cloudflare-'));

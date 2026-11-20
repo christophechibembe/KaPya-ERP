@@ -593,3 +593,4 @@ async function bindMfa(main) {
   };
   draw();
 }
+import { localStore as localStorage } from '../storage.js';

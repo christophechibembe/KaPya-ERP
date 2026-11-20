@@ -1,0 +1,16 @@
+.demo-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;background:#fff4cf;color:#493500;border-bottom:1px solid #d2b15a;flex-shrink:0}
+.demo-bar>div{margin-right:auto}
+.demo-bar strong,.demo-bar span:not(.sr){display:block}
+.demo-bar strong{font-size:12px;letter-spacing:.08em}
+.demo-bar span{font-size:12px}
+.demo-bar a{color:#493500;white-space:nowrap;font-size:13px}
+.demo-bar .btn{color:white;background:#0b2550}
+.demo-bar select,.demo-bar button{min-height:36px;margin:0;font-size:12px}
+.demo-bar .ghost{background:transparent;color:#493500;border:1px solid #b39b5c}
+.demo-steps{padding-left:24px}
+.demo-steps li{padding:8px 0}
+.demo-steps p{margin:5px 0 9px}
+#demo-guide{max-width:640px;max-height:85vh;overflow:auto}
+.demo-mode [data-act="lock"]{display:none}
+@media(max-width:650px){.demo-bar{padding:8px;gap:7px}.demo-bar>div{width:100%}.demo-bar span:not(.sr){font-size:11px}.demo-bar a,.demo-bar button{font-size:11px}.demo-bar .btn{padding:7px}}
+@media print{.demo-bar{display:none}.demo-mode:before{content:"DÉMONSTRATION — DONNÉES FICTIVES — SANS VALEUR COMMERCIALE";display:block;text-align:center;font-weight:bold;border:2px solid black;padding:6px}}

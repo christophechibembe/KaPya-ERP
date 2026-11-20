@@ -6,6 +6,7 @@ Frontend statique (modules ES, sans framework ni étape de compilation), base Su
 - Production : https://kapya-erp.pages.dev/
 - Vente rapide : https://kapya-erp.pages.dev/#/vente
 - Entrée téléphone : https://kapya-erp.pages.dev/app/
+- Démonstration sans compte : https://kapya-erp.pages.dev/demo/
 
 ## Structure
 
@@ -31,6 +32,8 @@ npm.cmd test         # contrôle des versions + tests unitaires et navigateur
 
 Les tests navigateur utilisent Edge/Chrome/Chromium installé. Sans navigateur détecté, ils sont ignorés.
 Ils servent une page isolée avec des données et des RPC simulées : aucune connexion à Supabase.
+Le lanceur local ouvre directement `/demo/` sans remplacer la configuration de production.
+Les données de simulation sont séparées des comptes réels ; voir `docs/DEMONSTRATION.md`.
 
 ## Publier
 
@@ -108,6 +111,8 @@ en plus de l'historique Git.
 ## Limites connues
 
 - La restauration d'une sauvegarde n'est possible que dans une entreprise vide.
-- Le bénéfice affiché est brut : les dépenses ne sont pas déduites.
+- Le résultat net déduit les dépenses saisies ; ce n'est pas une comptabilité réglementaire complète.
 - Devises : USD et CDF uniquement.
-- La traduction anglaise est partielle.
+- La démonstration ne simule pas les écrans administratifs ni les intégrations réelles.
+- Les suggestions de réapprovisionnement sont indicatives (retours et commandes en cours
+  non déduits).

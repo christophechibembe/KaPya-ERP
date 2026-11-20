@@ -1,6 +1,6 @@
 -- KaPya ERP — schéma de production (instantané de référence)
 -- Projet Supabase : ttplxlobehmwzfnxviej
--- Généré le 2026-11-19 11:47 par scripts/generer-schema.mjs
+-- Généré le 2026-11-20 01:11 par scripts/generer-schema.mjs
 --
 -- Ce fichier décrit la base telle qu'elle existe réellement. Il est destiné à la
 -- documentation, à la comparaison et à la reconstruction d'un projet de test.
@@ -2041,8 +2041,10 @@ AS $function$
   select coalesce(jsonb_agg(q.x order by q.sold desc), '[]'::jsonb) from (
     select s.sold_at as sold,
       jsonb_build_object(
-        'id', s.id, 'number', s.number, 'sold_at', s.sold_at, 'customer_label', s.customer_label,
-        'payment', s.payment, 'paid', s.paid, 'credit_notes_total', (select coalesce(sum(cn.total_usd), 0) from public.credit_notes cn where cn.sale_id = s.id), 'usd_cdf', s.usd_cdf,
+        'id', s.id, 'customer_id', s.customer_id, 'number', s.number, 'sold_at', s.sold_at, 'customer_label', s.customer_label,
+        'payment', s.payment, 'paid', s.paid,
+        'credit_notes_total', (select coalesce(sum(cn.total_usd), 0) from public.credit_notes cn where cn.sale_id = s.id),
+        'usd_cdf', s.usd_cdf,
         'customers', (select jsonb_build_object('name', c.name, 'phone', c.phone) from public.customers c where c.id = s.customer_id),
         'sale_lines', coalesce((select jsonb_agg(jsonb_build_object('qty', l.qty, 'unit_price', l.unit_price,
             'articles', (select jsonb_build_object('sku', a.sku, 'name', a.name) from public.articles a where a.id = l.article_id)))
