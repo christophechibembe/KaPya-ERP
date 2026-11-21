@@ -25,16 +25,22 @@
     };
     tick();
   });
-  window.boot = async ({ mode, role = 'admin', blocks = null } = {}) => {
+  window.boot = async ({ mode, role = 'admin', blocks = null, period = '7', failTables = [], holdBefore = null } = {}) => {
+    fixture.pendingReads.splice(0).forEach(resolve => resolve());
+    document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
     localStorage.clear();
     resetDashboard();
     fixture.blocks = blocks;
+    fixture.failTables = failTables;
+    fixture.holdBefore = holdBefore;
     if (mode) setMode(mode, 'dash-user');
     // Une vente normale du jour, puis une vente dont la date contient une heure :
     // les deux doivent compter dans le chiffre d'affaires du jour.
     addSale({ qty: 2, unit: 10 });
     addSale({ qty: 1, unit: 5, soldAt: new Date().toLocaleDateString('sv-SE') + 'T09:30:00' });
     const main = document.querySelector('#main');
+    const periodControl = main.querySelector('#owner-period');
+    if (periodControl) periodControl.value = period;
     main.dataset.page = 'accueil';
     await render(main, { id: 'dash-user', role });
   };

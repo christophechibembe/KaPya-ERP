@@ -2,6 +2,7 @@
 // Aucun calcul métier ici : le modèle est préparé par js/modules/accueil.js avec les
 // mêmes requêtes, les mêmes chiffres et les mêmes droits que la présentation classique.
 import { esc, ico, n, usdOnly, fcOnly } from './ui.js';
+import { METRIC_LABELS, relativeChange } from './dashboard-insights.mjs';
 
 export const PERIOD_OPTIONS = [
   ['today', 'Aujourd’hui'],
@@ -66,19 +67,24 @@ function pcPage({ modeLabel, greeting, canRecordCashOut, monthStart, today, peri
       <div class="mdp-actions">
         <button class="btn" id="owner-run" type="button" hidden>Afficher</button>
         <button class="ghost" id="owner-refresh" type="button" title="Recharger les chiffres maintenant">${ico('refresh')}<span>Actualiser</span></button>
-        <button class="ghost" id="owner-customize" type="button">Personnaliser</button>
-        <button class="ghost" id="owner-mode" type="button" title="Changer la présentation du tableau de bord">Présentation : ${esc(modeLabel)}</button>
-        <button class="ghost" id="owner-summary" type="button">Résumer la période</button>
-        ${expenseButtons(canRecordCashOut)}
+        <details class="mdp-menu">
+          <summary>${ico('dots')}<span>Actions</span></summary>
+          <div class="mdp-menu-body">
+            <button id="owner-customize" type="button">Personnaliser</button>
+            <button id="owner-mode" type="button" title="Changer la présentation du tableau de bord">Présentation : ${esc(modeLabel)}</button>
+            <button id="owner-summary" type="button">Résumer la période</button>
+            ${expenseButtons(canRecordCashOut)}
+          </div>
+        </details>
       </div>
     </div>
     <p class="muted owner-updated" id="owner-updated" aria-live="polite" hidden></p>
-    <div id="owner-content" aria-live="polite"><div class="mdp-loading">Chargement des données…</div></div>
+    <div id="owner-content" aria-live="polite">${renderModernLoading()}</div>
     <dialog id="owner-dialog"></dialog>
   </div>`;
 }
 
-function mobilePage({ modeLabel, userName, canRecordCashOut, monthStart, today, periodValue }) {
+function mobilePage({ modeLabel, userName, canRecordCashOut, canCreateSale, monthStart, today, periodValue }) {
   const first = String(userName || '').trim().split(/\s+/)[0] || '';
   return `<div class="mdm">
     <header class="mdm-header">
@@ -104,83 +110,124 @@ function mobilePage({ modeLabel, userName, canRecordCashOut, monthStart, today, 
           <button id="owner-customize" type="button">Personnaliser</button>
           <button id="owner-mode" type="button">Présentation : ${esc(modeLabel)}</button>
           <button id="owner-summary" type="button">Résumer la période</button>
-          <button class="btn" id="owner-run" type="button" hidden>Afficher</button>
           ${expenseButtons(canRecordCashOut)}
         </div>
       </details>
+      <button class="btn mdm-show" id="owner-run" type="button" hidden>Afficher</button>
     </div>
-    <p class="muted owner-updated" id="owner-updated" aria-live="polite" hidden></p>
-    <div id="owner-content" aria-live="polite"><div class="mdp-loading">Chargement des données…</div></div>
+    <div class="mdm-toolbar">
+      ${canCreateSale ? `<a class="mdm-new-sale" href="#/vente">${ico('plus')}<span>Nouvelle vente</span></a>` : ''}
+      <p class="muted owner-updated" id="owner-updated" aria-live="polite" hidden></p>
+    </div>
+    <div id="owner-content" aria-live="polite">${renderModernLoading()}</div>
     <dialog id="owner-dialog"></dialog>
   </div>`;
 }
 
 // --------------------------------------------------------------- fragments
-function kpi(label, value, note, icon, tone) {
-  return `<article class="mdp-card mdp-kpi t-${tone}">
+function valueButton(model, key, hero = false) {
+  const available = model.details?.[key]?.available !== false;
+  return `<button class="md-value${hero ? ' md-value-hero' : ''}" type="button" data-md-detail="${key}" aria-label="${esc(`Voir le détail : ${METRIC_LABELS[key]}`)}"><b>${available ? usdOnly(model[key]) : '—'}</b>${ico('eye')}</button>`;
+}
+
+function comparisonContent(model, key) {
+  const comparison = model.comparison;
+  if (!comparison || ['idle', 'loading'].includes(comparison.status)) return 'Comparaison en cours…';
+  const change = relativeChange(model.details?.[key]?.available === false ? null : model[key], comparison.values?.[key]);
+  if (change.kind === 'unavailable') return 'Comparaison indisponible';
+  if (change.kind === 'stable') return 'Stable';
+  if (change.kind === 'zero-base') return `<span>Période précédente :</span> ${usdOnly(0)}`;
+  const good = key === 'cashOut' ? change.delta < 0 : change.delta > 0;
+  return `<span class="${good ? 'md-change-good' : 'md-change-bad'}">${change.delta > 0 ? '↑' : '↓'} ${Math.abs(change.percent).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</span>`;
+}
+
+function comparisonBadge(model, key) {
+  if (['stockValue', 'outstanding'].includes(key)) return '';
+  return `<span class="md-change" data-md-change="${key}" title="Comparaison avec la période précédente, de même durée">${comparisonContent(model, key)}</span>`;
+}
+
+function kpi(model, key, note, icon, tone) {
+  const label = METRIC_LABELS[key];
+  return `<article class="mdp-card mdp-kpi t-${tone}" data-md-kpi="${key}">
     <div class="mdp-kpi-top"><span class="mdp-ico">${ico(icon)}</span><span class="mdp-kpi-label">${esc(label)}</span></div>
-    <b>${value}</b>
-    <span class="mdp-kpi-note">${note}</span>
+    ${valueButton(model, key)}
+    <span class="mdp-kpi-note">${model.details?.[key]?.available === false ? 'Données indisponibles' : esc(note)}</span>
+    ${comparisonBadge(model, key)}
   </article>`;
 }
 
 function kpiCards(model) {
   const cards = [
-    kpi('Chiffre d’affaires', usdOnly(model.revenue), `${model.salesCount} vente(s)${fcOnly(model.revenue) ? ` · ${fcOnly(model.revenue)}` : ''}`, 'sales', 'blue'),
-    kpi('Ventes cash', usdOnly(model.cashSales), `${model.cashCount} facture(s) payée(s) comptant`, 'cash', 'green'),
-    kpi('Ventes à crédit', usdOnly(model.creditSales), `${model.creditCount} facture(s) à crédit`, 'invoice', 'blue'),
-    kpi('Paiements reçus', usdOnly(model.paymentsReceived), `${model.receiptsCount} encaissement(s)`, 'coins', 'green')
+    kpi(model, 'revenue', `${model.salesCount} vente(s)${fcOnly(model.revenue) ? ` · ${fcOnly(model.revenue)}` : ''}`, 'sales', 'blue'),
+    kpi(model, 'cashSales', `${model.cashCount} facture(s) payée(s) comptant`, 'cash', 'green'),
+    kpi(model, 'creditSales', `${model.creditCount} facture(s) à crédit`, 'invoice', 'blue'),
+    kpi(model, 'paymentsReceived', `${model.receiptsCount} encaissement(s)`, 'coins', 'green')
   ];
+  const group = (label, content) => `<section class="mdp-kpi-group" aria-label="${esc(label)}"><h2>${esc(label)}</h2><div class="mdp-kpis">${content.join('')}</div></section>`;
+  const groups = [group('Ventes et encaissements', cards)];
   if (model.canSeeCosts) {
-    cards.push(kpi('Bénéfice brut', model.saleCostsAvailable ? usdOnly(model.gross) : '—', model.profitDetail, 'coins', 'violet'));
-    cards.push(kpi('Entrées de trésorerie', usdOnly(model.cashIn), 'Ventes cash, paiements et dépôts reçus', 'sales', 'green'));
-    cards.push(kpi('Sorties de trésorerie', usdOnly(model.cashOut), `Fournisseurs ${usdOnly(model.supplierPaid)} · dépenses ${usdOnly(model.expenseTotal)}`, 'purchases', 'orange'));
-    cards.push(kpi('Flux net de trésorerie', usdOnly(model.cashNet), 'Entrées moins sorties enregistrées', 'wallet', model.cashNet >= 0 ? 'green' : 'red'));
-    cards.push(kpi('Résultat net', model.saleCostsAvailable ? usdOnly(model.netProfit) : '—', model.saleCostsAvailable ? `Bénéfice brut moins ${usdOnly(model.expenseTotal)} de dépenses` : 'Configuration SQL des coûts requise', 'coins', model.netProfit >= 0 ? 'green' : 'red'));
-    cards.push(kpi('Valeur du stock', usdOnly(model.stockValue), `Au prix d’achat${fcOnly(model.stockValue) ? ` · ${fcOnly(model.stockValue)}` : ''}`, 'stock', 'teal'));
+    groups.push(group('Rentabilité', [
+      kpi(model, 'gross', model.profitDetail, 'coins', 'violet'),
+      kpi(model, 'netProfit', `Bénéfice brut moins ${usdOnly(model.expenseTotal)} de dépenses`, 'coins', model.netProfit >= 0 ? 'green' : 'red')
+    ]));
+    groups.push(group('Trésorerie et stock', [
+      kpi(model, 'cashIn', 'Ventes cash, paiements et dépôts reçus', 'sales', 'green'),
+      kpi(model, 'cashOut', `Fournisseurs ${usdOnly(model.supplierPaid)} · dépenses ${usdOnly(model.expenseTotal)}`, 'purchases', 'orange'),
+      kpi(model, 'cashNet', 'Entrées moins sorties enregistrées', 'wallet', model.cashNet >= 0 ? 'green' : 'red'),
+      kpi(model, 'stockValue', 'Au prix d’achat · stock actuel', 'stock', 'teal')
+    ]));
   } else {
-    cards.push(kpi('Créances clients restantes', usdOnly(model.outstanding), 'Solde restant à recouvrer', 'coins', 'orange'));
+    groups.push(group('Suivi des clients', [kpi(model, 'outstanding', 'Solde restant à recouvrer', 'coins', 'orange')]));
   }
-  return cards.join('');
+  return `<div class="mdp-kpi-groups">${groups.join('')}</div>`;
 }
 
 function mobileKpis(model) {
   const cards = [
-    kpi('Ventes cash', usdOnly(model.cashSales), `${model.cashCount} facture(s)`, 'cash', 'green'),
-    kpi('Ventes à crédit', usdOnly(model.creditSales), `${model.creditCount} facture(s)`, 'invoice', 'blue'),
-    kpi('Paiements reçus', usdOnly(model.paymentsReceived), `${model.receiptsCount} encaissement(s)`, 'coins', 'green')
+    kpi(model, 'cashSales', `${model.cashCount} facture(s)`, 'cash', 'green'),
+    kpi(model, 'creditSales', `${model.creditCount} facture(s)`, 'invoice', 'blue'),
+    kpi(model, 'paymentsReceived', `${model.receiptsCount} encaissement(s)`, 'coins', 'green')
   ];
-  if (model.canSeeCosts) cards.push(kpi('Bénéfice brut', model.saleCostsAvailable ? usdOnly(model.gross) : '—', model.profitDetail, 'coins', 'violet'));
-  else cards.push(kpi('Créances clients restantes', usdOnly(model.outstanding), 'Solde restant à recouvrer', 'coins', 'orange'));
+  if (model.canSeeCosts) cards.push(kpi(model, 'gross', model.profitDetail, 'coins', 'violet'));
+  else cards.push(kpi(model, 'outstanding', 'Solde restant à recouvrer', 'coins', 'orange'));
   return cards.join('');
 }
 
 let chartSeq = 0;
 function trendChart(buckets, aria) {
-  const width = 720, height = 240, left = 46, right = 18, top = 24, bottom = 34;
+  const width = 640, height = 200, left = 24, right = 24, top = 16, bottom = 16;
   const values = buckets.map(item => Number(item.value) || 0);
   const max = Math.max(1, ...values);
   const plotW = width - left - right, plotH = height - top - bottom;
   const step = values.length === 1 ? 0 : plotW / (values.length - 1);
-  const points = values.map((value, index) => [left + step * index, top + plotH * (1 - value / max)]);
+  const points = values.map((value, index) => [left + (values.length === 1 ? plotW / 2 : step * index), top + plotH * (1 - value / max)]);
   const line = points.map((point, index) => `${index ? 'L' : 'M'}${point[0].toFixed(1)},${point[1].toFixed(1)}`).join(' ');
   const last = points[points.length - 1] || [left, top + plotH];
   const first = points[0] || [left, top + plotH];
   const area = `${line} L${last[0].toFixed(1)},${top + plotH} L${first[0].toFixed(1)},${top + plotH} Z`;
   const id = `mdchart-${++chartSeq}`;
+  const axisFormat = new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 1 });
+  const axis = [0, 0.25, 0.5, 0.75, 1].map(part => `<span>${axisFormat.format(max * (1 - part))}</span>`).join('');
   const grid = [0, 0.25, 0.5, 0.75, 1].map(part => {
     const y = top + plotH * part;
-    return `<line class="md-grid" x1="${left}" x2="${width - right}" y1="${y}" y2="${y}"/><text class="md-axis" x="${left - 8}" y="${y + 4}" text-anchor="end">${n(Math.round(max * (1 - part)))}</text>`;
+    return `<line class="md-grid" x1="${left}" x2="${width - right}" y1="${y}" y2="${y}"/>`;
   }).join('');
-  const every = Math.max(1, Math.ceil(values.length / 7));
-  const fewPoints = values.length - 11 < 0;
-  const labels = points.map((point, index) => (fewPoints || index % every === 0 || index === values.length - 1)
-    ? `<text class="md-axis md-xlab" x="${point[0]}" y="${height - 10}" text-anchor="middle">${esc(buckets[index].label)}</text>` : '').join('');
-  const dots = points.map((point, index) => `<circle class="md-dot" cx="${point[0]}" cy="${point[1]}" r="3.5"><title>${esc(buckets[index].label)} : ${esc(usdOnly(values[index]))}</title></circle>`).join('');
-  return `<svg class="md-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(aria)}">
+  const labels = points.map((point, index) => `<span class="md-xlab${[0, Math.floor((points.length - 1) / 2), points.length - 1].includes(index) ? ' md-xmajor' : ''}" style="left:${point[0] / width * 100}%">${esc(buckets[index].label)}</span>`).join('');
+  const dots = points.map((point, index) => `<circle class="md-dot" data-md-dot="${index}" cx="${point[0]}" cy="${point[1]}" r="3.5"><title>${esc(buckets[index].label)} : ${esc(usdOnly(values[index]))}</title></circle>`).join('');
+  const index = Math.max(0, buckets.length - 1);
+  const selected = buckets[index];
+  const text = selected ? `${selected.dateLabel || selected.label} : ${usdOnly(selected.value)}` : '';
+  return `<div class="md-chart-widget" data-md-chart>
+    <div class="md-chart-layout"><div class="md-y-axis" aria-hidden="true">${axis}</div><div class="md-chart-main">
+    <svg class="md-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${esc(aria)}">
     <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0B5FFB" stop-opacity=".24"/><stop offset="100%" stop-color="#0B5FFB" stop-opacity="0"/></linearGradient></defs>
-    ${grid}<path d="${area}" fill="url(#${id})"/><path d="${line}" class="md-line"/>${dots}${labels ? `<g class="md-xlabels">${labels}</g>` : ''}
-  </svg>`;
+    ${grid}<path d="${area}" fill="url(#${id})"/><path d="${line}" class="md-line"/>${dots}
+    <line class="md-chart-cursor" data-md-cursor x1="${last[0]}" x2="${last[0]}" y1="${top}" y2="${top + plotH}"/>
+    </svg><div class="md-xlabels" aria-hidden="true">${labels}</div></div></div>
+    <div class="md-chart-reading"><span>Touchez la courbe pour lire un montant</span><output data-md-chart-output aria-live="polite">${esc(text)}</output></div>
+    <input class="md-chart-slider" type="range" min="0" max="${index}" step="1" value="${index}" aria-label="Jour du graphique" aria-valuetext="${esc(text)}" data-md-chart-slider>
+    <div hidden data-md-chart-data>${buckets.map((bucket, i) => `<span data-index="${i}" data-value="${Number(bucket.value) || 0}" data-label="${esc(bucket.dateLabel || bucket.label)}" data-x="${points[i][0]}"></span>`).join('')}</div>
+  </div>`;
 }
 
 function donut(slices, total) {
@@ -253,22 +300,27 @@ export function renderModernContent(model, mode) {
   return mode === 'modern_mobile' ? mobileContent(model) : pcContent(model);
 }
 
+const comparisonPeriod = model => model.comparison?.range
+  ? `<p class="md-compare-period"><span>Comparaison avec la période précédente, de même durée</span> · ${dateFr(model.comparison.range.from)} – ${dateFr(model.comparison.range.to)}</p>` : '';
+
+const emptySales = () => '<p class="md-no-sales" role="status">Aucune vente sur cette période.</p>';
+
 function pcContent(model) {
   const totalSales = model.salesBuckets.reduce((sum, bucket) => sum + bucket.value, 0);
   const slices = model.paymentSlices;
   const legend = slices.map(slice => `<li><span class="md-dotc" style="background:${slice.color}"></span><span>${esc(slice.label)}</span><b>${usdOnly(slice.value)}</b><small>${pct(slice.value, model.revenue)} %</small></li>`).join('');
   return `<div class="mdp-body">
     ${model.offlineNote}
-    ${model.blocks.kpi ? `<section class="mdp-kpis" aria-label="Indicateurs clés">${kpiCards(model)}</section>` : ''}
+    ${model.blocks.kpi ? `${comparisonPeriod(model)}${kpiCards(model)}` : ''}
     ${model.blocks.charts ? `<div class="mdp-grid">
       <section class="mdp-card mdp-trend">
         <div class="mdp-card-head"><div><h2>Évolution des ventes</h2><p>Montant des factures sur la période</p></div><span class="mdp-total">${usdOnly(totalSales)}</span></div>
-        ${trendChart(model.salesBuckets, 'Évolution des ventes sur la période')}
+        ${model.salesCount ? trendChart(model.salesBuckets, 'Évolution des ventes sur la période') : emptySales()}
         <div class="mdp-legend-row"><span><i class="md-dotc" style="background:#0B5FFB"></i>Ventes</span><span class="muted">${esc(model.dateLabel)}</span></div>
       </section>
       <section class="mdp-card mdp-donut-card">
         <div class="mdp-card-head"><div><h2>Chiffre d’affaires par type de paiement</h2><p>Répartition réelle des ventes</p></div></div>
-        <div class="mdp-donut-body">${donut(slices, model.revenue)}<ul class="mdp-donut-legend">${legend}</ul></div>
+        ${slices.length ? `<div class="mdp-donut-body">${donut(slices, model.revenue)}<ul class="mdp-donut-legend">${legend}</ul></div>` : emptySales()}
       </section>
     </div>` : ''}
     <section class="mdp-card mdp-activity">
@@ -286,35 +338,124 @@ function mobileContent(model) {
   const treasury = model.blocks.kpi && model.canSeeCosts ? `<details class="mdm-card mdm-more">
     <summary>Trésorerie et stock</summary>
     <div class="mdm-rows">
-      <div><span>Entrées de trésorerie</span><b>${usdOnly(model.cashIn)}</b></div>
-      <div><span>Sorties de trésorerie</span><b>${usdOnly(model.cashOut)}</b></div>
-      <div><span>Flux net de trésorerie</span><b class="${model.cashNet >= 0 ? 'in' : 'out'}">${usdOnly(model.cashNet)}</b></div>
-      <div><span>Résultat net</span><b class="${model.netProfit >= 0 ? 'in' : 'out'}">${model.saleCostsAvailable ? usdOnly(model.netProfit) : '—'}</b></div>
-      <div><span>Valeur du stock</span><b>${usdOnly(model.stockValue)}</b></div>
+      <div><span>Entrées de trésorerie</span>${valueButton(model, 'cashIn')}</div>
+      <div><span>Sorties de trésorerie</span>${valueButton(model, 'cashOut')}</div>
+      <div><span>Flux net de trésorerie</span>${valueButton(model, 'cashNet')}</div>
+      <div><span>Résultat net</span>${valueButton(model, 'netProfit')}</div>
+      <div><span>Valeur du stock</span>${valueButton(model, 'stockValue')}</div>
     </div>
   </details>` : '';
   const chartCard = model.blocks.charts ? `<section class="mdm-card">
     <div class="mdp-card-head"><div><h2>Évolution des ventes</h2><p>${esc(model.dateLabel)}</p></div><span class="mdp-total">${usdOnly(totalSales)}</span></div>
-    ${trendChart(model.salesBuckets, 'Évolution des ventes sur la période')}
+    ${model.salesCount ? trendChart(model.salesBuckets, 'Évolution des ventes sur la période') : emptySales()}
   </section>` : '';
-  const donutCard = model.blocks.charts ? `<section class="mdm-card">
+  const donutCard = model.blocks.charts ? `<details class="mdm-card mdm-more mdm-payment-details">
+    <summary>Répartition des paiements</summary><div class="mdm-payment-body">
     <div class="mdp-card-head"><div><h2>Chiffre d’affaires par type de paiement</h2><p>Répartition réelle des ventes</p></div></div>
-    <div class="mdp-donut-body">${donut(slices, model.revenue)}<ul class="mdp-donut-legend">${legend}</ul></div>
-  </section>` : '';
+    ${slices.length ? `<div class="mdp-donut-body">${donut(slices, model.revenue)}<ul class="mdp-donut-legend">${legend}</ul></div>` : emptySales()}
+  </div></details>` : '';
   return `<div class="mdm-body">
     ${model.offlineNote}
     ${model.blocks.kpi ? `<section class="mdm-hero" aria-label="Chiffre d’affaires">
       <div class="mdm-hero-top"><span>Chiffre d’affaires</span><span class="mdm-hero-ico">${ico('sales')}</span></div>
-      <b>${usdOnly(model.revenue)}</b>
+      ${valueButton(model, 'revenue', true)}
+      ${comparisonBadge(model, 'revenue')}
       <div class="mdm-hero-foot"><span>${model.salesCount} vente(s)</span><span>${esc(model.periodLabel)}</span></div>
     </section>` : ''}
     ${model.blocks.kpi ? `<section class="mdm-kpis" aria-label="Indicateurs clés">${mobileKpis(model)}</section>` : ''}
-    ${chartCard}${donutCard}
+    ${chartCard}
     <section class="mdm-card mdm-activity">
       <div class="mdp-card-head"><div><h2>Activités récentes</h2><p>Derniers mouvements de la période</p></div><a href="#/ventes">Voir tout</a></div>
       ${activityList(model.activities)}
     </section>
+    ${donutCard}
     ${treasury}
     ${detailsBlock(model)}
   </div>`;
+}
+
+export function renderModernLoading() {
+  return `<div class="md-loading-status" role="status">Chargement des chiffres…</div>
+    <div class="md-skeleton" aria-hidden="true">${Array.from({ length: 4 }, () => '<div><i></i><i></i><i></i></div>').join('')}</div>`;
+}
+
+export function renderModernFailure() {
+  return `<section class="md-load-error" role="alert"><h2>Chiffres indisponibles</h2>
+    <p>Vérifiez la connexion et réessayez. Les données manquantes ne sont pas remplacées par zéro.</p>
+    <button class="btn" type="button" data-md-retry>Réessayer</button></section>`;
+}
+
+export function paintModernComparisons(main, model) {
+  main.querySelectorAll('[data-md-change]').forEach(element => {
+    element.innerHTML = comparisonContent(model, element.dataset.mdChange);
+  });
+}
+
+export function renderModernDetail(model, key) {
+  const detail = Object.hasOwn(model.details || {}, key) ? model.details[key] : null;
+  if (!detail) return null;
+  const context = detail.current ? 'État actuel' : model.dateLabel;
+  const scope = detail.scope === 'all' ? 'Toutes les boutiques' : model.shopLabel || 'Toutes les boutiques';
+  const heading = `<p class="md-detail-context">${esc(context)} · ${esc(scope)}</p>`;
+  if (!detail.available) return { title: detail.title, body: `${heading}<p role="status">Données indisponibles. Actualisez le tableau de bord pour réessayer.</p>` };
+  const explanation = ['gross', 'netProfit'].includes(key)
+    ? `<p class="md-detail-note">${key === 'gross' ? 'Chiffre d’affaires moins coût des articles vendus' : 'Bénéfice brut moins les dépenses de la période'}</p>` : '';
+  const scopeNote = model.shopSelected && ['cashIn', 'cashOut', 'cashNet', 'netProfit'].includes(key)
+    ? '<p class="md-detail-note">Les ventes sont filtrées par boutique. Dépôts, dépenses et paiements fournisseurs concernent l’ensemble de l’entreprise.</p>' : '';
+  const previous = model.comparison?.values?.[key];
+  const comparison = Number.isFinite(previous) ? `<p class="md-detail-note"><span>Période précédente :</span> ${usdOnly(previous)} · ${dateFr(model.comparison.range.from)} – ${dateFr(model.comparison.range.to)}</p>` : '';
+  const body = detail.rows.length ? `<div class="tw md-detail-table"><table><thead><tr><th>Date</th><th>Détail</th><th class="r">Montant</th></tr></thead><tbody>
+    ${detail.rows.map(row => `<tr><td>${dateFr(row.date)}</td><td>${esc(row.label)}</td><td class="r">${usdOnly(row.amount)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<p class="md-detail-empty">Aucune opération à afficher.</p>';
+  return {
+    title: detail.title,
+    body: `${heading}<p class="md-detail-total">${usdOnly(detail.total)}</p>${comparison}${explanation}${scopeNote}${body}<p class="md-detail-note">Les filtres du tableau de bord sont conservés à la fermeture.</p>`
+  };
+}
+
+// Écouteurs délégués : un seul jeu d'événements, même après un changement de rendu.
+export function bindModernInteractions(main, { signal, onDetail, onRetry }) {
+  const selectPoint = (widget, index) => {
+    const rows = [...widget.querySelectorAll('[data-md-chart-data] > span')];
+    const row = rows[Math.max(0, Math.min(rows.length - 1, index))];
+    if (!row) return;
+    const text = `${row.dataset.label} : ${usdOnly(Number(row.dataset.value))}`;
+    const slider = widget.querySelector('[data-md-chart-slider]');
+    slider.value = row.dataset.index;
+    slider.setAttribute('aria-valuetext', text);
+    widget.querySelector('[data-md-chart-output]').textContent = text;
+    const cursor = widget.querySelector('[data-md-cursor]');
+    cursor.setAttribute('x1', row.dataset.x);
+    cursor.setAttribute('x2', row.dataset.x);
+    widget.querySelectorAll('[data-md-dot]').forEach(dot => dot.classList.toggle('md-dot-selected', dot.dataset.mdDot === row.dataset.index));
+  };
+  main.addEventListener('input', event => {
+    if (event.target.matches('[data-md-chart-slider]')) selectPoint(event.target.closest('[data-md-chart]'), Number(event.target.value));
+  }, { signal });
+  main.addEventListener('pointerup', event => {
+    const svg = event.target.closest('svg.md-chart');
+    if (!svg || event.button > 0) return;
+    const widget = svg.closest('[data-md-chart]');
+    const points = widget.querySelectorAll('[data-md-chart-data] > span');
+    const box = svg.getBoundingClientRect();
+    const x = (event.clientX - box.left) / box.width * 640;
+    selectPoint(widget, Math.round((x - 24) / (640 - 48) * (points.length - 1)));
+  }, { signal });
+  main.addEventListener('click', event => {
+    const menuButton = event.target.closest('.mdp-menu-body button, .mdm-menu-body button');
+    if (menuButton) menuButton.closest('details').open = false;
+    const detail = event.target.closest('[data-md-detail]');
+    if (detail) onDetail(detail.dataset.mdDetail, detail);
+    if (event.target.closest('[data-md-retry]')) onRetry();
+  }, { signal });
+  main.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const menu = event.target.closest('.mdp-menu[open], .mdm-menu[open]');
+    if (menu) { menu.open = false; menu.querySelector('summary').focus(); event.preventDefault(); }
+  }, { signal });
+  document.addEventListener('pointerdown', event => {
+    main.querySelectorAll('.mdp-menu[open], .mdm-menu[open]').forEach(menu => {
+      if (!menu.contains(event.target)) menu.open = false;
+    });
+  }, { signal });
 }

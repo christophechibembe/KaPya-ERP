@@ -39,6 +39,12 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
 
 /* ---- Conteneur ------------------------------------------------------------ */
 .mdm {
+  --mdp-blue: var(--mdm-blue);
+  --mdp-mute: var(--mdm-mute);
+  --mdp-surface: var(--mdm-surface);
+  --mdp-line: var(--mdm-line);
+  --mdp-radius: 18px;
+  --mdp-soft: #F5F8FE;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -114,8 +120,13 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
   gap: .5rem;
   padding: 0 1rem;
   margin-top: -.75rem;
-  position: relative;
-  z-index: 2;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+  padding-top: .5rem;
+  padding-bottom: .5rem;
+  background: var(--mdm-bg);
+  box-shadow: 0 6px 15px rgba(11, 33, 72, .04);
 }
 
 .mdm-field,
@@ -209,6 +220,8 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
   flex-direction: column;
   gap: .15rem;
   min-width: 230px;
+  max-height: 65vh;
+  overflow-y: auto;
   padding: .45rem;
   background: var(--mdm-surface);
   border: 1px solid var(--mdm-line);
@@ -239,6 +252,24 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
 .mdm-menu-body button.ghost { color: var(--mdm-blue); border: 1px solid var(--mdm-line); }
 
 .mdm .owner-updated { margin: -.5rem 1rem 0; font-size: .76rem; }
+.mdm-filters:has(.owner-date:not([hidden])) { position: relative; }
+.mdm-show { order: 2; width: 100%; min-height: 44px; }
+.mdm-show[hidden] { display: none; }
+.mdm-toolbar { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin: -.5rem 1rem 0; min-width: 0; }
+.mdm-toolbar .owner-updated { margin: 0; min-width: 0; font-size: .7rem; text-align: right; }
+.mdm-new-sale { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 44px; flex: 0 0 auto; padding: .5rem .75rem; border-radius: 12px; color: #fff; background: var(--mdm-blue); text-decoration: none; font-size: .8rem; font-weight: 650; }
+.mdm-new-sale:hover { background: #0A46C0; }
+.mdm-payment-body { padding-bottom: 1rem; }
+.mdm-hero .md-value-hero { color: #fff; }
+.mdm-hero .md-value-hero b { font-size: 2rem; line-height: 1.1; letter-spacing: -.035em; overflow-wrap: anywhere; }
+.mdm-hero .md-value-hero:focus-visible { outline-color: #fff; }
+.mdm-hero .md-change { color: #D9E6FF; }
+.mdm-hero .md-change-good, .mdm-hero .md-change-bad { color: #fff; }
+.mdm-card .md-chart-widget .md-chart { height: 180px; }
+.mdm-card .md-y-axis { height: 180px; }
+.mdm-rows .md-value { width: auto; flex: 0 1 auto; gap: .5rem; }
+.mdm .md-loading-status, .mdm .md-skeleton { margin: 0 1rem; }
+.mdm .md-load-error { margin: 0 1rem; }
 
 /* ---- Contenu -------------------------------------------------------------- */
 .mdm-body {
@@ -322,6 +353,7 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
 .mdm-kpis .mdp-kpi-label { font-size: .72rem; }
 .mdm-kpis .mdp-kpi b { font-size: 1.18rem; }
 .mdm-kpis .mdp-kpi-note { font-size: .68rem; }
+.mdm-kpis .md-change { display: none; }
 
 /* Cartes simples */
 .mdm-card {
@@ -457,7 +489,7 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
   .mdm-kpis { gap: .6rem; }
   .mdm-kpis .mdp-kpi { padding: .75rem .7rem; }
   .mdm-kpis .mdp-kpi b { font-size: 1.02rem; }
-  .mdm-hero > b { font-size: 1.7rem; }
+  .mdm-hero .md-value-hero b { font-size: 1.7rem; }
   .mdm-card .mdp-donut-body { grid-template-columns: 1fr; justify-items: center; }
 
   /* Les deux filtres et le menu restent sur une seule ligne, sans débordement. */
@@ -468,7 +500,7 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
   .mdm-filters .shop-pick select { padding: .35rem .3rem; font-size: .76rem; }
 
   /* Sur un écran très étroit, une étiquette de date sur deux suffit. */
-  .mdm-card .md-xlabels .md-xlab:nth-child(even) { display: none; }
+  .mdm-card .md-xlabels .md-xlab:not(.md-xmajor) { display: none; }
 }
 
 /* Respecte la préférence « animations réduites ». */

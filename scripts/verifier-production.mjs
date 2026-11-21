@@ -26,6 +26,7 @@ const checks = [
   },
   { url: '/js/version.js', status: 200, match: new RegExp(`BUILD = '${build}'`) },
   { url: '/js/dashboard-modern.js', status: 200, match: /renderModernContent/ },
+  { url: '/js/dashboard-insights.mjs', status: 200, match: /relativeChange/ },
   { url: '/js/dashboard-modes.js', status: 200, absent: /mode === 'modern_pc' && screenWidth\(\)/ },
   { url: '/js/modules/accueil.js', status: 200, match: /const creditReceipts = customerPayments\.filter/ },
   { url: '/css/dashboard-modern-pc.css', status: 200, match: /min-width: 768px/ },
@@ -102,6 +103,26 @@ if (!browserPath) {
     assert.deepEqual(demo, { demo: true, url: '', key: '', login: false });
     assert.deepEqual(page.requests.slice(requestStart).filter(url => /supabase\./.test(url)), []);
     console.log('Démo publique vérifiée : sans compte, configuration serveur neutralisée, aucun appel Supabase.');
+    await page.evaluate(`import('/js/dashboard-modes.js').then(({setMode}) => setMode('modern_pc'))`);
+    await page.goto(base + '/demo/?dashboard-check=1#/accueil');
+    await page.evaluate(`new Promise((resolve,reject)=>{
+      const deadline=Date.now()+15000;
+      const check=()=>{if(document.querySelector('.mdp [data-md-detail=revenue]')&&document.querySelector('#owner-content')?.getAttribute('aria-busy')!=='true')resolve();else if(Date.now()>deadline)reject(new Error('Tableau de bord PC non chargé'));else setTimeout(check,50)};check();
+    })`);
+    assert.equal(await page.evaluate(`document.querySelector('.mdp-menu') !== null`), true, 'Menu des actions PC absent.');
+    await page.evaluate(`document.querySelector('[data-md-detail=revenue]').click()`);
+    assert.equal(await page.evaluate(`document.querySelector('#owner-dialog').open`), true, 'Détail du chiffre d’affaires indisponible.');
+    await page.evaluate(`document.querySelector('#owner-dialog #c').click(); document.querySelector('#owner-mode').click(); document.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close())`);
+    await page.viewport(390, 900);
+    const mobile = await page.evaluate(`({
+      sale: document.querySelector('.mdm-new-sale')?.getAttribute('href'),
+      chart: !!document.querySelector('.mdm .md-chart-slider'),
+      paymentDetails: !!document.querySelector('.mdm-payment-details'),
+      overflow: document.documentElement.scrollWidth > innerWidth + 1
+    })`);
+    assert.deepEqual(mobile, { sale: '#/vente', chart: true, paymentDetails: true, overflow: false });
+    assert.deepEqual(page.requests.slice(requestStart).filter(url => /supabase\./.test(url)), []);
+    console.log('Tableau de bord moderne vérifié en démo : PC, détail des indicateurs, mobile et accès Nouvelle vente.');
   } finally {
     for (const fn of cleanup.reverse()) await fn();
   }
