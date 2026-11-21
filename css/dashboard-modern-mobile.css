@@ -532,7 +532,9 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
 :root[data-theme="dark"] .mdm-menu-body button:hover { background: #1C2739; }
 :root[data-theme="dark"] .mdm-menu > summary { color: var(--mdm-ink); }
 :root[data-theme="dark"] .mdm-menu-body { box-shadow: 0 18px 44px rgba(0, 0, 0, .5); }
-:root[data-theme="dark"] .mdm-new-sale:hover { background: #5B8FE0; }
+:root[data-theme="dark"] .mdm-new-sale { background: #3A6FD0; }
+:root[data-theme="dark"] .mdm-new-sale:hover { background: #3262BC; }
+:root[data-theme="dark"] .mdm-menu-body button.btn { background: #3A6FD0; }
 :root[data-theme="dark"] .mdm-card,
 :root[data-theme="dark"] .mdm-kpis .mdp-card { box-shadow: 0 6px 18px rgba(0, 0, 0, .26); }
 :root[data-theme="dark"] .mdm-card .md-grid { stroke: #263248; }

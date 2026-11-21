@@ -683,6 +683,14 @@ body.kp-dashboard-page.dashboard-mode-pc main {
 :root[data-theme="dark"] :where(.mdp, .mdm) .t-red { --tone: #FCA5A5; --tone-soft: #3B2226; }
 :root[data-theme="dark"] :where(.mdp, .mdm) .t-teal { --tone: #5EEAD4; --tone-soft: #123A3A; }
 
+:root[data-theme="dark"] body.kp-dashboard-page.dashboard-mode-pc nav a[aria-current=page] {
+  background: #3A6FD0;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .38);
+}
+
+:root[data-theme="dark"] .mdp .btn,
+:root[data-theme="dark"] .mdp-menu-body .btn { background: #3A6FD0; }
+:root[data-theme="dark"] .mdp .btn:hover { background: #3262BC; }
 :root[data-theme="dark"] .mdp-period-chip { background: #1D2D4F; color: #B7D0FF; }
 :root[data-theme="dark"] .mdp .ghost:hover { background: var(--mdp-soft); border-color: #344D78; }
 :root[data-theme="dark"] .mdp-menu-body { box-shadow: 0 16px 40px rgba(0, 0, 0, .45); }
