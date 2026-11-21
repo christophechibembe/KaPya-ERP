@@ -614,8 +614,8 @@ table.lines td,table.lines th{padding:.6rem .5rem}
 :root[data-theme="dark"] .chart .bar{fill:#2b3d61}
 :root[data-theme="dark"] .chart .bar.cur{fill:#6b9cf5}
 :root[data-theme="dark"] .notice{color:var(--gold-ink)}
-:root[data-theme="dark"] .btn{background:#4a7fd6;box-shadow:0 4px 14px rgba(0,0,0,.35)}
-:root[data-theme="dark"] .btn:hover{background:#5b8fe0}
+:root[data-theme="dark"] .btn{background:#3A6FD0;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+:root[data-theme="dark"] .btn:hover{background:#3262BC}
 :root[data-theme="dark"] .wa{background:#2f9e62}
 :root[data-theme="dark"] .wa:hover{background:#3aae70}
 :root[data-theme="dark"] .done{color:var(--green-ink)}
@@ -1907,8 +1907,8 @@ img[src="assets/logo-k.png"][width="56"]{width:36px;height:auto}
 :root[data-theme="dark"] .report-filter-mark{background:var(--blue-soft)}
 :root[data-theme="dark"] .report-filter-mark::before,
 :root[data-theme="dark"] .report-filter-mark::after{border-color:#7EA8FF;background-color:#7EA8FF}
-:root[data-theme="dark"] .report-date-filter .btn{background:#4A7FD6}
-:root[data-theme="dark"] .report-date-filter .btn:hover{background:#5B8FE0}
+:root[data-theme="dark"] .report-date-filter .btn{background:#3A6FD0}
+:root[data-theme="dark"] .report-date-filter .btn:hover{background:#3262BC}
 
 /* Écarts de stock signalés dans les dépôts */
 .depot-gap{border:1px solid #f59e0b;background:#fffbeb;margin-bottom:1rem}
