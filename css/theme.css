@@ -1853,6 +1853,136 @@ img[src="assets/logo-k.png"][width="56"]{width:36px;height:auto}
   .vr-pos .vr-options input,.vr-pos .vr-options select{font-size:16px}
 }
 
+/* ==========================================================================
+   Compléments du thème sombre pour toute l'application.
+   Les surfaces, champs et cartes utilisent les variables ci-dessus ; ces règles
+   ne couvrent que les anciens composants encore peints avec des couleurs fixes.
+   ========================================================================== */
+:root[data-theme="dark"] tbody tr:hover td{background:#1a2538}
+:root[data-theme="dark"] .list-search{background:var(--paper-2);border-color:var(--line)}
+:root[data-theme="dark"] .list-search input{background:var(--paper-2);color:var(--ink);border-color:var(--field)}
+:root[data-theme="dark"] .helpbtn,
+:root[data-theme="dark"] .menubtn{background:var(--paper);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .bell{border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .menu-pop{background:var(--paper);border-color:var(--line)}
+:root[data-theme="dark"] .menu-pop button{color:var(--ink)}
+:root[data-theme="dark"] .menu-pop button + button{border-top-color:var(--line)}
+:root[data-theme="dark"] .menu-pop button:hover{background:var(--paper-2)}
+
+/* Cartes d'indicateurs (tableau de bord classique, stocks, crédits, gérant) */
+:root[data-theme="dark"] .kpi{background:var(--paper);border-color:var(--line)}
+:root[data-theme="dark"] .kpi b{color:var(--ink)}
+:root[data-theme="dark"] .kpi span{color:var(--mute)}
+:root[data-theme="dark"] .kpi.warn{background:var(--gold-soft);border-color:#6B5520}
+:root[data-theme="dark"] .kpi.bad{background:var(--red-soft);border-color:#6B3A3A}
+
+/* Encadrés, sections repliables et listes */
+:root[data-theme="dark"] p.empty,
+:root[data-theme="dark"] .empty{background:var(--paper-2);border-color:var(--line);color:var(--mute)}
+:root[data-theme="dark"] details.fold,
+:root[data-theme="dark"] details.vr-more,
+:root[data-theme="dark"] details.shop-more{background:var(--paper-2);border-color:var(--line)}
+:root[data-theme="dark"] details.fold > summary,
+:root[data-theme="dark"] details.vr-more > summary,
+:root[data-theme="dark"] details.shop-more > summary{color:var(--ink)}
+:root[data-theme="dark"] details.pref-sec > summary{background:var(--paper);color:var(--ink);border-color:var(--line)}
+:root[data-theme="dark"] .doc-filter-sum{color:var(--ink)}
+:root[data-theme="dark"] .pill.neutral{background:var(--paper-2);color:var(--mute)}
+:root[data-theme="dark"] .shop-close .pill{background:var(--gold-soft);color:var(--gold-ink);border-color:#6B5520}
+:root[data-theme="dark"] .shop-close .pill.ok{background:var(--green-soft);color:var(--green-ink);border-color:#2F6B4F}
+:root[data-theme="dark"] .watch-row:hover,
+:root[data-theme="dark"] .watch-row:focus-visible{background:#1B2A44}
+:root[data-theme="dark"] .watch-row span{color:#C2CDE0}
+:root[data-theme="dark"] .watch-row.warn{background:#3A2A16}
+:root[data-theme="dark"] .watch-row.warn b{color:var(--gold-ink)}
+:root[data-theme="dark"] .perf-top td{background:#1D2D4F}
+:root[data-theme="dark"] .perf-top.perf-loss td{background:#3A2A16}
+:root[data-theme="dark"] .notif-empty{color:var(--mute)}
+:root[data-theme="dark"] .notif-bad{background:var(--red-soft);color:var(--red-ink)}
+:root[data-theme="dark"] .notif-warn{background:var(--gold-soft);color:var(--gold-ink)}
+:root[data-theme="dark"] .notif-info{background:var(--blue-soft);color:#B7D0FF}
+:root[data-theme="dark"] .load-err{background:var(--red-soft);border-color:#6B3A3A;color:var(--red-ink)}
+:root[data-theme="dark"] .sync-note{background:#3A2A16;color:var(--gold-ink);border-left-color:#C58A1A}
+:root[data-theme="dark"] .sync-note.bad{background:var(--red-soft);color:var(--red-ink)}
+:root[data-theme="dark"] .report-filter-mark{background:var(--blue-soft)}
+:root[data-theme="dark"] .report-filter-mark::before,
+:root[data-theme="dark"] .report-filter-mark::after{border-color:#7EA8FF;background-color:#7EA8FF}
+:root[data-theme="dark"] .report-date-filter .btn{background:#4A7FD6}
+:root[data-theme="dark"] .report-date-filter .btn:hover{background:#5B8FE0}
+
+/* Écarts de stock signalés dans les dépôts */
+.depot-gap{border:1px solid #f59e0b;background:#fffbeb;margin-bottom:1rem}
+:root[data-theme="dark"] .depot-gap{background:#3A2A16;border-color:#8A6D2A;color:var(--gold-ink)}
+
+/* Vente rapide et facture */
+:root[data-theme="dark"] .vr-side{background:var(--paper-2);border-color:var(--line)}
+:root[data-theme="dark"] .vr-mode{background:var(--paper-2);border-color:var(--line);color:var(--ink)}
+:root[data-theme="dark"] .vr-mode.on{background:var(--blue);border-color:var(--blue);color:#fff}
+:root[data-theme="dark"] .vr-total{border-top-color:var(--blue)}
+:root[data-theme="dark"] .vr-total b{color:var(--blue-2)}
+:root[data-theme="dark"] .vr-queue{background:#3A2A16;color:var(--gold-ink);border-color:#6B5520}
+:root[data-theme="dark"] .vr-queue.bad{background:var(--red-soft);color:var(--red-ink);border-color:#6B3A3A}
+:root[data-theme="dark"] .vr-offline{background:#3A2A16;color:var(--gold-ink);border-color:#6B5520}
+:root[data-theme="dark"] .vr-restored{background:var(--blue-soft);color:#B7D0FF;border-color:#344D78}
+:root[data-theme="dark"] .vr-stock:not(:empty){background:#3A2A16;border-color:#6B5520;color:var(--gold-ink)}
+:root[data-theme="dark"] .vr-foot,
+:root[data-theme="dark"] .facture .ffoot{background:var(--paper);border-top-color:var(--line)}
+:root[data-theme="dark"] .vr-foot-total span,
+:root[data-theme="dark"] .facture .ffoot-total span{color:var(--mute)}
+:root[data-theme="dark"] .vr-foot-total b,
+:root[data-theme="dark"] .facture .ffoot-total b{color:var(--ink)}
+:root[data-theme="dark"] .shell:has(#main[data-page=vente])>.content{background:var(--bg)}
+:root[data-theme="dark"] .vr-add{background:var(--blue);border-color:var(--blue)}
+:root[data-theme="dark"] .vr-sbtn:active,
+:root[data-theme="dark"] .vr-sbtn:hover{background:var(--blue-soft)}
+
+/* Proformas, dépôts et bons de commande */
+:root[data-theme="dark"] #pf-form h2,
+:root[data-theme="dark"] #pf-form .pf-total b{color:var(--ink)}
+:root[data-theme="dark"] #pf-form label,
+:root[data-theme="dark"] #pf-form .vf-prodrow label,
+:root[data-theme="dark"] #pf-form .pf-total span,
+:root[data-theme="dark"] #deposit-dlg label{color:var(--mute)}
+:root[data-theme="dark"] #pf-form .vr-cart > *{background:var(--paper);border-bottom-color:var(--line)}
+:root[data-theme="dark"] #pf-form .vr-total{background:var(--blue-soft);color:var(--ink)}
+:root[data-theme="dark"] #pf-form .vr-total b{color:var(--blue-2)}
+:root[data-theme="dark"] #pf-form .pf-foot{background:var(--paper);border-top-color:var(--line)}
+:root[data-theme="dark"] #pf-list th,
+:root[data-theme="dark"] .deposit-list th{background:var(--paper-2);color:var(--mute);border-bottom-color:var(--line)}
+:root[data-theme="dark"] #pf-list td,
+:root[data-theme="dark"] .deposit-list td{border-bottom-color:var(--line)}
+:root[data-theme="dark"] .pf-print-bar select{border-color:var(--line);background:var(--paper);color:var(--ink)}
+:root[data-theme="dark"] .bt-features .check:has(input:checked){border-color:#344D78;background:var(--blue-soft)}
+:root[data-theme="dark"] .combo-list{background:var(--paper);border-color:var(--line);box-shadow:0 16px 30px -14px rgba(0,0,0,.55)}
+:root[data-theme="dark"] .combo-item{background:var(--paper);color:var(--ink);border-bottom-color:var(--line)}
+:root[data-theme="dark"] .combo-item:hover,
+:root[data-theme="dark"] .combo-item:focus{background:var(--blue-soft);color:var(--ink)}
+:root[data-theme="dark"] .combo-empty{color:var(--mute)}
+:root[data-theme="dark"] #tbl .row-more-list{background:var(--paper);border-color:var(--line)}
+
+/* Dialogues applicatifs (hors aperçu d'impression, volontairement blanc) */
+:root[data-theme="dark"] .confirm-box,
+:root[data-theme="dark"] .scan-box{background:var(--paper);color:var(--ink)}
+:root[data-theme="dark"] .news-card{background:var(--paper);color:var(--ink)}
+:root[data-theme="dark"] .news-card h2{color:var(--ink)}
+:root[data-theme="dark"] .scan-box p{color:var(--mute)}
+:root[data-theme="dark"] .topbar .avatar{border:1px solid var(--line)}
+
+/* Écrans de démarrage et de blocage */
+:root[data-theme="dark"] #splash,
+:root[data-theme="dark"] #splash-brief{background:var(--bg)}
+:root[data-theme="dark"] .splash-title,
+:root[data-theme="dark"] .splash-brand,
+:root[data-theme="dark"] .splash-text,
+:root[data-theme="dark"] #desktop-block h1{color:var(--ink)}
+:root[data-theme="dark"] #desktop-block{background:var(--bg)}
+:root[data-theme="dark"] #desktop-block p{color:var(--mute)}
+:root[data-theme="dark"] .auth{background:radial-gradient(800px 500px at 0% 0%,#152744 0%,transparent 60%),var(--bg)}
+:root[data-theme="dark"] .dash-mode-choice{border-color:rgba(255,255,255,.18)}
+:root[data-theme="dark"] .dash-mode-choice:hover{border-color:rgba(126,168,255,.65)}
+:root[data-theme="dark"] .dash-mode-choice.on{border-color:var(--blue);background:var(--blue-soft);box-shadow:0 0 0 2px rgba(107,156,245,.18)}
+:root[data-theme="dark"] .dash-mode-choice:focus-visible{outline-color:var(--blue-2)}
+
 /* Paramètres — choix de la présentation du tableau de bord. */
 .dash-mode-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;margin:.6rem 0}
 .dash-mode-choice{display:flex;flex-direction:column;gap:.25rem;text-align:left;padding:.75rem .9rem;border:1px solid rgba(11,37,80,.18);border-radius:12px;background:transparent;color:inherit;cursor:pointer;font:inherit}

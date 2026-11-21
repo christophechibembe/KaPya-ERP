@@ -650,3 +650,63 @@ body.kp-dashboard-page.dashboard-mode-pc main {
   .mdp-filters .owner-date input,
   .mdp-field select { min-width: 0; width: 100%; }
 }
+
+/* ==========================================================================
+   Thème sombre : mêmes composants, palette ardoise alignée sur le reste de
+   l'application. Les trois présentations gardent les mêmes calculs et droits.
+   ========================================================================== */
+:root[data-theme="dark"] body.kp-dashboard-page.dashboard-mode-pc {
+  --mdp-blue: #6B9CF5;
+  --mdp-blue-dark: #86B1FF;
+  --mdp-bg: #0F1521;
+  --mdp-surface: #161F30;
+  --mdp-ink: #DDE4F0;
+  --mdp-mute: #8E9BB3;
+  --mdp-line: #2A3549;
+  --mdp-soft: #1C2739;
+  --mdp-green: #4FB286;
+  --mdp-red: #E57B7B;
+  --mdp-violet: #B49CF8;
+  --mdp-orange: #F59E5B;
+  --mdp-teal: #4CC9C9;
+}
+
+:root[data-theme="dark"] body.kp-dashboard-page.dashboard-mode-pc .topbar {
+  background: rgba(15, 21, 33, .88);
+  border-bottom-color: rgba(255, 255, 255, .07);
+}
+
+:root[data-theme="dark"] :where(.mdp, .mdm) .t-blue { --tone: #7EA8FF; --tone-soft: #1D2D4F; }
+:root[data-theme="dark"] :where(.mdp, .mdm) .t-green { --tone: #6EE7A8; --tone-soft: #183A2E; }
+:root[data-theme="dark"] :where(.mdp, .mdm) .t-violet { --tone: #C4B5FD; --tone-soft: #2E2350; }
+:root[data-theme="dark"] :where(.mdp, .mdm) .t-orange { --tone: #FDBA74; --tone-soft: #3A2A18; }
+:root[data-theme="dark"] :where(.mdp, .mdm) .t-red { --tone: #FCA5A5; --tone-soft: #3B2226; }
+:root[data-theme="dark"] :where(.mdp, .mdm) .t-teal { --tone: #5EEAD4; --tone-soft: #123A3A; }
+
+:root[data-theme="dark"] .mdp-period-chip { background: #1D2D4F; color: #B7D0FF; }
+:root[data-theme="dark"] .mdp .ghost:hover { background: var(--mdp-soft); border-color: #344D78; }
+:root[data-theme="dark"] .mdp-menu-body { box-shadow: 0 16px 40px rgba(0, 0, 0, .45); }
+:root[data-theme="dark"] .md-value:hover { background: rgba(126, 168, 255, .12); }
+:root[data-theme="dark"] .md-change-good { color: #7EE2A8; }
+:root[data-theme="dark"] .md-change-bad { color: #FCA5A5; }
+:root[data-theme="dark"] .md-chart-reading output { background: #1D2D4F; color: #B7D0FF; }
+:root[data-theme="dark"] .md-grid { stroke: #263248; }
+:root[data-theme="dark"] .md-axis { fill: #8E9BB3; }
+:root[data-theme="dark"] .md-dot { fill: #161F30; stroke: #7EA8FF; }
+:root[data-theme="dark"] .md-chart-cursor { stroke: #7EA8FF; }
+:root[data-theme="dark"] .md-chart-widget .md-dot-selected { fill: #7EA8FF; }
+:root[data-theme="dark"] .mdp-card,
+:root[data-theme="dark"] .mdp-more { box-shadow: 0 1px 2px rgba(0, 0, 0, .24), 0 10px 26px rgba(0, 0, 0, .22); }
+:root[data-theme="dark"] .mdp-activity-list li,
+:root[data-theme="dark"] .mdp-detail { border-top-color: var(--mdp-line); }
+:root[data-theme="dark"] .mdp-act-amount.in { color: #7EE2A8; }
+:root[data-theme="dark"] .mdp-act-amount.out { color: #FCA5A5; }
+:root[data-theme="dark"] .mdp-watch b.warn { color: #FBBF24; }
+:root[data-theme="dark"] .md-skeleton > div { background: var(--mdp-surface); border-color: var(--mdp-line); }
+:root[data-theme="dark"] .md-skeleton i { background: #263248; }
+:root[data-theme="dark"] .md-load-error { background: var(--mdp-surface); border-color: #6B3A3A; color: var(--mdp-ink); }
+:root[data-theme="dark"] .md-load-error p { color: var(--mdp-mute); }
+:root[data-theme="dark"] .md-detail-context,
+:root[data-theme="dark"] .md-detail-note { color: var(--mdp-mute); }
+:root[data-theme="dark"] .md-detail-total { color: var(--mdp-blue); }
+
