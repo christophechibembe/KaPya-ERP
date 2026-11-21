@@ -64,6 +64,14 @@ body.kp-dashboard-page.dashboard-mode-pc .topbar {
   z-index: 6;
 }
 
+/* Le bouton clair/sombre reste visible dans le tableau de bord moderne :
+   lune en mode clair, soleil en mode sombre, comme dans le reste de l'application. */
+body.kp-dashboard-page.dashboard-mode-pc .topbar #themebtn {
+  display: inline-grid !important;
+  width: 44px;
+  height: 44px;
+}
+
 body.kp-dashboard-page.dashboard-mode-pc main {
   max-width: 1320px;
   padding: 1.6rem clamp(1.25rem, 3vw, 2.4rem) 3.5rem;
@@ -363,6 +371,10 @@ body.kp-dashboard-page.dashboard-mode-pc main {
 .mdp-trend,
 .mdp-donut-card { padding: 1.15rem 1.25rem 1.2rem; }
 
+/* La carte du donut est un conteneur : sa légende s'adapte à sa propre largeur,
+   pas seulement à celle de la fenêtre. */
+.mdp-donut-card { container-type: inline-size; }
+
 .mdp-card-head {
   display: flex;
   align-items: flex-start;
@@ -451,9 +463,16 @@ body.kp-dashboard-page.dashboard-mode-pc main {
   min-width: 0;
 }
 
-.mdp-donut-legend li > span:nth-child(2) { overflow-wrap: anywhere; }
+.mdp-donut-legend li > span:nth-child(2) { min-width: 0; overflow-wrap: break-word; }
 .mdp-donut-legend b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .mdp-donut-legend small { color: var(--mdp-mute); font-size: .74rem; min-width: 36px; text-align: right; }
+
+/* Carte étroite : le donut passe au-dessus de la légende. Les libellés gardent
+   toute la largeur disponible et ne sont plus coupés lettre par lettre. */
+@container (max-width: 340px) {
+  .mdp-donut-body { grid-template-columns: 1fr; justify-items: stretch; gap: .9rem; }
+  .mdp-donut-body .md-donut-wrap { justify-self: center; }
+}
 
 /* ---- Activités récentes --------------------------------------------------- */
 .mdp-activity { padding: 1.15rem 1.25rem; }
@@ -644,7 +663,8 @@ body.kp-dashboard-page.dashboard-mode-pc main {
   .mdp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mdp-grid { grid-template-columns: 1fr; }
   .mdp-actions { margin-left: 0; width: 100%; }
-  .mdp-donut-body { grid-template-columns: 1fr; justify-items: center; }
+  .mdp-donut-body { grid-template-columns: 1fr; justify-items: stretch; }
+  .mdp-donut-body .md-donut-wrap { justify-self: center; }
   .mdp-watch { grid-template-columns: 1fr; }
   .mdp-mini-kpis { grid-template-columns: 1fr; }
   .mdp-filters .owner-date input,
