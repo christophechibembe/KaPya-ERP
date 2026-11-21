@@ -1,82 +1,474 @@
 /* ==========================================================================
    KaPya ERP — présentation « Moderne mobile » du tableau de bord.
-   Vraie lecture au pouce : cartes pleine largeur, filtres qui défilent,
-   tableaux lisibles sans casser la mise en page. Données inchangées.
+   Même contenu, mêmes calculs et mêmes droits que la présentation classique.
+   Tout est limité à body.kp-dashboard-page.dashboard-mode-mobile.
    ========================================================================== */
 
-@media (max-width: 767px) {
-  .dashboard-mode-mobile .owner-head {
-    padding: .75rem 0 .5rem;
-    margin-bottom: .5rem;
-  }
-
-  .dashboard-mode-mobile .owner-head h1 { font-size: 1.35rem; line-height: 1.2; }
-  .dashboard-mode-mobile .owner-head .sub { font-size: .82rem; }
-
-  .dashboard-mode-mobile .owner-filters {
-    display: flex;
-    gap: .5rem;
-    overflow-x: auto;
-    padding: 0 0 .4rem;
-    margin: .5rem 0;
-    scrollbar-width: none;
-  }
-
-  .dashboard-mode-mobile .owner-filters::-webkit-scrollbar { display: none; }
-
-  .dashboard-mode-mobile .owner-filters label {
-    flex: 0 0 auto;
-    margin: 0;
-  }
-
-  .dashboard-mode-mobile .owner-filters .btn,
-  .dashboard-mode-mobile .owner-filters .ghost {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .dashboard-mode-mobile .owner-updated { font-size: .75rem; }
-  .dashboard-mode-mobile .owner-period-label { font-size: .8rem; margin: .4rem 0 .6rem; }
-
-  .dashboard-mode-mobile .owner-kpis {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: .7rem;
-  }
-
-  .dashboard-mode-mobile .owner-kpis .owner-kpi {
-    margin: 0;
-    padding: .9rem 1rem;
-    border-radius: 14px;
-  }
-
-  .dashboard-mode-mobile .owner-kpi .kh { font-size: .8rem; }
-  .dashboard-mode-mobile .owner-kpi b { font-size: 1.5rem; line-height: 1.1; }
-  .dashboard-mode-mobile .owner-kpi > span { font-size: .72rem; }
-
-  .dashboard-mode-mobile .owner-charts {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: .8rem;
-  }
-
-  .dashboard-mode-mobile .owner-chart-svg { width: 100%; height: auto; }
-
-  .dashboard-mode-mobile .owner-panel {
-    padding: .9rem;
-    border-radius: 14px;
-  }
-
-  .dashboard-mode-mobile .owner-panel .sec-head { align-items: flex-start; }
-  .dashboard-mode-mobile .owner-panel .sec-head h2 { font-size: 1rem; }
-  .dashboard-mode-mobile .owner-panel .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .dashboard-mode-mobile .owner-panel table { min-width: 520px; }
-  .dashboard-mode-mobile .owner-note { font-size: .75rem; }
+body.kp-dashboard-page.dashboard-mode-mobile {
+  --mdm-blue: #0B5FFB;
+  --mdm-navy: #0B2148;
+  --mdm-bg: #F4F7FD;
+  --mdm-surface: #FFFFFF;
+  --mdm-ink: #101D38;
+  --mdm-mute: #617392;
+  --mdm-line: #E7EDF8;
+  --mdm-green: #13A552;
+  --mdm-red: #EF4444;
+  --mdm-violet: #7C3AED;
+  --mdm-orange: #F97316;
+  background: var(--mdm-bg);
 }
 
-/* Petits téléphones (320 px) : on réduit encore les titres, jamais les chiffres. */
-@media (max-width: 359px) {
-  .dashboard-mode-mobile .owner-head h1 { font-size: 1.15rem; }
-  .dashboard-mode-mobile .owner-kpi b { font-size: 1.3rem; }
-  .dashboard-mode-mobile .owner-panel { padding: .7rem; }
+/* La barre supérieure globale est remplacée par l'en-tête bleu du contenu. */
+body.kp-dashboard-page.dashboard-mode-mobile .topbar { display: none; }
+
+body.kp-dashboard-page.dashboard-mode-mobile main {
+  max-width: none;
+  padding: 0 0 1.5rem;
+}
+
+body.kp-dashboard-page.dashboard-mode-mobile .shell { background: var(--mdm-bg); }
+
+/* La barre de navigation basse reste celle de l'application ; on l'aligne sur la maquette. */
+body.kp-dashboard-page.dashboard-mode-mobile nav {
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -10px 30px rgba(11, 33, 72, .24);
+}
+
+body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !important; }
+
+/* ---- Conteneur ------------------------------------------------------------ */
+.mdm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+  color: var(--mdm-ink);
+}
+
+/* ---- En-tête bleu foncé --------------------------------------------------- */
+.mdm-header {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: 1rem 1rem 1.5rem;
+  background: linear-gradient(160deg, #0B2148 0%, #0B2E63 100%);
+  color: #fff;
+  border-radius: 0 0 26px 26px;
+}
+
+.mdm-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  min-height: 44px;
+}
+
+.mdm-brand { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.mdm-brand img { display: block; width: 28px; height: 32px; object-fit: contain; }
+.mdm-brand span { display: flex; flex-direction: column; line-height: 1; }
+.mdm-brand b { font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em; }
+.mdm-brand small { margin-top: .18rem; font-size: .58rem; font-weight: 700; letter-spacing: .28em; color: #8FB8FF; }
+
+.mdm-bar-actions { display: flex; align-items: center; gap: .5rem; }
+
+.mdm-iconbtn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .16);
+  background: rgba(255, 255, 255, .1);
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.mdm-iconbtn .ic { width: 20px; height: 20px; }
+.mdm-iconbtn:hover { background: rgba(255, 255, 255, .18); }
+
+.mdm-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--mdm-navy);
+  font-weight: 700;
+  font-size: .85rem;
+  text-decoration: none;
+}
+
+.mdm-hello { margin: .9rem 0 0; color: #BFD5FF; font-size: .9rem; font-weight: 600; }
+.mdm-header h1 { margin: .1rem 0 0; color: #fff; font-size: 1.65rem; letter-spacing: -.03em; }
+.mdm-header-note { margin: .2rem 0 0; color: #9DB6E0; font-size: .8rem; }
+
+/* ---- Filtres compacts ----------------------------------------------------- */
+.mdm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .5rem;
+  padding: 0 1rem;
+  margin-top: -.75rem;
+  position: relative;
+  z-index: 2;
+}
+
+.mdm-field,
+.mdm-shop,
+.mdm-filters .owner-date {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  flex: 1 1 130px;
+  min-width: 0;
+  margin: 0;
+  color: var(--mdm-mute);
+  font-size: .66rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.mdm-shop { flex: 1.2 1 150px; }
+
+/* Le libellé « Boutique » reste lisible par les lecteurs d'écran, sans alourdir la barre. */
+.mdm-shop .shop-pick {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.mdm-field select,
+.mdm-filters .shop-pick select,
+.mdm-filters .owner-date input {
+  width: 100%;
+  min-height: 44px;
+  padding: .4rem .45rem;
+  border: 1px solid var(--mdm-line);
+  border-radius: 12px;
+  background: var(--mdm-surface);
+  color: var(--mdm-ink);
+  font-size: .8rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  box-shadow: 0 4px 12px rgba(16, 29, 56, .06);
+}
+
+.mdm-filters .owner-date { flex: 1 1 100%; }
+.mdm-filters .owner-date[hidden] { display: none; }
+
+.mdm-filters > .mdm-iconbtn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--mdm-line);
+  background: var(--mdm-surface);
+  color: var(--mdm-blue);
+  box-shadow: 0 4px 12px rgba(16, 29, 56, .06);
+}
+
+.mdm-filters > .mdm-iconbtn:hover { background: #F5F8FE; }
+
+.mdm-menu { position: relative; flex: 0 0 auto; }
+
+.mdm-menu > summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--mdm-line);
+  background: var(--mdm-surface);
+  color: var(--mdm-navy);
+  cursor: pointer;
+  list-style: none;
+  box-shadow: 0 4px 12px rgba(16, 29, 56, .06);
+}
+
+.mdm-menu > summary::-webkit-details-marker { display: none; }
+.mdm-menu > summary .ic { width: 20px; height: 20px; }
+
+.mdm-menu-body {
+  position: absolute;
+  right: 0;
+  top: calc(100% + .4rem);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 230px;
+  padding: .45rem;
+  background: var(--mdm-surface);
+  border: 1px solid var(--mdm-line);
+  border-radius: 14px;
+  box-shadow: 0 18px 44px rgba(16, 29, 56, .2);
+}
+
+.mdm-menu-body button {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  width: 100%;
+  min-height: 44px;
+  padding: .5rem .65rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mdm-ink);
+  font: 500 .85rem var(--sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mdm-menu-body button .ic { width: 18px; height: 18px; color: var(--mdm-blue); }
+
+.mdm-menu-body button:hover { background: #F5F8FE; }
+.mdm-menu-body button.btn { justify-content: center; color: #fff; background: var(--mdm-blue); font-weight: 600; }
+.mdm-menu-body button.ghost { color: var(--mdm-blue); border: 1px solid var(--mdm-line); }
+
+.mdm .owner-updated { margin: -.5rem 1rem 0; font-size: .76rem; }
+
+/* ---- Contenu -------------------------------------------------------------- */
+.mdm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0 1rem;
+  min-width: 0;
+}
+
+/* Grande carte « Chiffre d'affaires » */
+.mdm-hero {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  padding: 1.15rem 1.2rem 1.25rem;
+  background: linear-gradient(135deg, #0B5FFB 0%, #0A46C0 100%);
+  border-radius: 20px;
+  color: #fff;
+  box-shadow: 0 16px 34px rgba(11, 95, 251, .28);
+  min-width: 0;
+}
+
+.mdm-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #D9E6FF;
+}
+
+.mdm-hero-ico {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .16);
+  color: #fff;
+}
+
+.mdm-hero-ico .ic { width: 21px; height: 21px; }
+
+.mdm-hero > b {
+  font-size: 2rem;
+  line-height: 1.1;
+  letter-spacing: -.035em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.mdm-hero-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-top: .15rem;
+  font-size: .78rem;
+  color: #CFE0FF;
+}
+
+/* Cartes KPI : deux colonnes sur téléphone */
+.mdm-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.mdm-kpis .mdp-card {
+  background: var(--mdm-surface);
+  border: 1px solid var(--mdm-line);
+  border-radius: 16px;
+  box-shadow: 0 6px 18px rgba(16, 29, 56, .05);
+}
+
+.mdm-kpis .mdp-kpi { padding: .85rem .9rem; gap: .35rem; }
+.mdm-kpis .mdp-kpi::after { width: 3px; }
+.mdm-kpis .mdp-ico { width: 32px; height: 32px; border-radius: 10px; }
+.mdm-kpis .mdp-ico .ic { width: 17px; height: 17px; }
+.mdm-kpis .mdp-kpi-label { font-size: .72rem; }
+.mdm-kpis .mdp-kpi b { font-size: 1.18rem; }
+.mdm-kpis .mdp-kpi-note { font-size: .68rem; }
+
+/* Cartes simples */
+.mdm-card {
+  background: var(--mdm-surface);
+  border: 1px solid var(--mdm-line);
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: 0 6px 18px rgba(16, 29, 56, .05);
+  min-width: 0;
+}
+
+.mdm-card .mdp-card-head { margin-bottom: .7rem; }
+.mdm-card .mdp-card-head h2 { font-size: .95rem; }
+.mdm-card .mdp-card-head p { font-size: .73rem; }
+.mdm-card .mdp-card-head a { color: var(--mdm-blue); font-size: .78rem; font-weight: 600; text-decoration: none; }
+.mdm-card .mdp-total { color: var(--mdm-blue); font-weight: 700; font-size: .92rem; white-space: nowrap; }
+
+.mdm-card .md-chart { display: block; width: 100%; height: auto; }
+.mdm-card .md-grid { stroke: #EDF1F8; }
+.mdm-card .md-axis { fill: #8A99B3; font-size: 11px; }
+.mdm-card .md-line { fill: none; stroke: #0B5FFB; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.mdm-card .md-dot { fill: #fff; stroke: #0B5FFB; stroke-width: 2.5; }
+
+.mdm-card .mdp-donut-body { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: .85rem; align-items: center; }
+.mdm-card .md-donut-wrap { width: 132px; height: 132px; }
+.mdm-card .md-donut-center b { font-size: .98rem; }
+.mdm-card .mdp-donut-legend { gap: .5rem; }
+.mdm-card .mdp-donut-legend li { grid-template-columns: 10px minmax(0, 1fr) auto; font-size: .78rem; }
+.mdm-card .mdp-donut-legend small { grid-column: 2 / -1; text-align: left; min-width: 0; }
+
+/* Activités */
+.mdm-card .mdp-activity-list { margin: 0; padding: 0; list-style: none; }
+.mdm-card .mdp-activity-list li { display: flex; align-items: center; gap: .7rem; padding: .7rem 0; border-top: 1px solid #EEF2F9; min-width: 0; }
+.mdm-card .mdp-activity-list li:first-child { border-top: 0; padding-top: .1rem; }
+.mdm-card .mdp-act-ico { width: 36px; height: 36px; border-radius: 12px; background: var(--tone-soft, #EEF3FB); color: var(--tone, var(--mdm-mute)); display: grid; place-items: center; flex: 0 0 auto; }
+.mdm-card .mdp-act-ico .ic { width: 18px; height: 18px; }
+.mdm-card .mdp-act-main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.mdm-card .mdp-act-main b { font-size: .83rem; }
+.mdm-card .mdp-act-main span { font-size: .72rem; color: var(--mdm-mute); overflow-wrap: anywhere; }
+.mdm-card .mdp-act-amount { margin-left: auto; font-size: .85rem; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mdm-card .mdp-act-amount.in { color: #0F8F47; }
+.mdm-card .mdp-act-amount.out { color: #D62828; }
+.mdm-card .mdp-empty { color: var(--mdm-mute); font-size: .82rem; margin: .2rem 0 0; }
+
+/* Trésorerie repliée */
+.mdm-more { padding: 0 1rem; }
+.mdm-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: .92rem;
+  list-style: none;
+}
+.mdm-more > summary::-webkit-details-marker { display: none; }
+.mdm-more > summary::after { content: '+'; color: var(--mdm-blue); font-size: 1.15rem; line-height: 1; }
+.mdm-more[open] > summary::after { content: '−'; }
+
+.mdm-rows { display: flex; flex-direction: column; padding-bottom: .35rem; }
+.mdm-rows > div { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .55rem 0; border-top: 1px solid #EEF2F9; font-size: .83rem; }
+.mdm-rows > div span { color: var(--mdm-mute); min-width: 0; }
+.mdm-rows > div b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mdm-rows b.in { color: #0F8F47; }
+.mdm-rows b.out { color: #D62828; }
+
+/* Détails de la période */
+.mdm-body > .mdp-more {
+  background: var(--mdm-surface);
+  border: 1px solid var(--mdm-line);
+  border-radius: 18px;
+  padding: 0 1rem;
+  box-shadow: 0 6px 18px rgba(16, 29, 56, .05);
+}
+.mdm-body > .mdp-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+.mdm-body > .mdp-more > summary::-webkit-details-marker { display: none; }
+.mdm-body > .mdp-more > summary::after { content: '+'; color: var(--mdm-blue); font-size: 1.15rem; }
+.mdm-body > .mdp-more[open] > summary::after { content: '−'; }
+.mdm-body > .mdp-more .mdp-more-body { padding-bottom: .9rem; }
+.mdm-body > .mdp-more .mdp-mini-kpis { grid-template-columns: 1fr; }
+.mdm-body > .mdp-more .mdp-watch { grid-template-columns: 1fr; }
+.mdm-body > .mdp-more .mdp-card-head { display: flex; justify-content: space-between; gap: .6rem; }
+.mdm-body > .mdp-more .mdp-card-head h2 { font-size: .9rem; }
+.mdm-body > .mdp-more .mdp-card-head p { font-size: .72rem; color: var(--mdm-mute); }
+.mdm-body > .mdp-more .tw { border: 1px solid var(--mdm-line); border-radius: 12px; overflow: auto; }
+.mdm-body > .mdp-more .tw table { min-width: 420px; }
+.mdm-body > .mdp-more .mdp-note { font-size: .72rem; color: var(--mdm-mute); }
+
+/* Bloc « Points à surveiller » et listes */
+.mdm-body .mdp-watch > div { display: flex; justify-content: space-between; gap: .6rem; padding: .5rem .6rem; background: #F7FAFF; border-radius: 10px; font-size: .8rem; }
+.mdm-body .mdp-mini-kpis > div { background: #F7FAFF; border-radius: 12px; padding: .65rem .75rem; }
+
+/* Chargement et erreurs */
+.mdm-loading,
+.mdm-body > .card {
+  margin: 0 1rem;
+  border-radius: 18px;
+}
+
+.mdm-loading {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: var(--mdm-mute);
+  background: var(--mdm-surface);
+  border: 1px solid var(--mdm-line);
+}
+
+/* ---- Écran large : la présentation mobile reste centrée et lisible -------- */
+@media (min-width: 721px) {
+  body.kp-dashboard-page.dashboard-mode-mobile main { padding: 1rem; max-width: 820px; margin: 0 auto; }
+  .mdm-header { border-radius: 24px; }
+  .mdm-filters { margin-top: -2rem; }
+  .mdm-body { padding: 0; }
+  .mdm-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .mdm-card .mdp-donut-body { grid-template-columns: 150px minmax(0, 1fr); }
+}
+
+/* Très petits écrans : on garde deux colonnes mais tout doit tenir. */
+@media (max-width: 360px) {
+  .mdm-kpis { gap: .6rem; }
+  .mdm-kpis .mdp-kpi { padding: .75rem .7rem; }
+  .mdm-kpis .mdp-kpi b { font-size: 1.02rem; }
+  .mdm-hero > b { font-size: 1.7rem; }
+  .mdm-card .mdp-donut-body { grid-template-columns: 1fr; justify-items: center; }
+
+  /* Les deux filtres et le menu restent sur une seule ligne, sans débordement. */
+  .mdm-filters { gap: .4rem; }
+  .mdm-field { flex: 1 1 0; }
+  .mdm-shop { flex: 1.2 1 0; }
+  .mdm-field select,
+  .mdm-filters .shop-pick select { padding: .35rem .3rem; font-size: .76rem; }
+
+  /* Sur un écran très étroit, une étiquette de date sur deux suffit. */
+  .mdm-card .md-xlabels .md-xlab:nth-child(even) { display: none; }
+}
+
+/* Respecte la préférence « animations réduites ». */
+@media (prefers-reduced-motion: reduce) {
+  body.kp-dashboard-page.dashboard-mode-mobile * { scroll-behavior: auto; }
 }

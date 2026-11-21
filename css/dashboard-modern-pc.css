@@ -2,98 +2,516 @@
    KaPya ERP — présentation « Moderne PC » du tableau de bord.
    Ne change que l'habillage : les blocs, les chiffres et les droits viennent
    toujours de js/modules/accueil.js (aucune donnée inventée).
+   Tout est limité à body.kp-dashboard-page.dashboard-mode-pc : la présentation
+   classique garde exactement les styles de css/theme.css.
    ========================================================================== */
 
-@media (min-width: 1024px) {
-  .dashboard-mode-pc .owner-head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(11, 37, 80, .10);
-    margin-bottom: 1rem;
-  }
-
-  .dashboard-mode-pc .owner-head > div { min-width: 0; }
-
-  .dashboard-mode-pc .owner-filters {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: flex-end;
-    gap: .5rem;
-    margin: 0;
-  }
-
-  .dashboard-mode-pc .owner-filters label { margin: 0; }
-
-  .dashboard-mode-pc .owner-period-label {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    margin: .25rem 0 .85rem;
-    padding: .3rem .75rem;
-    border-radius: 999px;
-    background: rgba(11, 37, 80, .06);
-    font-size: .82rem;
-  }
-
-  .dashboard-mode-pc .owner-kpis {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-  }
-
-  .dashboard-mode-pc .owner-kpis .owner-kpi {
-    margin: 0;
-    padding: 1.1rem 1.2rem;
-    border-radius: 16px;
-  }
-
-  .dashboard-mode-pc .owner-kpi b {
-    font-size: clamp(1.35rem, 1.6vw, 1.85rem);
-    line-height: 1.15;
-  }
-
-  .dashboard-mode-pc .owner-charts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-  }
-
-  .dashboard-mode-pc .owner-panel { border-radius: 16px; }
-  .dashboard-mode-pc .owner-panel .sec-head { align-items: flex-start; }
-  .dashboard-mode-pc .owner-note { font-size: .8rem; }
+body.kp-dashboard-page.dashboard-mode-pc {
+  --mdp-blue: #0B5FFB;
+  --mdp-blue-dark: #0A46C0;
+  --mdp-navy: #0B2148;
+  --mdp-bg: #F4F7FD;
+  --mdp-surface: #FFFFFF;
+  --mdp-ink: #101D38;
+  --mdp-mute: #617392;
+  --mdp-line: #E7EDF8;
+  --mdp-soft: #F5F8FE;
+  --mdp-green: #13A552;
+  --mdp-red: #EF4444;
+  --mdp-violet: #7C3AED;
+  --mdp-orange: #F97316;
+  --mdp-teal: #0E9F9F;
+  --mdp-radius: 18px;
+  background: var(--mdp-bg);
 }
 
-/* Tablette : même présentation, deux colonnes et graphiques empilés. */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .dashboard-mode-pc .owner-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: .75rem;
-    padding-bottom: .85rem;
-    border-bottom: 1px solid rgba(11, 37, 80, .10);
-    margin-bottom: .9rem;
-  }
+/* ---- Chrome : barre latérale et barre supérieure -------------------------- */
+body.kp-dashboard-page.dashboard-mode-pc .shell { grid-template-columns: 264px minmax(0, 1fr); }
 
-  .dashboard-mode-pc .owner-filters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-    margin: 0;
-  }
+body.kp-dashboard-page.dashboard-mode-pc nav {
+  background: linear-gradient(180deg, #0B2148 0%, #081A38 100%);
+  padding: 1.5rem 1rem 1rem;
+}
 
-  .dashboard-mode-pc .owner-kpis {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .8rem;
-  }
+body.kp-dashboard-page.dashboard-mode-pc nav .brand { padding: .2rem .55rem 1.5rem; }
+body.kp-dashboard-page.dashboard-mode-pc nav .logo-k { width: 38px; height: 44px; object-fit: contain; }
+body.kp-dashboard-page.dashboard-mode-pc nav .bname small { color: #8FB8FF; }
 
-  .dashboard-mode-pc .owner-kpis .owner-kpi { margin: 0; }
-  .dashboard-mode-pc .owner-charts { display: grid; grid-template-columns: 1fr; gap: .8rem; }
-  .dashboard-mode-pc .owner-chart-svg { width: 100%; height: auto; }
+body.kp-dashboard-page.dashboard-mode-pc nav a {
+  color: #B7C8E6;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+body.kp-dashboard-page.dashboard-mode-pc nav a:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+
+body.kp-dashboard-page.dashboard-mode-pc nav a[aria-current=page] {
+  background: var(--mdp-blue);
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(11, 95, 251, .38);
+}
+
+body.kp-dashboard-page.dashboard-mode-pc nav .nav-sec { color: #7E97BF; }
+
+body.kp-dashboard-page.dashboard-mode-pc .topbar {
+  min-height: 68px;
+  padding: .5rem clamp(1.25rem, 3vw, 2.4rem);
+  background: rgba(244, 247, 253, .86);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(11, 33, 72, .06);
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+body.kp-dashboard-page.dashboard-mode-pc main {
+  max-width: 1320px;
+  padding: 1.6rem clamp(1.25rem, 3vw, 2.4rem) 3.5rem;
+}
+
+/* ---- En-tête de page ------------------------------------------------------ */
+.mdp {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+  color: var(--mdp-ink);
+}
+
+.mdp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.mdp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.mdp-title { min-width: 0; }
+.mdp-title h1 { font-size: 1.7rem; letter-spacing: -.03em; }
+.mdp-greet { margin: 0 0 .15rem; color: var(--mdp-mute); font-weight: 600; font-size: .92rem; }
+.mdp-sub { margin: .15rem 0 0; color: var(--mdp-mute); font-size: .85rem; }
+.mdp-period-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem .95rem;
+  border-radius: 999px;
+  background: #E8F0FF;
+  color: var(--mdp-blue);
+  font-weight: 600;
+  font-size: .82rem;
+  white-space: nowrap;
+}
+
+/* ---- Filtres et actions --------------------------------------------------- */
+.mdp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: .65rem;
+  padding: .9rem 1rem;
+  background: var(--mdp-surface);
+  border: 1px solid var(--mdp-line);
+  border-radius: var(--mdp-radius);
+  box-shadow: 0 1px 2px rgba(16, 29, 56, .04), 0 10px 26px rgba(16, 29, 56, .05);
+}
+
+.mdp-field,
+.mdp-shop,
+.mdp-filters .shop-pick,
+.mdp-filters .owner-date {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+  margin: 0;
+  min-width: 0;
+  color: var(--mdp-mute);
+  font-size: .72rem;
+  font-weight: 600;
+  letter-spacing: .03em;
+}
+
+.mdp-shop { flex: 1 1 220px; }
+
+.mdp-field > span { text-transform: uppercase; }
+.mdp-field select,
+.mdp-filters .shop-pick select,
+.mdp-filters .owner-date input {
+  min-height: 44px;
+  padding: .45rem .75rem;
+  border: 1px solid var(--mdp-line);
+  border-radius: 12px;
+  background: var(--mdp-surface);
+  color: var(--mdp-ink);
+  font-size: .87rem;
+  font-weight: 500;
+}
+
+.mdp-field select { min-width: 190px; }
+.mdp-filters .owner-date input { min-width: 150px; }
+.mdp-filters .owner-date[hidden] { display: none; }
+
+.mdp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+  margin-left: auto;
+}
+
+.mdp .btn,
+.mdp .ghost {
+  min-height: 44px;
+  border-radius: 12px;
+  font-size: .85rem;
+  padding: .5rem .9rem;
+}
+
+.mdp .btn { background: var(--mdp-blue); box-shadow: 0 8px 18px rgba(11, 95, 251, .24); }
+.mdp .btn:hover { background: var(--mdp-blue-dark); }
+.mdp .ghost { background: var(--mdp-surface); border: 1px solid var(--mdp-line); color: var(--mdp-blue); }
+.mdp .ghost:hover { background: var(--mdp-soft); border-color: #C9D9F3; }
+.mdp .ghost[hidden] { display: none; }
+.mdp .ghost .ic { width: 17px; height: 17px; }
+
+.mdp .owner-updated { margin: -.65rem 0 0; font-size: .78rem; }
+
+/* ---- Indicateurs ---------------------------------------------------------- */
+.mdp-kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.mdp-card {
+  background: var(--mdp-surface);
+  border: 1px solid var(--mdp-line);
+  border-radius: var(--mdp-radius);
+  box-shadow: 0 1px 2px rgba(16, 29, 56, .04), 0 10px 26px rgba(16, 29, 56, .05);
+  min-width: 0;
+}
+
+.mdp-kpi {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  padding: 1rem 1.05rem 1.05rem;
+  overflow: hidden;
+}
+
+.mdp-kpi::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--tone, var(--mdp-blue));
+  opacity: .8;
+}
+
+.mdp-kpi-top { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+.mdp-kpi-label { font-size: .78rem; font-weight: 600; color: var(--mdp-mute); line-height: 1.25; }
+
+.mdp-ico,
+.mdp-act-ico {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: var(--tone-soft, #EEF3FB);
+  color: var(--tone, var(--mdp-mute));
+  flex: 0 0 auto;
+}
+
+.mdp-ico .ic,
+.mdp-act-ico .ic { width: 19px; height: 19px; }
+
+.mdp-kpi b {
+  font-size: 1.45rem;
+  line-height: 1.15;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.mdp-kpi-note { font-size: .74rem; line-height: 1.35; color: var(--mdp-mute); }
+
+/* Teintes des cartes : la couleur reste décorative, jamais porteuse de sens seule.
+   Limité aux rendus modernes pour ne pas toucher aux teintes du tableau classique. */
+:where(.mdp, .mdm) .t-blue { --tone: #0B5FFB; --tone-soft: #E8F0FF; }
+:where(.mdp, .mdm) .t-green { --tone: #0F8F47; --tone-soft: #E4F7EC; }
+:where(.mdp, .mdm) .t-violet { --tone: #6D28D9; --tone-soft: #F1EBFF; }
+:where(.mdp, .mdm) .t-orange { --tone: #C2540A; --tone-soft: #FFF0E4; }
+:where(.mdp, .mdm) .t-red { --tone: #D62828; --tone-soft: #FDE9E9; }
+:where(.mdp, .mdm) .t-teal { --tone: #0B7F7F; --tone-soft: #E2F5F5; }
+
+/* ---- Graphiques ----------------------------------------------------------- */
+.mdp-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.mdp-trend,
+.mdp-donut-card { padding: 1.15rem 1.25rem 1.2rem; }
+
+.mdp-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .8rem;
+}
+
+.mdp-card-head h2 { font-size: 1rem; letter-spacing: -.01em; }
+.mdp-card-head p { margin: .15rem 0 0; color: var(--mdp-mute); font-size: .78rem; }
+.mdp-card-head a { color: var(--mdp-blue); font-size: .82rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.mdp-card-head a:hover { text-decoration: underline; }
+
+.mdp-total {
+  color: var(--mdp-blue);
+  font-weight: 700;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.md-chart { display: block; width: 100%; height: auto; }
+.md-grid { stroke: #EDF1F8; stroke-width: 1; }
+.md-axis { fill: #8A99B3; font-size: 11px; font-family: inherit; }
+.md-line { fill: none; stroke: #0B5FFB; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.md-dot { fill: #fff; stroke: #0B5FFB; stroke-width: 2.5; }
+
+.mdp-legend-row {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .5rem;
+  color: var(--mdp-mute);
+  font-size: .78rem;
+}
+
+.mdp-legend-row > span { display: inline-flex; align-items: center; gap: .4rem; }
+
+.md-dotc {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* ---- Donut ---------------------------------------------------------------- */
+.mdp-donut-body {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.md-donut-wrap { position: relative; width: 150px; height: 150px; }
+.md-donut { display: block; width: 100%; height: 100%; }
+
+.md-donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  pointer-events: none;
+}
+
+.md-donut-center span { font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--mdp-mute); }
+.md-donut-center b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.mdp-donut-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  min-width: 0;
+}
+
+.mdp-donut-legend li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: .5rem;
+  font-size: .82rem;
+  min-width: 0;
+}
+
+.mdp-donut-legend li > span:nth-child(2) { overflow-wrap: anywhere; }
+.mdp-donut-legend b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mdp-donut-legend small { color: var(--mdp-mute); font-size: .74rem; min-width: 36px; text-align: right; }
+
+/* ---- Activités récentes --------------------------------------------------- */
+.mdp-activity { padding: 1.15rem 1.25rem; }
+
+.mdp-activity-list { list-style: none; margin: 0; padding: 0; }
+
+.mdp-activity-list li {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  padding: .72rem 0;
+  border-top: 1px solid #EEF2F9;
+  min-width: 0;
+}
+
+.mdp-activity-list li:first-child { border-top: 0; padding-top: .2rem; }
+
+.mdp-act-ico { width: 38px; height: 38px; border-radius: 12px; }
+.mdp-act-main { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.mdp-act-main b { font-size: .86rem; }
+.mdp-act-main span { font-size: .75rem; color: var(--mdp-mute); overflow-wrap: anywhere; }
+
+.mdp-act-amount {
+  margin-left: auto;
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mdp-act-amount.in { color: #0F8F47; }
+.mdp-act-amount.out { color: #D62828; }
+
+.mdp-empty { margin: .3rem 0 0; color: var(--mdp-mute); font-size: .85rem; }
+
+/* ---- Blocs de détails ----------------------------------------------------- */
+.mdp-more {
+  background: var(--mdp-surface);
+  border: 1px solid var(--mdp-line);
+  border-radius: var(--mdp-radius);
+  box-shadow: 0 1px 2px rgba(16, 29, 56, .04), 0 10px 26px rgba(16, 29, 56, .05);
+  padding: 0 1.25rem;
+}
+
+.mdp-more > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  min-height: 56px;
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.mdp-more > summary::-webkit-details-marker { display: none; }
+.mdp-more > summary::after { content: '+'; color: var(--mdp-blue); font-size: 1.2rem; line-height: 1; }
+.mdp-more[open] > summary::after { content: '−'; }
+
+.mdp-more-body { display: flex; flex-direction: column; gap: 1rem; padding-bottom: 1.1rem; }
+
+.mdp-detail { padding-top: 1rem; border-top: 1px solid #EEF2F9; }
+.mdp-detail .mdp-card-head { margin-bottom: .65rem; }
+.mdp-detail .mdp-card-head h2 { font-size: .95rem; }
+
+.mdp-mini-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+
+.mdp-mini-kpis > div {
+  display: flex;
+  flex-direction: column;
+  gap: .2rem;
+  padding: .75rem .85rem;
+  background: var(--mdp-soft);
+  border-radius: 14px;
+  min-width: 0;
+}
+
+.mdp-mini-kpis span { font-size: .74rem; font-weight: 600; color: var(--mdp-mute); }
+.mdp-mini-kpis b { font-size: 1.05rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.mdp-mini-kpis small { font-size: .72rem; color: var(--mdp-mute); }
+
+.mdp-audit { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; font-size: .82rem; }
+.mdp-audit li { padding: .4rem .6rem; background: var(--mdp-soft); border-radius: 10px; }
+
+.mdp-watch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem .75rem; }
+
+.mdp-watch > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .45rem .65rem;
+  background: var(--mdp-soft);
+  border-radius: 10px;
+  font-size: .81rem;
+  min-width: 0;
+}
+
+.mdp-watch > div b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mdp-watch b.warn { color: #B45309; }
+.mdp-note { margin: .65rem 0 0; color: var(--mdp-mute); font-size: .75rem; }
+
+.mdp-detail .tw { border: 1px solid var(--mdp-line); border-radius: 12px; }
+.mdp-detail .tw th { background: var(--mdp-soft); }
+
+.mdp-loading {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: 2rem 1rem;
+  color: var(--mdp-mute);
+  background: var(--mdp-surface);
+  border: 1px solid var(--mdp-line);
+  border-radius: var(--mdp-radius);
+}
+
+/* ---- Tablette : barre latérale réduite et grilles intermédiaires --------- */
+@media (min-width: 721px) and (max-width: 1199px) {
+  body.kp-dashboard-page.dashboard-mode-pc .shell { grid-template-columns: 88px minmax(0, 1fr); }
+  body.kp-dashboard-page.dashboard-mode-pc nav { padding: 1.1rem .5rem .8rem; align-items: center; }
+  body.kp-dashboard-page.dashboard-mode-pc nav .brand { padding: .2rem 0 1rem; justify-content: center; }
+  body.kp-dashboard-page.dashboard-mode-pc nav .bname { display: none; }
+  body.kp-dashboard-page.dashboard-mode-pc nav .nav-sec { display: none; }
+  body.kp-dashboard-page.dashboard-mode-pc nav a { justify-content: center; padding: .6rem 0; }
+  body.kp-dashboard-page.dashboard-mode-pc nav a > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  body.kp-dashboard-page.dashboard-mode-pc nav .out span { display: none; }
+  body.kp-dashboard-page.dashboard-mode-pc .side-foot .mode { display: none; }
+
+  .mdp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; }
+  .mdp-grid { grid-template-columns: 1fr; }
+  .mdp-actions { margin-left: 0; }
+}
+
+@media (min-width: 1200px) and (max-width: 1439px) {
+  .mdp-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 721px) and (max-width: 1023px) {
+  .mdp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mdp-donut-body { grid-template-columns: 140px minmax(0, 1fr); }
+  .mdp-watch { grid-template-columns: 1fr; }
+  .mdp-mini-kpis { grid-template-columns: 1fr; }
+}
+
+/* Écran étroit (le mode PC choisi ne devrait pas arriver ici, mais reste lisible). */
+@media (max-width: 767px) {
+  .mdp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mdp-grid { grid-template-columns: 1fr; }
+  .mdp-actions { margin-left: 0; width: 100%; }
+  .mdp-donut-body { grid-template-columns: 1fr; justify-items: center; }
+  .mdp-watch { grid-template-columns: 1fr; }
+  .mdp-mini-kpis { grid-template-columns: 1fr; }
+  .mdp-filters .owner-date input,
+  .mdp-field select { min-width: 0; width: 100%; }
 }

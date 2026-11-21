@@ -4,6 +4,7 @@ import { esc, n, money, usdOnly, fcOnly, ico, openDialog, showDialog, fld, fmtDa
 import { listeOuErreur } from '../ui.js';
 import { can } from '../roles.js';
 import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, nextMode as nextDashboardMode, setMode as setDashboardMode, MODE_LABELS as DASHBOARD_MODE_LABELS } from '../dashboard-modes.js';
+import { renderModernPage, renderModernContent, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
 
 const isoDate = date => {
@@ -124,11 +125,14 @@ async function openRejectedDialog() {
   await draw();
 }
 
+// Message de bienvenue gardé pour les changements de présentation (aucune requête en plus).
+let greetingCache = '';
+
 export async function render(main, ctx) {
   // Présentation du tableau de bord : classique (par défaut) ou moderne.
   // Les trois présentations utilisent exactement les mêmes données et les mêmes calculs.
-  const dashboardMode = resolveDashboardMode(ctx?.id);
-  applyDashboardMode(dashboardMode);
+  let activeMode = resolveDashboardMode(ctx?.id);
+  applyDashboardMode(activeMode);
 
   const today = isoDate(new Date());
   const monthStart = `${today.slice(0, 8)}01`;
@@ -178,25 +182,36 @@ export async function render(main, ctx) {
     return;
   }
 
-  fillGreeting();
-  main.innerHTML = `<div class="page-head owner-head"><div><h1>Tableau de bord</h1><p class="greet" id="owner-greet"></p><p class="sub">Vue de la performance et des mouvements de votre activité.</p></div>
+  const classicPage = () => `<div class="page-head owner-head"><div><h1>Tableau de bord</h1><p class="greet" id="owner-greet"></p><p class="sub">Vue de la performance et des mouvements de votre activité.</p></div>
     <div class="owner-filters"><label><span>Période</span><select id="owner-period"><option value="today">Aujourd’hui</option><option value="7" selected>7 derniers jours</option><option value="month">Ce mois</option><option value="custom">Période personnalisée</option></select></label>
       <label class="owner-date" hidden><span>Du</span><input type="date" id="owner-from" value="${monthStart}"></label>
       <label class="owner-date" hidden><span>Au</span><input type="date" id="owner-to" value="${today}"></label>
       <button class="btn" id="owner-run" type="button" hidden>Afficher</button>
       <button class="ghost" id="owner-refresh" type="button" title="Recharger les chiffres maintenant">Actualiser</button>
       <button class="ghost" id="owner-customize" type="button">Personnaliser</button>
-      <button class="ghost" id="owner-mode" type="button" title="Changer la présentation du tableau de bord">Présentation : ${DASHBOARD_MODE_LABELS[dashboardMode]}</button>
+      <button class="ghost" id="owner-mode" type="button" title="Changer la présentation du tableau de bord">Présentation : ${DASHBOARD_MODE_LABELS[activeMode]}</button>
       <button class="ghost" id="owner-summary" type="button">Résumer la période</button>
       ${canRecordCashOut ? '<button class="ghost" id="owner-expense" type="button">+ Dépense</button><button class="ghost" id="owner-init-supplier" type="button">Solde anciennes factures</button><button class="btn" id="owner-supplier-payment" type="button">+ Paiement fournisseur</button>' : ''}
     </div></div>
     <p class="muted owner-updated" id="owner-updated" aria-live="polite" hidden></p>
     <div id="owner-content" aria-live="polite"><div class="card empty">Chargement des données…</div></div><dialog id="owner-dialog"></dialog>`;
+  const modernPage = (mode, periodValue) => renderModernPage({
+    mode,
+    modeLabel: DASHBOARD_MODE_LABELS[mode],
+    greeting: greetingCache,
+    userName: ctx?.full_name || '',
+    canRecordCashOut,
+    monthStart,
+    today,
+    periodValue: periodValue || '7'
+  });
+  const pageHtml = (mode, periodValue) => mode === 'classic' ? classicPage() : modernPage(mode, periodValue);
   const $ = selector => main.querySelector(selector);
   // Chaque rendu possède son jeton : un chargement lancé avant un changement de page ne doit jamais
   // écrire dans le DOM du rendu suivant (sinon le tableau de bord peut rester sur « Chargement »).
   const viewToken = Symbol('tableau-de-bord');
   main._dashToken = viewToken;
+  document.body.classList.add('kp-dashboard-page');
   const alive = () => main.isConnected && main.dataset.page === 'accueil' && main._dashToken === viewToken;
   let lastRefresh = 0;
   const paintUpdated = at => {
@@ -210,6 +225,8 @@ export async function render(main, ctx) {
   function setRangeControls() {
     const custom = $('#owner-period').value === 'custom';
     main.querySelectorAll('.owner-date').forEach(element => { element.hidden = !custom; });
+    const chip = $('#mdp-period-chip');
+    if (chip) chip.textContent = MODERN_PERIOD_LABELS[$('#owner-period').value] || chip.textContent;
     $('#owner-run').hidden = !custom;
     if (!custom) refresh();
   }
@@ -319,6 +336,8 @@ export async function render(main, ctx) {
   // Blocs visibles pour cet utilisateur : permissions d'abord, puis préférences (ou valeurs par défaut du rôle).
   let enabled = new Set();
   let lastSummary = null;
+  let lastPayload = null;
+  let shopsCache = null;
   const allowedBlocks = () => ['daily', 'kpi', 'charts', 'moves', 'watch', 'cashout'].filter(id => id === 'daily' ? canSeeDailySummary : id === 'cashout' ? canSeeCosts : true);
   const blk = (id, html) => enabled.has(id) ? html : '';
   async function resolveBlocks() {
@@ -342,16 +361,34 @@ export async function render(main, ctx) {
 
   async function renderDashboard() {
     if (!alive()) return;
-    const mode = $('#owner-period').value;
-    const to = mode === 'custom' ? ($('#owner-to').value || today) : today;
-    const from = mode === 'custom' ? ($('#owner-from').value || monthStart) : mode === 'today' ? today : mode === '7' ? shiftDate(today, -6) : monthStart;
+    const periodValue = $('#owner-period').value;
+    let from = today, to = today;
+    if (periodValue === 'custom') {
+      from = $('#owner-from').value || monthStart;
+      to = $('#owner-to').value || today;
+    } else if (periodValue === 'yesterday') {
+      from = to = shiftDate(today, -1);
+    } else if (periodValue === '30') {
+      from = shiftDate(today, -29);
+    } else if (periodValue === 'month') {
+      from = monthStart;
+    } else if (periodValue === 'prev') {
+      const start = new Date(parseDate(monthStart));
+      start.setMonth(start.getMonth() - 1);
+      from = isoDate(start);
+      to = isoDate(new Date(parseDate(monthStart).getTime() - 86400000));
+    } else if (periodValue !== 'today') {
+      from = shiftDate(today, -6);
+    }
     if (from > to) { $('#owner-content').innerHTML = '<p class="notice">La date de début doit être antérieure à la date de fin.</p>'; return; }
     // Affichage immédiat du dernier résultat sauvegardé ; les chiffres réels remplacent ce contenu dès qu'ils arrivent.
-    const cacheKey = dashKey(session().uid, mode, from, to);
+    const cacheKey = activeMode === 'classic'
+      ? dashKey(session().uid, periodValue, from, to)
+      : dashKey(session().uid, `${periodValue}:${activeMode}`, from, to);
     const cached = readDash(cacheKey);
     $('#owner-content').innerHTML = cached
       ? `<p class="muted dash-stamp">Dernier affichage : ${esc(new Date(cached.at).toLocaleString('fr-FR'))} · mise à jour en cours…</p>${cached.html}`
-      : '<div class="card empty">Chargement des données…</div>';
+      : `<div class="${activeMode === 'classic' ? 'card empty' : 'mdp-loading'}">Chargement des données…</div>`;
     const blocksReady = resolveBlocks();
     const nextDay = shiftDate(to, 1);
     const startInstant = new Date(`${from}T00:00:00`).toISOString();
@@ -373,8 +410,18 @@ export async function render(main, ctx) {
     const movesPromise = db.select('stock_moves', `select=id,qty,reason,created_at,articles(sku,name,unit)&created_at=gte.${encodeURIComponent(startInstant)}&created_at=lt.${encodeURIComponent(endInstant)}&order=created_at.desc`);
     const supplierPaymentsPromise = canSeeCosts ? db.select('purchase_payments', `select=id,amount,paid_at,purchases(number,suppliers(name))&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&order=paid_at.asc`) : Promise.resolve([]);
     const expensesPromise = canSeeCosts ? db.select('business_expenses', `select=id,label,category,amount,paid_at&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&order=paid_at.asc`) : Promise.resolve([]);
-    const customerPaymentsPromise = canSeeCosts ? db.select('sale_payments', `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}&order=paid_at.asc`) : Promise.resolve([]);
-    const customerDepositsPromise = canSeeCosts ? db.select('customer_deposits', `select=id,amount,received_at&received_at=gte.${from}&received_at=lt.${dayAfter(to)}`) : Promise.resolve([]);
+    // Encaissements : nécessaires au classique pour les coûts (admin) et aux présentations
+    // modernes pour « Paiements reçus ». Un rôle sans accès aux coûts ne doit jamais bloquer l'écran.
+    const customerPaymentsPromise = canSeeCosts
+      ? db.select('sale_payments', `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}&order=paid_at.asc`)
+      : canSeeDailySummary
+        ? db.select('sale_payments', `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}&order=paid_at.asc`).catch(() => [])
+        : Promise.resolve([]);
+    const customerDepositsPromise = canSeeCosts
+      ? db.select('customer_deposits', `select=id,amount,received_at&received_at=gte.${from}&received_at=lt.${dayAfter(to)}`)
+      : canSeeDailySummary
+        ? db.select('customer_deposits', `select=id,amount,received_at&received_at=gte.${from}&received_at=lt.${dayAfter(to)}`).catch(() => [])
+        : Promise.resolve([]);
     const ownerDailySalesPromise = canSeeDailySummary ? db.select('sales', `select=id,sale_lines(qty,unit_price)&payment=eq.credit&sold_at=gte.${today}&sold_at=lt.${shiftDate(today, 1)}${shopSalesFilter()}`) : Promise.resolve([]);
     const ownerDailyCashPromise = canSeeDailySummary ? db.select('sales', `select=id,sale_lines(qty,unit_price)&payment=eq.cash&sold_at=gte.${today}&sold_at=lt.${shiftDate(today, 1)}${shopSalesFilter()}`).catch(() => null) : Promise.resolve([]);
     const ownerDailyReceiptsPromise = canSeeDailySummary ? db.select('sale_payments', `${shopPaymentsSelect('select=id,amount,paid_at,sales(id)')}&paid_at=eq.${today}&kind=in.(initial,payment)${shopPaymentsFilter()}`) : Promise.resolve([]);
@@ -408,6 +455,10 @@ export async function render(main, ctx) {
       const purchases = purchaseRows.filter(purchase => dayOnly(purchase.bought_at) >= from && dayOnly(purchase.bought_at) <= to);
       const moves = moveRows.filter(move => move.created_at?.slice(0, 10) >= from && move.created_at?.slice(0, 10) <= to);
       const revenue = sales.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0);
+      const cashSalesRows = sales.filter(sale => sale.payment !== 'credit');
+      const creditSalesRows = sales.filter(sale => sale.payment === 'credit');
+      const cashRevenue = cashSalesRows.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0);
+      const creditRevenue = creditSalesRows.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0);
       const salesCost = canSeeCosts && saleCostsAvailable ? sales.reduce((sum, sale) => sum + (sale.sale_lines || []).reduce((part, line) => {
         const snapshot = saleCostsByLine.get(line.id);
         return part + Number(line.qty || 0) * Number(snapshot?.unit_cost_at_sale ?? 0);
@@ -458,7 +509,7 @@ export async function render(main, ctx) {
         ...expenses.map(expense => ({ date: expense.paid_at, label: `${expense.label} · ${expense.category}`, amount: Number(expense.amount), type: 'Dépense' }))
       ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
       if (!alive()) return;
-      $('#owner-content').innerHTML = offlineNote + `${blk('daily', canSeeDailySummary ? `<section class="card owner-panel"><div class="sec-head"><div><h2>Résumé de caisse du jour</h2><p class="muted">${fr(today)} · ventes cash, ventes à crédit et versements encaissés</p></div></div><section class="kpis owner-kpis">${metric('Ventes cash', ownerDailyCashAvailable ? usdOnly(dailyCashValue) : '—', ownerDailyCashAvailable ? `${(ownerDailyCash || []).length} facture(s) payée(s) comptant` : 'Suivi des ventes indisponible', 'cash', 't-green')}${metric('Ventes à crédit', ownerDailyAvailable ? usdOnly(dailyCreditValue) : '—', ownerDailyAvailable ? `${ownerDailySales.length} facture(s)` : 'Suivi des paiements indisponible', 'sales', 't-blue')}${metric('Paiements de crédits reçus', ownerDailyAvailable ? usdOnly(dailyReceiptValue) : '—', ownerDailyAvailable ? `${ownerDailyReceipts.length} versement(s)` : 'Suivi des paiements indisponible', 'coins', 't-green')}</section></section>` : '')}<div class="owner-period-label">Période affichée : <b>${dateLabel}</b></div>
+      const classicHtml = offlineNote + `${blk('daily', canSeeDailySummary ? `<section class="card owner-panel"><div class="sec-head"><div><h2>Résumé de caisse du jour</h2><p class="muted">${fr(today)} · ventes cash, ventes à crédit et versements encaissés</p></div></div><section class="kpis owner-kpis">${metric('Ventes cash', ownerDailyCashAvailable ? usdOnly(dailyCashValue) : '—', ownerDailyCashAvailable ? `${(ownerDailyCash || []).length} facture(s) payée(s) comptant` : 'Suivi des ventes indisponible', 'cash', 't-green')}${metric('Ventes à crédit', ownerDailyAvailable ? usdOnly(dailyCreditValue) : '—', ownerDailyAvailable ? `${ownerDailySales.length} facture(s)` : 'Suivi des paiements indisponible', 'sales', 't-blue')}${metric('Paiements de crédits reçus', ownerDailyAvailable ? usdOnly(dailyReceiptValue) : '—', ownerDailyAvailable ? `${ownerDailyReceipts.length} versement(s)` : 'Suivi des paiements indisponible', 'coins', 't-green')}</section></section>` : '')}<div class="owner-period-label">Période affichée : <b>${dateLabel}</b></div>
         ${auditHtml}${blk('kpi', `<section class="kpis owner-kpis">
           ${metric('Chiffre d’affaires', usdOnly(revenue), salesSub, 'sales', 't-blue')}
           ${canSeeCosts ? metric('Coût des articles vendus', saleCostsAvailable ? usdOnly(salesCost) : '—', saleCostsAvailable ? 'Coût d’achat enregistré au moment de la vente' : 'Configuration SQL des coûts requise', 'purchases', 't-green') : ''}
@@ -493,7 +544,102 @@ export async function render(main, ctx) {
             <p class="owner-note">La trésorerie reflète les paiements et dépenses enregistrés dans l’application. Les anciennes dettes fournisseur doivent d’abord être initialisées avec leur solde réel.</p></section>`)}
         </div>
         ${blk('cashout', canSeeCosts ? `<section class="card owner-panel"><div class="sec-head"><h2>Dernières sorties de trésorerie</h2><span class="muted">${dateLabel}</span></div>${recentCashOut.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Détail</th><th class="r">Montant</th></tr></thead><tbody>${recentCashOut.map(item => `<tr><td>${fr(item.date)}</td><td>${esc(item.type)}</td><td>${esc(item.label)}</td><td class="r">${usdOnly(item.amount)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">Aucune sortie enregistrée sur cette période.</p>'}</section>` : '')}`;
-      writeDash(cacheKey, $('#owner-content').innerHTML);
+      // Modèle commun aux deux présentations modernes : mêmes chiffres, mêmes droits, mêmes API.
+      const receiptsCount = customerPayments.length + customerDeposits.length;
+      const paymentsReceivedModern = canSeeCosts
+        ? received
+        : cashRevenue + customerPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) + customerDeposits.reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+      const periodLabel = periodValue === 'custom' ? dateLabel : (MODERN_PERIOD_LABELS[periodValue] || dateLabel);
+      const activities = [
+        ...sales.slice(-6).map(sale => ({
+          date: String(sale.sold_at || ''),
+          title: sale.payment === 'credit' ? 'Vente à crédit' : 'Vente cash',
+          subtitle: `${sale.customers?.name || sale.customer_label || 'Client particulier'} · ${fr(sale.sold_at)}`,
+          amount: sumLines(sale.sale_lines, 'unit_price'),
+          direction: 'in',
+          tone: sale.payment === 'credit' ? 'blue' : 'green',
+          icon: 'sales'
+        })),
+        ...(canSeeCosts ? recentCashOut.map(item => ({
+          date: String(item.date || ''),
+          title: item.type,
+          subtitle: `${item.label} · ${fr(item.date)}`,
+          amount: -Number(item.amount || 0),
+          direction: 'out',
+          tone: 'red',
+          icon: item.type === 'Dépense' ? 'wallet' : 'purchases'
+        })) : [])
+      ].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+      // Répartition réelle du chiffre d'affaires par mode de paiement enregistré sur la vente.
+      const PAY_LABELS = { cash: 'Espèces', mobile_money: 'Mobile money', bank: 'Virement', credit: 'À crédit' };
+      const PAY_COLORS = { cash: '#0B5FFB', mobile_money: '#7C3AED', bank: '#13A552', credit: '#F97316' };
+      const paymentGroups = new Map();
+      sales.forEach(sale => {
+        const key = PAY_LABELS[sale.payment] ? sale.payment : 'cash';
+        paymentGroups.set(key, (paymentGroups.get(key) || 0) + sumLines(sale.sale_lines, 'unit_price'));
+      });
+      const paymentSlices = [...paymentGroups].map(([key, value]) => ({ key, value, label: PAY_LABELS[key], color: PAY_COLORS[key] })).filter(slice => slice.value > 0);
+      const modernModel = {
+        offlineNote,
+        canSeeCosts,
+        saleCostsAvailable,
+        blocks: { kpi: enabled.has('kpi'), charts: enabled.has('charts') },
+        salesCount: sales.length,
+        cashCount: cashSalesRows.length,
+        creditCount: creditSalesRows.length,
+        receiptsCount,
+        revenue,
+        cashSales: cashRevenue,
+        creditSales: creditRevenue,
+        paymentsReceived: paymentsReceivedModern,
+        gross,
+        netProfit,
+        cashIn: received,
+        cashOut,
+        cashNet,
+        stockValue: currentStockValue,
+        outstanding,
+        supplierPaid,
+        expenseTotal,
+        profitDetail,
+        salesBuckets: salesBuckets.map(bucket => ({ label: bucket.label, value: bucket.value })),
+        paymentSlices,
+        activities,
+        dateLabel,
+        periodLabel,
+        todayLabel: fr(today),
+        extra: {
+          audit: auditRows,
+          moves: recentMoves,
+          cashout: recentCashOut,
+          watch: {
+            canSeeCosts,
+            stockValue: currentStockValue,
+            lowStock: lowStock.length,
+            expiring: expiring.length,
+            outstanding,
+            supplierDebt,
+            supplierBalancesAvailable,
+            expenseTotal
+          },
+          daily: canSeeDailySummary ? {
+            cash: dailyCashValue,
+            credit: dailyCreditValue,
+            receipts: dailyReceiptValue,
+            cashAvailable: ownerDailyCashAvailable,
+            available: ownerDailyAvailable,
+            cashCount: (ownerDailyCash || []).length,
+            creditCount: ownerDailySales.length,
+            receiptCount: ownerDailyReceipts.length
+          } : null
+        }
+      };
+      const modernPcHtml = renderModernContent(modernModel, 'modern_pc');
+      const modernMobileHtml = renderModernContent(modernModel, 'modern_mobile');
+      lastPayload = { classic: classicHtml, pc: modernPcHtml, mobile: modernMobileHtml };
+      const html = activeMode === 'classic' ? classicHtml : activeMode === 'modern_pc' ? modernPcHtml : modernMobileHtml;
+      $('#owner-content').innerHTML = html;
+      writeDash(cacheKey, html);
       lastRefresh = Date.now();
       paintUpdated(lastRefresh);
     } catch (error) {
@@ -508,11 +654,17 @@ export async function render(main, ctx) {
     if (refreshing) { queued = true; return; }
     refreshing = true;
     const button = $('#owner-refresh');
-    if (button) { button.disabled = true; button.textContent = 'Actualisation…'; }
+    const setRefreshLabel = text => {
+      if (!button) return;
+      const label = button.querySelector('span');
+      if (label) label.textContent = text;
+      else if (!button.classList.contains('mdm-iconbtn')) button.textContent = text;
+    };
+    if (button) { button.disabled = true; setRefreshLabel('Actualisation…'); }
     try { await renderDashboard(); }
     finally {
       refreshing = false;
-      if (button && button.isConnected) { button.disabled = false; button.textContent = 'Actualiser'; }
+      if (button && button.isConnected) { button.disabled = false; setRefreshLabel('Actualiser'); }
       if (queued && alive()) { queued = false; refresh(); }
     }
   }
@@ -536,48 +688,100 @@ export async function render(main, ctx) {
   document.addEventListener('visibilitychange', maybeRefresh, { signal });
   addEventListener('focus', maybeRefresh, { signal });
   const timerId = setInterval(maybeRefresh, 60000);
-  signal.addEventListener('abort', () => { clearInterval(timerId); clearTimeout(debounce); });
-
-  $('#owner-period').addEventListener('change', setRangeControls);
-  $('#owner-run').addEventListener('click', refresh);
-  $('#owner-refresh').addEventListener('click', refresh);
-  $('#owner-customize')?.addEventListener('click', openCustomizeDialog);
-  // Changement de présentation immédiat, sans recharger l'application.
-  $('#owner-mode')?.addEventListener('click', () => {
-    const mode = nextDashboardMode();
-    const applied = setDashboardMode(mode, ctx?.id);
-    const button = $('#owner-mode');
-    if (button) button.textContent = `Présentation : ${DASHBOARD_MODE_LABELS[applied]}`;
-    notify(`Présentation : ${DASHBOARD_MODE_LABELS[applied]}.`);
+  signal.addEventListener('abort', () => {
+    clearInterval(timerId);
+    clearTimeout(debounce);
+    if (main._dashToken === viewToken) document.body.classList.remove('kp-dashboard-page');
   });
+
   // Choix de la boutique (dépôt) pour le gérant qui a plusieurs boutiques.
-  if (!canSeeAllShops(ctx?.role)) setShop('');
-  if (canSeeAllShops(ctx?.role)) loadShops().then(shops => {
-    if (shops.length > 1 && !main.querySelector('#shop-select')) {
-      main.querySelector('#owner-customize')?.insertAdjacentHTML('beforebegin', shopSelectHtml(shops));
+  async function setupShops() {
+    if (!canSeeAllShops(ctx?.role)) { setShop(''); return; }
+    if (!shopsCache) shopsCache = await loadShops();
+    const slot = main.querySelector('#owner-shop-slot');
+    if (slot) {
+      if (!slot.querySelector('#shop-select')) {
+        slot.innerHTML = shopsCache.length ? shopSelectHtml(shopsCache) : '<span class="muted">Toutes les boutiques</span>';
+        slot.querySelector('#shop-select')?.addEventListener('change', event => { setShop(event.target.value); refresh(); });
+      }
+      return;
+    }
+    if (shopsCache.length > 1 && !main.querySelector('#shop-select')) {
+      main.querySelector('#owner-customize')?.insertAdjacentHTML('beforebegin', shopSelectHtml(shopsCache));
       main.querySelector('#shop-select')?.addEventListener('change', event => { setShop(event.target.value); refresh(); });
     }
-  });
-  $('#owner-summary')?.addEventListener('click', () => {
+  }
+
+  function showSummary() {
     if (!lastSummary) return;
     const lines = buildSummary(lastSummary);
     showDialog($('#owner-dialog'), 'Résumé de la période', lines.map(line => `<p>${line}</p>`).join('') + '<p class="muted">Résumé calculé à partir des chiffres affichés, sans intelligence artificielle.</p>');
-  });
-  $('#owner-expense')?.addEventListener('click', openExpenseDialog);
-  $('#owner-init-supplier')?.addEventListener('click', openInitialSupplierBalanceDialog);
-  $('#owner-supplier-payment')?.addEventListener('click', openSupplierPaymentDialog);
+  }
+
+  // Changement de présentation immédiat : mêmes données, aucun rechargement de l'application.
+  function changePresentation() {
+    const applied = setDashboardMode(nextDashboardMode(), ctx?.id);
+    activeMode = applied;
+    layout();
+    notify(`Présentation : ${DASHBOARD_MODE_LABELS[applied]}.`);
+    refresh();
+  }
+
+  // Relie les contrôles du rendu courant (classique ou moderne), après chaque reconstruction.
+  function bindControls() {
+    $('#owner-period')?.addEventListener('change', setRangeControls);
+    $('#owner-run')?.addEventListener('click', refresh);
+    $('#owner-refresh')?.addEventListener('click', refresh);
+    $('#owner-customize')?.addEventListener('click', openCustomizeDialog);
+    $('#owner-mode')?.addEventListener('click', changePresentation);
+    $('#owner-summary')?.addEventListener('click', showSummary);
+    $('#owner-expense')?.addEventListener('click', openExpenseDialog);
+    $('#owner-init-supplier')?.addEventListener('click', openInitialSupplierBalanceDialog);
+    $('#owner-supplier-payment')?.addEventListener('click', openSupplierPaymentDialog);
+    setupShops();
+  }
+
+  // Construit l'enveloppe de la présentation choisie, puis y replace les chiffres déjà calculés.
+  // La période choisie est conservée d'une présentation à l'autre.
+  function layout() {
+    const previous = $('#owner-period')?.value || '7';
+    const previousFrom = $('#owner-from')?.value;
+    const previousTo = $('#owner-to')?.value;
+    main.innerHTML = pageHtml(activeMode, previous);
+    const period = $('#owner-period');
+    if (period) {
+      const values = [...period.options].map(option => option.value);
+      period.value = values.includes(previous) ? previous : '7';
+      const custom = period.value === 'custom';
+      main.querySelectorAll('.owner-date').forEach(element => { element.hidden = !custom; });
+      if (custom && previousFrom) $('#owner-from').value = previousFrom;
+      if (custom && previousTo) $('#owner-to').value = previousTo;
+      const chip = $('#mdp-period-chip');
+      if (chip) chip.textContent = MODERN_PERIOD_LABELS[period.value] || chip.textContent;
+    }
+    bindControls();
+    fillGreeting();
+    if (!lastPayload) return;
+    $('#owner-content').innerHTML = activeMode === 'classic' ? lastPayload.classic : activeMode === 'modern_pc' ? lastPayload.pc : lastPayload.mobile;
+    if (lastRefresh) paintUpdated(lastRefresh);
+  }
+
+  layout();
   await refresh();
 }
 
 // Message de bienvenue du tableau de bord : « Bonjour <prénom> · Bienvenue chez <entreprise> »
 async function fillGreeting() {
   try {
-    const [profile] = await db.select('profiles', `select=org_id,full_name&id=eq.${session().uid}`);
-    const [org] = profile?.org_id ? await db.select('organizations', `select=name&id=eq.${profile.org_id}`) : [];
-    const first = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
-    const parts = [first ? `Bonjour ${esc(first)}` : 'Bonjour', org?.name ? `Bienvenue chez ${esc(org.name)}` : ''].filter(Boolean);
+    if (!greetingCache) {
+      const [profile] = await db.select('profiles', `select=org_id,full_name&id=eq.${session().uid}`);
+      const [org] = profile?.org_id ? await db.select('organizations', `select=name&id=eq.${profile.org_id}`) : [];
+      const first = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
+      const parts = [first ? `Bonjour ${first}` : 'Bonjour', org?.name ? `Bienvenue chez ${org.name}` : ''].filter(Boolean);
+      greetingCache = parts.join(' · ');
+    }
     const box = document.getElementById('owner-greet');
-    if (box) box.textContent = parts.join(' · ');
+    if (box) box.textContent = greetingCache;
   } catch { /* hors connexion : pas de message, le reste de la page fonctionne */ }
 }
 

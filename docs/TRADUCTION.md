@@ -1,10 +1,10 @@
 # Traduction anglaise
 
-Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-20 01:11.
+Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-21 06:02.
 
-- Entrées du dictionnaire : **1402**
-- Textes visibles repérés : **1647**
-- Traduits : **1647** (100.0 %)
+- Entrées du dictionnaire : **1446**
+- Textes visibles repérés : **1707**
+- Traduits : **1707** (100.0 %)
 - Restant à traduire : **0**
 
 La traduction fonctionne par correspondance exacte : un texte absent du dictionnaire
@@ -20,12 +20,13 @@ reste en français. Le mécanisme est dans `js/i18n.js` (aucune dépendance).
 | `js\app.js` | 25 | 0 |
 | `js\auth.js` | 15 | 0 |
 | `js\bootstrap.js` | 5 | 0 |
+| `js\dashboard-modern.js` | 57 | 0 |
 | `js\demo-mode.js` | 1 | 0 |
 | `js\demo-ui.js` | 23 | 0 |
 | `js\global-search.js` | 2 | 0 |
 | `js\lock.js` | 5 | 0 |
 | `js\modules\abonnes.js` | 50 | 0 |
-| `js\modules\accueil.js` | 79 | 0 |
+| `js\modules\accueil.js` | 80 | 0 |
 | `js\modules\acomptes.js` | 21 | 0 |
 | `js\modules\alertes.js` | 27 | 0 |
 | `js\modules\avoirs.js` | 20 | 0 |
@@ -40,7 +41,7 @@ reste en français. Le mécanisme est dans `js/i18n.js` (aucune dépendance).
 | `js\modules\facture.js` | 56 | 0 |
 | `js\modules\historique.js` | 10 | 0 |
 | `js\modules\lots.js` | 25 | 0 |
-| `js\modules\parametres.js` | 171 | 0 |
+| `js\modules\parametres.js` | 173 | 0 |
 | `js\modules\parties.js` | 12 | 0 |
 | `js\modules\plus.js` | 4 | 0 |
 | `js\modules\proforma.js` | 29 | 0 |

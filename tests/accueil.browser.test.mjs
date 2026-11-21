@@ -40,8 +40,9 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     await page.evaluate(`window.addExpense({ amount: 5 })`);
     await page.evaluate(`window.fireSync()`);
     assert.equal(await page.evaluate(`window.waitFor('Résultat net')`), true, 'l’indicateur « Résultat net » doit être affiché');
-    assert.equal(await page.evaluate(`window.waitFor('20,00 $')`), true, 'bénéfice brut 25,00 $ moins 5,00 $ de dépenses = 20,00 $');
+    assert.equal(await page.evaluate(`window.waitFor('Bénéfice brut moins 5,00 $ de dépenses')`), true, 'bénéfice brut 25,00 $ moins 5,00 $ de dépenses');
     const text = await page.evaluate('window.text()');
+    assert.match(text, /20,00 \$/);
     assert.match(text, /Bénéfice brut moins 5,00 \$ de dépenses/);
   });
 
@@ -74,19 +75,27 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     // Sur ordinateur, la présentation moderne est appliquée automatiquement.
     assert.equal(await bodyClass('dashboard-mode-pc'), true);
     assert.equal(await label(), 'Présentation : Moderne PC');
-    assert.equal(await page.evaluate(`getComputedStyle(document.querySelector('.owner-head')).display`), 'flex');
+    assert.equal(await page.evaluate(`document.querySelector('.mdp') !== null`), true, 'le rendu moderne PC doit être affiché');
+    assert.equal(await page.evaluate(`document.querySelector('.mdp-kpis .mdp-kpi') !== null`), true, 'les indicateurs modernes doivent être affichés');
+    assert.equal(await page.evaluate(`document.querySelector('svg.md-chart') !== null`), true, 'la courbe des ventes doit être affichée');
+    assert.equal(await page.evaluate(`document.querySelectorAll('#owner-period option').length`), 7, 'les sept périodes doivent être proposées');
 
     // Clic 1 : version mobile, immédiatement.
     await page.evaluate(`document.querySelector('#owner-mode').click()`);
     assert.equal(await bodyClass('dashboard-mode-mobile'), true);
     assert.equal(await bodyClass('dashboard-mode-pc'), false);
     assert.equal(await label(), 'Présentation : Moderne mobile');
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-header') !== null`), true, 'l’en-tête mobile doit être affiché');
+    assert.equal(await page.evaluate(`document.querySelectorAll('.mdm-kpis .mdp-kpi').length`), 4, 'quatre cartes KPI sur téléphone');
+    assert.equal(await page.evaluate(`document.querySelector('#owner-period').value`), '7', 'la période choisie est conservée');
 
     // Clic 2 : retour au tableau de bord classique, sans rechargement.
     await page.evaluate(`document.querySelector('#owner-mode').click()`);
     assert.equal(await bodyClass('dashboard-mode-mobile'), false);
     assert.equal(await bodyClass('dashboard-mode-pc'), false);
     assert.equal(await label(), 'Présentation : Classique');
+    assert.equal(await page.evaluate(`document.querySelector('.owner-head') !== null`), true, 'le rendu classique doit être restauré');
+    assert.equal(await page.evaluate(`document.querySelector('.mdp') === null && document.querySelector('.mdm') === null`), true, 'aucun reste du rendu moderne');
     assert.equal(await page.evaluate(`document.querySelector('#owner-content').textContent.includes('35,00 $')`), true,
       'les chiffres restent identiques après le changement de présentation');
 
