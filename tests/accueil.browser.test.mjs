@@ -29,6 +29,16 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
   await page.viewport(1440, 900);
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.evaluate('window.ready');
+  const waitUntil = expression => page.evaluate(`new Promise((resolve, reject) => {
+    const end = Date.now() + 8000;
+    const check = () => {
+      if (${expression}) resolve(true);
+      else if (Date.now() > end) reject(new Error('État attendu : ' + ${JSON.stringify(expression)}));
+      else setTimeout(check, 30);
+    };
+    check();
+  })`);
+  const settled = () => waitUntil(`document.querySelector('#owner-content')?.getAttribute('aria-busy') !== 'true' && ![...document.querySelectorAll('[data-md-change]')].some(el => el.textContent.includes('en cours'))`);
 
   await t.test('les ventes du jour comptent, même si sold_at contient une heure', async () => {
     const text = await page.evaluate('window.text()');
@@ -189,7 +199,7 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
   await t.test('les blocs masqués ne réapparaissent pas dans les détails modernes', async () => {
     for (const mode of ['modern_pc', 'modern_mobile']) {
       await page.evaluate(`window.boot({ mode: ${JSON.stringify(mode)}, blocks: ['charts'] })`);
-      assert.equal(await page.evaluate(`document.querySelectorAll('.mdp-kpi, .mdm-hero, .mdm-more').length`), 0);
+      assert.equal(await page.evaluate(`document.querySelectorAll('.mdp-kpi, .mdm-hero, .mdm-more:not(.mdm-payment-details)').length`), 0);
       const text = await page.evaluate('window.text()');
       assert.doesNotMatch(text, /Résumé de caisse du jour|Points à surveiller/);
       assert.equal(await page.evaluate(`document.querySelector('svg.md-chart') !== null`), true);
@@ -259,5 +269,208 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
         assert.ok(target.left >= 0 && target.right <= target.viewport, `cible rognée : ${JSON.stringify(target)}`);
       }
     }
+  });
+
+  await t.test('PC : une seule ligne de filtres et un menu secondaire accessible au clavier', async () => {
+    await page.viewport(1440, 900);
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    await settled();
+    assert.ok(await page.evaluate(`document.querySelector('.mdp-filters').getBoundingClientRect().height < 110`), 'la barre de filtres standard doit rester compacte');
+    assert.equal(await page.evaluate(`document.querySelector('#owner-customize').closest('details').className`), 'mdp-menu');
+    assert.deepEqual(await page.evaluate(`[...document.querySelectorAll('.mdp-kpi-group > h2')].map(el => el.textContent)`), ['Ventes et encaissements', 'Rentabilité', 'Trésorerie et stock']);
+    await page.evaluate(`document.querySelector('.mdp-menu > summary').focus()`);
+    await page.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', text: '\r', windowsVirtualKeyCode: 13 });
+    await page.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    assert.equal(await page.evaluate(`document.querySelector('.mdp-menu').open`), true);
+    await page.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await page.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    assert.equal(await page.evaluate(`document.querySelector('.mdp-menu').open`), false);
+    assert.equal(await page.evaluate(`document.activeElement === document.querySelector('.mdp-menu > summary')`), true);
+  });
+
+  await t.test('un montant ouvre ses vraies lignes sans requête ni perte des filtres', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    await settled();
+    await page.evaluate(`document.querySelector('#shop-select').value = 'w1'; document.querySelector('#shop-select').dispatchEvent(new Event('change'))`);
+    await settled();
+    const calls = await page.evaluate('window.fixture.calls.length');
+    const filters = await page.evaluate(`({ period: document.querySelector('#owner-period').value, shop: document.querySelector('#shop-select').value })`);
+    await page.evaluate(`document.querySelector('[data-md-detail=revenue]').click()`);
+    assert.equal(await page.evaluate(`document.querySelector('#owner-dialog').open`), true);
+    const text = await page.evaluate(`document.querySelector('#owner-dialog').textContent`);
+    assert.match(text, /TEST-1/);
+    assert.match(text, /TEST-2/);
+    assert.match(text, /25,00 \$/);
+    assert.match(text, /Dépôt principal/);
+    assert.equal(await page.evaluate('window.fixture.calls.length'), calls);
+    await page.evaluate(`document.querySelector('#owner-dialog #c').click()`);
+    await waitUntil(`document.activeElement?.dataset.mdDetail === 'revenue'`);
+    assert.deepEqual(await page.evaluate(`({ period: document.querySelector('#owner-period').value, shop: document.querySelector('#shop-select').value })`), filters);
+  });
+
+  await t.test('les comparaisons utilisent la période précédente réelle et traitent une base nulle', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    await settled();
+    assert.match(await page.evaluate(`document.querySelector('[data-md-change=revenue]').textContent`), /Période précédente/);
+    assert.doesNotMatch(await page.evaluate(`document.querySelector('[data-md-change=revenue]').textContent`), /%|Infinity|NaN/);
+    await page.evaluate(`(() => {
+      const date = new Date(); date.setDate(date.getDate() - 7);
+      window.addSale({ unit: 50, soldAt: date.toLocaleDateString('sv-SE') });
+      document.querySelector('#owner-refresh').click();
+    })()`);
+    await settled();
+    assert.match(await page.evaluate(`document.querySelector('[data-md-change=revenue]').textContent`), /↓ 50 %/);
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=revenue] b').textContent`), '25,00 $');
+  });
+
+  await t.test('une comparaison indisponible ne masque pas les chiffres courants', async () => {
+    await page.evaluate(`(() => {
+      const date = new Date(); date.setDate(date.getDate() - 6);
+      window.fixture.failBefore = date.toLocaleDateString('sv-SE');
+      document.querySelector('#owner-refresh').click();
+    })()`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-change=revenue]').textContent`), 'Comparaison indisponible');
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=revenue] b').textContent`), '25,00 $');
+    await page.evaluate('window.fixture.failBefore = null');
+  });
+
+  await t.test('mobile : nouvelle vente selon les droits, activités avant le donut replié', async () => {
+    await page.viewport(390, 900);
+    await page.evaluate(`window.boot({ mode: 'modern_mobile' })`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-new-sale').getAttribute('href')`), '#/vente');
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-payment-details').open`), false);
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-activity').nextElementSibling.classList.contains('mdm-payment-details')`), true);
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-activity').previousElementSibling.querySelector('svg.md-chart') !== null`), true);
+    await page.evaluate(`window.boot({ mode: 'modern_mobile', role: 'user' })`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-new-sale')`), null);
+    await page.evaluate(`const forged = document.createElement('button'); forged.dataset.mdDetail = 'gross'; document.querySelector('#owner-content').append(forged); forged.click()`);
+    assert.equal(await page.evaluate(`document.querySelector('#owner-dialog').open`), false, 'aucun accès au bénéfice en forgeant un contrôle');
+  });
+
+  await t.test('mobile : graphique lisible, sélection tactile et curseur clavier', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_mobile' })`);
+    await settled();
+    assert.ok(await page.evaluate(`parseFloat(getComputedStyle(document.querySelector('.md-y-axis')).fontSize) >= 11`));
+    await page.evaluate(`document.querySelector('svg.md-chart').scrollIntoView({ block: 'center' }); new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    const point = await page.evaluate(`(() => {
+      const rect = document.querySelector('svg.md-chart').getBoundingClientRect();
+      return { x: rect.left + 24 / 640 * rect.width, y: rect.top + rect.height / 2 };
+    })()`);
+    await page.command('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y }] });
+    await page.command('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    assert.equal(await page.evaluate(`document.querySelector('.md-chart-slider').value`), '0');
+    assert.match(await page.evaluate(`document.querySelector('[data-md-chart-output]').textContent`), /0,00 \$/);
+    await page.evaluate(`document.querySelector('.md-chart-slider').focus()`);
+    await page.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+    await page.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'ArrowRight', code: 'ArrowRight', windowsVirtualKeyCode: 39 });
+    assert.equal(await page.evaluate(`document.querySelector('.md-chart-slider').value`), '1');
+    await page.command('Input.dispatchKeyEvent', { type: 'keyDown', key: 'End', code: 'End', windowsVirtualKeyCode: 35 });
+    await page.command('Input.dispatchKeyEvent', { type: 'keyUp', key: 'End', code: 'End', windowsVirtualKeyCode: 35 });
+    assert.match(await page.evaluate(`document.querySelector('.md-chart-slider').getAttribute('aria-valuetext')`), /25,00 \$/);
+  });
+
+  await t.test('chargement, absence d’activité et panne sont trois états différents', async () => {
+    const future = await page.evaluate(`new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')`);
+    await page.evaluate(`window.loadingRun = window.boot({ mode: 'modern_mobile', holdBefore: ${JSON.stringify(future)} }); true`);
+    await waitUntil('window.fixture.pendingReads.length > 0');
+    assert.equal(await page.evaluate(`document.querySelector('#owner-content').getAttribute('aria-busy')`), 'true');
+    assert.equal(await page.evaluate(`document.querySelector('.md-skeleton') !== null`), true);
+    assert.doesNotMatch(await page.evaluate('window.text()'), /0,00 \$/);
+    await page.evaluate(`window.fixture.holdBefore = null; window.fixture.pendingReads.splice(0).forEach(resolve => resolve()); window.loadingRun`);
+    await settled();
+    await page.evaluate(`window.fixture.sales = []; document.querySelector('#owner-refresh').click()`);
+    await settled();
+    assert.match(await page.evaluate('window.text()'), /Aucune vente sur cette période/);
+    assert.match(await page.evaluate('window.text()'), /Aucune activité sur cette période/);
+    await page.evaluate(`window.fixture.failTables = ['sales']; document.querySelector('#owner-refresh').click()`);
+    await waitUntil(`document.querySelector('[data-md-retry]') !== null`);
+    assert.match(await page.evaluate('window.text()'), /Chiffres indisponibles/);
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=revenue]')`), null);
+    await page.evaluate(`window.fixture.failTables = []; window.addSale({ unit: 18 }); document.querySelector('[data-md-retry]').click()`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=revenue] b').textContent`), '18,00 $');
+  });
+
+  await t.test('des paiements indisponibles ne sont pas affichés à zéro pour un responsable', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc', role: 'manager', failTables: ['sale_payments'] })`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=paymentsReceived] b').textContent`), '—');
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-kpi=paymentsReceived] .mdp-kpi-note').textContent`), 'Données indisponibles');
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=revenue] b').textContent`), '25,00 $');
+  });
+
+  await t.test('le cache moderne ne traverse pas les droits ni le filtre boutique', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    await settled();
+    const future = await page.evaluate(`new Date(Date.now() + 86400000).toLocaleDateString('sv-SE')`);
+    await page.evaluate(`window.fixture.holdBefore = ${JSON.stringify(future)}; window.restrictedRun = import('/js/modules/accueil.js').then(({render}) => render(document.querySelector('#main'), {id:'dash-user', role:'manager'})); true`);
+    await waitUntil('window.fixture.pendingReads.length > 0');
+    assert.equal(await page.evaluate(`document.querySelector('.md-skeleton') !== null`), true);
+    assert.doesNotMatch(await page.evaluate('window.text()'), /Bénéfice brut|Résultat net|Valeur du stock/);
+    await page.evaluate(`window.fixture.holdBefore = null; window.fixture.pendingReads.splice(0).forEach(resolve => resolve()); window.restrictedRun`);
+    await settled();
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    await settled();
+    await page.evaluate(`window.fixture.holdBefore = ${JSON.stringify(future)}; document.querySelector('#shop-select').value = 'w1'; document.querySelector('#shop-select').dispatchEvent(new Event('change'))`);
+    await waitUntil('window.fixture.pendingReads.length > 0');
+    assert.equal(await page.evaluate(`document.querySelector('.md-skeleton') !== null`), true, 'le cache de toutes les boutiques ne remplace pas celui de la boutique choisie');
+    await page.evaluate(`window.fixture.holdBefore = null; window.fixture.pendingReads.splice(0).forEach(resolve => resolve())`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('#shop-select').value`), 'w1');
+  });
+
+  await t.test('une ancienne comparaison ne remplace ni la nouvelle période ni la sélection du graphique', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_mobile' })`);
+    await settled();
+    await page.evaluate(`(() => {
+      const start = new Date(); start.setDate(start.getDate() - 6);
+      window.fixture.holdBefore = start.toLocaleDateString('sv-SE');
+      document.querySelector('#owner-refresh').click();
+    })()`);
+    await waitUntil('window.fixture.pendingReads.length > 0');
+    await page.evaluate(`document.querySelector('.md-chart-slider').value = '0'; document.querySelector('.md-chart-slider').dispatchEvent(new Event('input', { bubbles: true }))`);
+    await page.evaluate(`window.fixture.holdBefore = null; window.fixture.pendingReads.splice(0).forEach(resolve => resolve())`);
+    await settled();
+    assert.equal(await page.evaluate(`document.querySelector('.md-chart-slider').value`), '0', 'une comparaison ne reconstruit pas le graphique');
+    await page.evaluate(`(() => {
+      const start = new Date(); start.setDate(start.getDate() - 6);
+      window.fixture.holdBefore = start.toLocaleDateString('sv-SE');
+      document.querySelector('#owner-refresh').click();
+    })()`);
+    await waitUntil('window.fixture.pendingReads.length > 0');
+    await page.evaluate(`window.fixture.holdBefore = null; document.querySelector('#owner-period').value = 'today'; document.querySelector('#owner-period').dispatchEvent(new Event('change'))`);
+    await settled();
+    const before = await page.evaluate('window.text()');
+    await page.evaluate(`window.fixture.pendingReads.splice(0).forEach(resolve => resolve())`);
+    await page.evaluate(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+    assert.equal(await page.evaluate('window.text()'), before);
+    assert.equal(await page.evaluate(`document.querySelector('#owner-period').value`), 'today');
+    assert.equal(await page.evaluate(`Number(document.querySelector('[data-md-dot="0"]').getAttribute('cx'))`), 320, 'une journée isolée reste centrée dans la courbe');
+  });
+
+  await t.test('les nouveaux contrôles et leurs libellés accessibles sont traduits en anglais', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_mobile' })`);
+    await settled();
+    await page.evaluate(`import('/js/i18n.js').then(({ setLanguage, watchLanguage }) => { setLanguage('en'); watchLanguage(document.querySelector('#root')); })`);
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-new-sale span').textContent`), 'New sale');
+    assert.equal(await page.evaluate(`document.querySelector('[data-md-detail=revenue]').getAttribute('aria-label')`), 'View details: Revenue');
+    assert.equal(await page.evaluate(`document.querySelector('.md-chart-slider').getAttribute('aria-label')`), 'Chart day');
+    assert.equal(await page.evaluate(`document.querySelector('.mdm-payment-details > summary').textContent`), 'Payment breakdown');
+    await page.evaluate(`import('/js/i18n.js').then(({ setLanguage }) => { setLanguage('fr'); document.documentElement.lang = 'fr'; })`);
+  });
+
+  await t.test('Classique conserve son interface et ne lance aucune comparaison supplémentaire', async () => {
+    await page.evaluate(`window.boot({ mode: 'classic' })`);
+    assert.equal(await page.evaluate(`document.querySelector('.owner-head') !== null`), true);
+    assert.equal(await page.evaluate(`document.querySelectorAll('[data-md-detail], [data-md-chart], .mdp-menu, .mdm-new-sale').length`), 0);
+    const from = await page.evaluate(`(() => { const date = new Date(); date.setDate(date.getDate() - 6); return date.toLocaleDateString('sv-SE'); })()`);
+    assert.equal(await page.evaluate(`window.fixture.calls.some(call => {
+      const start = call.query.match(/sold_at=gte\\.([^&]+)/)?.[1];
+      return call.table === 'sales' && start && start < ${JSON.stringify(from)};
+    })`), false);
+    assert.deepEqual(page.errors, []);
   });
 });

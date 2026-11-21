@@ -1,5 +1,5 @@
 // API simulée pour le tableau de bord : aucune donnée réelle, aucun accès réseau.
-export const fixture = { sales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [] };
+export const fixture = { sales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] };
 
 export const session = () => ({ uid: 'dash-user' });
 export const pendingFor = async () => [];
@@ -19,7 +19,7 @@ export const localToday = () => {
 };
 
 export const resetDashboard = () => {
-  Object.assign(fixture, { sales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [] });
+  Object.assign(fixture, { sales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] });
 };
 
 export const addSale = (options = {}) => {
@@ -28,6 +28,7 @@ export const addSale = (options = {}) => {
   fixture.sales.push({
     id: `s${id}`,
     number: `TEST-${id}`,
+    warehouse_id: options.warehouseId ?? 'w1',
     sold_at: options.soldAt ?? localToday(),
     payment: options.payment ?? 'cash',
     payment_method: options.method ?? 'cash',
@@ -60,6 +61,9 @@ export const addExpense = (options = {}) => {
 export const db = {
   async select(table, query = '') {
     fixture.calls.push({ table, query });
+    const startDate = query.match(/(?:sold_at|paid_at|received_at)=gte\.([^&]+)/)?.[1]?.slice(0, 10);
+    if (fixture.failTables.includes(table) || (fixture.failBefore && startDate && startDate < fixture.failBefore)) throw new Error('Source indisponible (test)');
+    if (fixture.holdBefore && startDate && startDate < fixture.holdBefore) await new Promise(resolve => fixture.pendingReads.push(resolve));
     if (table === 'profiles') return [{ org_id: 'o1', full_name: 'Test Admin' }];
     if (table === 'organizations') return [{ name: 'Entreprise test' }];
     if (table === 'warehouses') return [{ id: 'w1', name: 'Dépôt principal', is_default: true }];
@@ -88,6 +92,8 @@ export const db = {
       const from = query.match(/sold_at=gte\.([^&]+)/)?.[1];
       const to = query.match(/sold_at=lt\.([^&]+)/)?.[1];
       const payment = query.match(/payment=eq\.(\w+)/)?.[1];
+      const warehouse = query.match(/(?:^|&)warehouse_id=eq\.([^&]+)/)?.[1];
+      if (warehouse) rows = rows.filter(sale => sale.warehouse_id === warehouse);
       if (payment) rows = rows.filter(sale => sale.payment === payment);
       if (from) rows = rows.filter(sale => String(sale.sold_at).slice(0, 10) >= from);
       if (to) rows = rows.filter(sale => String(sale.sold_at).slice(0, 10) < to);

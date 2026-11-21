@@ -1,10 +1,10 @@
 # Traduction anglaise
 
-Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-21 06:29.
+Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-21 15:43.
 
-- Entrées du dictionnaire : **1446**
-- Textes visibles repérés : **1707**
-- Traduits : **1707** (100.0 %)
+- Entrées du dictionnaire : **1484**
+- Textes visibles repérés : **1719**
+- Traduits : **1719** (100.0 %)
 - Restant à traduire : **0**
 
 La traduction fonctionne par correspondance exacte : un texte absent du dictionnaire
@@ -20,7 +20,7 @@ reste en français. Le mécanisme est dans `js/i18n.js` (aucune dépendance).
 | `js\app.js` | 25 | 0 |
 | `js\auth.js` | 15 | 0 |
 | `js\bootstrap.js` | 5 | 0 |
-| `js\dashboard-modern.js` | 57 | 0 |
+| `js\dashboard-modern.js` | 69 | 0 |
 | `js\demo-mode.js` | 1 | 0 |
 | `js\demo-ui.js` | 23 | 0 |
 | `js\global-search.js` | 2 | 0 |

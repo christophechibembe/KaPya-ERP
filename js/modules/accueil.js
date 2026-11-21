@@ -4,7 +4,8 @@ import { esc, n, money, usdOnly, fcOnly, ico, openDialog, showDialog, fld, fmtDa
 import { listeOuErreur } from '../ui.js';
 import { can } from '../roles.js';
 import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, nextMode as nextDashboardMode, setMode as setDashboardMode, MODE_LABELS as DASHBOARD_MODE_LABELS } from '../dashboard-modes.js';
-import { renderModernPage, renderModernContent, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
+import { renderModernPage, renderModernContent, renderModernLoading, renderModernFailure, renderModernDetail, bindModernInteractions, paintModernComparisons, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
+import { previousPeriod, periodFigures, modernDetails } from '../dashboard-insights.mjs';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
 
 const isoDate = date => {
@@ -210,6 +211,7 @@ export async function render(main, ctx) {
     greeting: greetingCache.get(session().uid) || '',
     userName: ctx?.full_name || '',
     canRecordCashOut,
+    canCreateSale: can(ctx?.role, 'ventes.write'),
     monthStart,
     today,
     periodValue: periodValue || '7'
@@ -347,6 +349,12 @@ export async function render(main, ctx) {
   let lastSummary = null;
   let lastPayload = null;
   let shopsCache = null;
+  let dataGeneration = 0;
+  // Le cache moderne dépend aussi des droits et de la boutique. On ne réutilise
+  // jamais un affichage admin/global pour un rôle ou un périmètre plus restreint.
+  const displayCacheKey = (mode, period, from, to, shop = getShop()) => dashKey(
+    session().uid, mode === 'classic' ? period : `${period}:${mode}:${ctx?.role || 'user'}:${shop || 'all'}`, from, to
+  );
   const allowedBlocks = () => ['daily', 'kpi', 'charts', 'moves', 'watch', 'cashout'].filter(id => id === 'daily' ? canSeeDailySummary : id === 'cashout' ? canSeeCosts : true);
   const blk = (id, html) => enabled.has(id) ? html : '';
   async function resolveBlocks() {
@@ -370,6 +378,7 @@ export async function render(main, ctx) {
 
   async function renderDashboard() {
     if (!alive()) return;
+    const generation = ++dataGeneration;
     const periodValue = $('#owner-period').value;
     let from = today, to = today;
     if (periodValue === 'custom') {
@@ -391,12 +400,13 @@ export async function render(main, ctx) {
     }
     if (from > to) { $('#owner-content').innerHTML = '<p class="notice">La date de début doit être antérieure à la date de fin.</p>'; return; }
     // Affichage immédiat du dernier résultat sauvegardé ; les chiffres réels remplacent ce contenu dès qu'ils arrivent.
-    const cacheKeyFor = mode => dashKey(session().uid, mode === 'classic' ? periodValue : `${periodValue}:${mode}`, from, to);
-    const cached = readDash(cacheKeyFor(activeMode));
     const selectedShop = getShop();
+    const cacheKeyFor = mode => displayCacheKey(mode, periodValue, from, to, selectedShop);
+    const cached = readDash(cacheKeyFor(activeMode));
     $('#owner-content').innerHTML = cached
       ? `<p class="muted dash-stamp">Dernier affichage : ${esc(new Date(cached.at).toLocaleString('fr-FR'))} · mise à jour en cours…</p>${cached.html}`
-      : `<div class="${activeMode === 'classic' ? 'card empty' : 'mdp-loading'}">Chargement des données…</div>`;
+      : activeMode === 'classic' ? '<div class="card empty">Chargement des données…</div>' : renderModernLoading();
+    if (activeMode !== 'classic') $('#owner-content').setAttribute('aria-busy', 'true');
     const blocksReady = resolveBlocks();
     const nextDay = shiftDate(to, 1);
     const startInstant = new Date(`${from}T00:00:00`).toISOString();
@@ -423,7 +433,7 @@ export async function render(main, ctx) {
     const customerPaymentsPromise = canSeeCosts
       ? db.select('sale_payments', `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}&order=paid_at.asc`)
       : canSeeDailySummary
-        ? db.select('sale_payments', `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}&order=paid_at.asc`).catch(() => [])
+        ? db.select('sale_payments', `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}&order=paid_at.asc`).catch(() => null)
         : Promise.resolve([]);
     const customerDepositsPromise = canSeeCosts
       ? db.select('customer_deposits', `select=id,amount,received_at&received_at=gte.${from}&received_at=lt.${dayAfter(to)}`)
@@ -441,10 +451,12 @@ export async function render(main, ctx) {
         : Promise.resolve([]);
       await blocksReady;
       const coreResults = await Promise.allSettled([salesPromise, purchasesPromise, creditsPromise, movesPromise, articlesPromise, supplierPaymentsPromise, expensesPromise, customerPaymentsPromise, customerDepositsPromise, saleCostsPromise, supplierBalancesPromise, supplierPaymentsAllPromise, ownerDailySalesPromise, ownerDailyReceiptsPromise]);
-      const [salesRows, purchaseRows, credits, moveRows, articles, supplierPayments, expenses, customerPayments, customerDeposits] = coreResults.slice(0, 9).map(result => {
+      const [salesRows, purchaseRows, credits, moveRows, articles, supplierPayments, expenses, paymentRows, customerDeposits] = coreResults.slice(0, 9).map(result => {
         if (result.status === 'rejected') throw result.reason;
         return result.value;
       });
+      const paymentsAvailable = Array.isArray(paymentRows);
+      const customerPayments = paymentRows || [];
       const saleCostResult = coreResults[9];
       const saleCostsAvailable = !canSeeCosts || saleCostResult.status === 'fulfilled';
       const saleCostRows = saleCostResult.status === 'fulfilled' ? saleCostResult.value : [];
@@ -603,6 +615,7 @@ export async function render(main, ctx) {
         offlineNote,
         canSeeCosts,
         saleCostsAvailable,
+        paymentsAvailable,
         blocks: { kpi: enabled.has('kpi'), charts: enabled.has('charts') },
         salesCount: sales.length,
         cashCount: cashSalesRows.length,
@@ -622,12 +635,15 @@ export async function render(main, ctx) {
         supplierPaid,
         expenseTotal,
         profitDetail,
-        salesBuckets: salesBuckets.map(bucket => ({ label: bucket.label, value: bucket.value })),
+        salesBuckets: salesBuckets.map(bucket => ({ label: bucket.label, value: bucket.value, dateLabel: bucket.start === bucket.end ? fr(bucket.start) : `${fr(bucket.start)} – ${fr(bucket.end)}` })),
         paymentSlices,
         activities,
         dateLabel,
         periodLabel,
         todayLabel: fr(today),
+        shopLabel: selectedShop ? shopsCache?.find(shop => shop.id === selectedShop)?.name || 'Boutique sélectionnée' : 'Toutes les boutiques',
+        shopSelected: Boolean(selectedShop),
+        comparison: { status: 'idle', range: previousPeriod(from, to), values: {} },
         extra: {
           audit: auditRows,
           moves: enabled.has('moves') ? recentMoves : [],
@@ -654,16 +670,68 @@ export async function render(main, ctx) {
           } : null
         }
       };
+      const source = { sales, credits, payments: customerPayments, deposits: customerDeposits, supplierPayments, expenses, articles, costs: saleCostsByLine, pending: pendTotals };
+      modernModel.details = modernDetails(modernModel, source);
       const modernPcHtml = renderModernContent(modernModel, 'modern_pc');
       const modernMobileHtml = renderModernContent(modernModel, 'modern_mobile');
-      lastPayload = { classic: classicHtml, pc: modernPcHtml, mobile: modernMobileHtml, periodValue, from, to, shop: selectedShop };
+      lastPayload = { classic: classicHtml, pc: modernPcHtml, mobile: modernMobileHtml, model: modernModel, source, generation, periodValue, from, to, shop: selectedShop };
       const html = activeMode === 'classic' ? classicHtml : activeMode === 'modern_pc' ? modernPcHtml : modernMobileHtml;
       $('#owner-content').innerHTML = html;
       writeDash(cacheKeyFor(activeMode), html);
       lastRefresh = Date.now();
       paintUpdated(lastRefresh);
+      ensureModernComparison();
     } catch (error) {
-      if (alive()) $('#owner-content').innerHTML = `<div class="card"><p class="err">Chargement impossible : ${esc(error.message)}</p></div>`;
+      if (alive()) {
+        $('#owner-content').innerHTML = activeMode === 'classic'
+          ? `<div class="card"><p class="err">Chargement impossible : ${esc(error.message)}</p></div>` : renderModernFailure();
+        if (activeMode !== 'classic') lastPayload = null;
+      }
+    } finally {
+      if (alive() && activeMode !== 'classic') $('#owner-content').setAttribute('aria-busy', 'false');
+    }
+  }
+
+  // La période précédente se charge après les chiffres courants, uniquement dans un mode
+  // moderne. Un ancien résultat ne peut jamais remplacer une nouvelle période/boutique.
+  async function ensureModernComparison() {
+    const payload = lastPayload;
+    if (activeMode === 'classic' || !payload?.model.blocks.kpi || payload.comparisonStarted || !payloadMatchesControls()) return;
+    payload.comparisonStarted = true;
+    const model = payload.model;
+    model.comparison.status = 'loading';
+    paintModernComparisons(main, model);
+    try {
+      const { from, to } = model.comparison.range;
+      const salesQuery = `select=id,sold_at,payment,sale_lines(id,qty,unit_price)&sold_at=gte.${from}&sold_at=lt.${dayAfter(to)}${shopSalesFilter()}`;
+      const paymentQuery = `${shopPaymentsSelect('select=id,sale_id,amount,paid_at,kind,sales(id)')}&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&kind=in.(initial,payment,advance)${shopPaymentsFilter()}`;
+      const results = await Promise.allSettled([
+        db.select('sales', salesQuery),
+        canSeeDailySummary ? db.select('sale_payments', paymentQuery) : Promise.resolve(null),
+        canSeeCosts ? db.select('customer_deposits', `select=id,amount,received_at&received_at=gte.${from}&received_at=lt.${dayAfter(to)}`) : Promise.resolve([]),
+        canSeeCosts ? db.select('business_expenses', `select=id,amount,paid_at&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}`) : Promise.resolve([]),
+        canSeeCosts ? db.select('purchase_payments', `select=id,amount,paid_at&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}`) : Promise.resolve([])
+      ]);
+      const [sales, payments, deposits, expenses, supplierPayments] = results.map(result => result.status === 'fulfilled' ? result.value : null);
+      const inRange = (rows, field) => Array.isArray(rows) ? rows.filter(row => String(row[field] || '').slice(0, 10) >= from && String(row[field] || '').slice(0, 10) <= to) : null;
+      const values = periodFigures({
+        sales: inRange(sales, 'sold_at'), payments: inRange(payments, 'paid_at'),
+        deposits: inRange(deposits, 'received_at'), expenses: inRange(expenses, 'paid_at'), supplierPayments: inRange(supplierPayments, 'paid_at'),
+        creditIds: new Set(payload.source.credits.map(sale => sale.id)), costs: payload.source.costs,
+        costsAvailable: model.saleCostsAvailable, canSeeCosts
+      });
+      // Le flux net classique inclut les écritures en attente : pas de comparaison trompeuse.
+      if (payload.source.pending.cash || payload.source.pending.receipts) values.cashNet = null;
+      model.comparison = { ...model.comparison, status: 'ready', values };
+    } catch {
+      model.comparison = { ...model.comparison, status: 'error', values: {} };
+    }
+    if (!alive() || payload !== lastPayload || payload.generation !== dataGeneration) return;
+    payload.pc = renderModernContent(model, 'modern_pc');
+    payload.mobile = renderModernContent(model, 'modern_mobile');
+    if (activeMode !== 'classic' && payloadMatchesControls()) {
+      paintModernComparisons(main, model);
+      writeDash(displayCacheKey(activeMode, payload.periodValue, payload.from, payload.to, payload.shop), activeMode === 'modern_pc' ? payload.pc : payload.mobile);
     }
   }
 
@@ -695,6 +763,20 @@ export async function render(main, ctx) {
   main._dashEvents?.abort();
   main._dashEvents = events;
   const { signal } = events;
+  bindModernInteractions(main, {
+    signal,
+    onRetry: refresh,
+    onDetail: (key, trigger) => {
+      if (activeMode === 'classic' || !payloadMatchesControls()) return;
+      const detail = renderModernDetail(lastPayload.model, key);
+      if (!detail) return;
+      main.querySelectorAll('.mdp-menu[open], .mdm-menu[open]').forEach(menu => { menu.open = false; });
+      const dialog = $('#owner-dialog');
+      showDialog(dialog, detail.title, detail.body);
+      dialog.classList.add('md-detail-dialog');
+      dialog.addEventListener('close', () => { if (trigger.isConnected) trigger.focus({ preventScroll: true }); }, { once: true, signal });
+    }
+  });
   let debounce = 0;
   const maybeRefresh = () => { if (!document.hidden && alive() && Date.now() - lastRefresh > 30000) refresh(); };
   // Un événement de synchronisation signale une vraie écriture : on recharge sans attendre le délai anti-rebond.
@@ -748,6 +830,7 @@ export async function render(main, ctx) {
     layout();
     notify(`Présentation : ${DASHBOARD_MODE_LABELS[applied]}.`);
     if (!payloadMatchesControls()) refresh();
+    else ensureModernComparison();
   }
 
   // Relie les contrôles du rendu courant (classique ou moderne), après chaque reconstruction.
