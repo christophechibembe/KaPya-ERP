@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.48.0-build137';
+const VERSION = 'kapya-erp-1.48.1-build138';
 const SHELL = [
   './',
   './404.html',

@@ -274,7 +274,7 @@ body.kp-dashboard-page.dashboard-mode-pc main {
 
 .mdp-card-head h2 { font-size: 1rem; letter-spacing: -.01em; }
 .mdp-card-head p { margin: .15rem 0 0; color: var(--mdp-mute); font-size: .78rem; }
-.mdp-card-head a { color: var(--mdp-blue); font-size: .82rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.mdp-card-head a { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; color: var(--mdp-blue); font-size: .82rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .mdp-card-head a:hover { text-decoration: underline; }
 
 .mdp-total {
@@ -471,24 +471,24 @@ body.kp-dashboard-page.dashboard-mode-pc main {
 }
 
 /* ---- Tablette : barre latérale réduite et grilles intermédiaires --------- */
-@media (min-width: 721px) and (max-width: 1199px) {
-  body.kp-dashboard-page.dashboard-mode-pc .shell { grid-template-columns: 88px minmax(0, 1fr); }
-  body.kp-dashboard-page.dashboard-mode-pc nav { padding: 1.1rem .5rem .8rem; align-items: center; }
-  body.kp-dashboard-page.dashboard-mode-pc nav .brand { padding: .2rem 0 1rem; justify-content: center; }
-  body.kp-dashboard-page.dashboard-mode-pc nav .bname { display: none; }
-  body.kp-dashboard-page.dashboard-mode-pc nav .nav-sec { display: none; }
-  body.kp-dashboard-page.dashboard-mode-pc nav a { justify-content: center; padding: .6rem 0; }
-  body.kp-dashboard-page.dashboard-mode-pc nav a > span {
+@media (min-width: 768px) and (max-width: 1199px) {
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) .shell { grid-template-columns: 88px minmax(0, 1fr); }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav { padding: 1.1rem .5rem .8rem; align-items: center; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav .brand { padding: .2rem 0 1rem; justify-content: center; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav .bname { display: none; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav .nav-sec { display: none; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav a { justify-content: center; min-width: 44px; padding: .6rem 0; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav a > span {
     position: absolute;
     width: 1px;
     height: 1px;
     overflow: hidden;
     clip: rect(0 0 0 0);
   }
-  body.kp-dashboard-page.dashboard-mode-pc nav .out span { display: none; }
-  body.kp-dashboard-page.dashboard-mode-pc .side-foot .mode { display: none; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav .out span { display: none; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) .side-foot .mode { display: none; }
 
-  .mdp-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; }
+  .mdp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
   .mdp-grid { grid-template-columns: 1fr; }
   .mdp-actions { margin-left: 0; }
 }
@@ -497,15 +497,51 @@ body.kp-dashboard-page.dashboard-mode-pc main {
   .mdp-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-@media (min-width: 721px) and (max-width: 1023px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .mdp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mdp-donut-body { grid-template-columns: 140px minmax(0, 1fr); }
   .mdp-watch { grid-template-columns: 1fr; }
   .mdp-mini-kpis { grid-template-columns: 1fr; }
 }
 
-/* Écran étroit (le mode PC choisi ne devrait pas arriver ici, mais reste lisible). */
+/* Les deux modes modernes gardent la navigation basse jusqu'à 767 px.
+   Le mode Classique conserve son point d'arrêt historique, dans theme.css. */
 @media (max-width: 767px) {
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) .shell {
+    grid-template-columns: minmax(0, 1fr);
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: auto;
+    flex-direction: row;
+    padding: .45rem .45rem calc(.45rem + env(safe-area-inset-bottom, 0px));
+    gap: .2rem;
+    z-index: 5;
+    justify-content: space-around;
+    border-radius: 20px 20px 0 0;
+  }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav :is(.brand, .nav-sec, .side-foot) { display: none; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav a {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: .2rem;
+    padding: .45rem .2rem;
+    min-height: 56px;
+    text-align: center;
+    font-size: .78rem;
+  }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav a:not([data-r=accueil]):not([data-r=ventes]):not([data-r=stocks]):not([data-r=plus]):not(.fab-m) { display: none !important; }
+  body.kp-dashboard-page:is(.dashboard-mode-pc, .dashboard-mode-mobile) nav a[data-r=plus] { display: flex; }
+  body.kp-dashboard-page.dashboard-mode-pc main { padding: 1rem 1rem 2rem; }
+  body.kp-dashboard-page.dashboard-mode-pc .topbar { padding: .5rem 1rem; gap: .45rem; flex-wrap: wrap; }
+  .mdp-filters > :is(.mdp-field, .mdp-shop) { flex: 1 1 100%; }
+  .mdp-filters .shop-pick select { width: 100%; min-width: 0; }
   .mdp-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mdp-grid { grid-template-columns: 1fr; }
   .mdp-actions { margin-left: 0; width: 100%; }
