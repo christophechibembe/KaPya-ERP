@@ -27,6 +27,14 @@ const dateFr = value => {
 };
 const pct = (value, total) => total > 0 ? Math.round(value / total * 100) : 0;
 
+// Bascule clair/sombre : même action que le bouton d'en-tête de l'application,
+// avec une icône soleil en mode sombre et lune en mode clair.
+function themeToggle() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  const label = dark ? 'Passer au thème clair' : 'Passer au thème sombre';
+  return `<button class="mdm-iconbtn" id="mdm-theme" type="button" aria-label="${label}" title="${label}">${ico(dark ? 'sun' : 'moon')}</button>`;
+}
+
 function periodSelect(selected = '7') {
   const value = PERIOD_LABELS[selected] ? selected : '7';
   return `<select id="owner-period" aria-label="Période">${PERIOD_OPTIONS
@@ -91,6 +99,7 @@ function mobilePage({ modeLabel, userName, canRecordCashOut, canCreateSale, mont
       <div class="mdm-bar">
         <div class="mdm-brand"><img src="assets/logo-k.png" alt="" width="28" height="32"><span><b>KaPya</b><small>ERP</small></span></div>
         <div class="mdm-bar-actions">
+          ${themeToggle()}
           <a class="mdm-iconbtn" href="#/alertes" aria-label="Alertes et rappels">${ico('bell')}</a>
           <a class="mdm-avatar" href="#/parametres" aria-label="Paramètres">${esc(initials(userName))}</a>
         </div>
@@ -442,6 +451,15 @@ export function bindModernInteractions(main, { signal, onDetail, onRetry }) {
     selectPoint(widget, Math.round((x - 24) / (640 - 48) * (points.length - 1)));
   }, { signal });
   main.addEventListener('click', event => {
+    const themeButton = event.target.closest('#mdm-theme');
+    if (themeButton) {
+      document.getElementById('themebtn')?.click();
+      const dark = document.documentElement.dataset.theme === 'dark';
+      const label = dark ? 'Passer au thème clair' : 'Passer au thème sombre';
+      themeButton.innerHTML = ico(dark ? 'sun' : 'moon');
+      themeButton.setAttribute('aria-label', label);
+      themeButton.title = label;
+    }
     const menuButton = event.target.closest('.mdp-menu-body button, .mdm-menu-body button');
     if (menuButton) menuButton.closest('details').open = false;
     const detail = event.target.closest('[data-md-detail]');

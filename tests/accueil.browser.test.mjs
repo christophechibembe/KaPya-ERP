@@ -177,6 +177,37 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     ]);
   });
 
+  await t.test('la légende du donut reste lisible quand la carte est étroite', async () => {
+    for (const [mode, width] of [['modern_pc', 1280], ['modern_mobile', 390]]) {
+      await page.evaluate(`window.boot({ mode: ${JSON.stringify(mode)} })`);
+      await page.viewport(width, 900);
+      if (mode === 'modern_mobile') await page.evaluate(`document.querySelector('.mdm-payment-details').open = true`);
+      await page.evaluate(`new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))`);
+      const info = await page.evaluate(`(() => {
+        const li = document.querySelector('.mdp-donut-legend li');
+        if (!li) return null;
+        const label = li.querySelector('span:nth-child(2)');
+        const amount = li.querySelector('b');
+        const pct = li.querySelector('small');
+        const box = el => el.getBoundingClientRect();
+        return {
+          labelWidth: box(label).width,
+          labelHeight: box(label).height,
+          lineHeight: parseFloat(getComputedStyle(label).lineHeight) || 19,
+          amountX: box(amount).x, pctX: box(pct).x,
+          amountY: box(amount).y, pctY: box(pct).y
+        };
+      })()`);
+      assert.ok(info, `${mode} : légende du donut attendue`);
+      assert.ok(info.labelWidth >= 40, `${mode} : libellé trop étroit (${info.labelWidth}px)`);
+      assert.ok(info.labelHeight <= info.lineHeight * 1.6, `${mode} : libellé coupé sur plusieurs lignes (${info.labelHeight}px)`);
+      if (mode === 'modern_mobile') {
+        assert.ok(Math.abs(info.amountX - info.pctX) < 2 && info.pctY > info.amountY,
+          'le pourcentage doit rester sous le montant');
+      }
+    }
+  });
+
   await t.test('une période personnalisée conserve ses dates et son bouton Afficher au changement de rendu', async () => {
     await page.evaluate(`(async () => {
       await window.boot({ mode: 'modern_pc' });

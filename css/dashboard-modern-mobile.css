@@ -382,7 +382,17 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
 .mdm-card .md-donut-center b { font-size: .98rem; }
 .mdm-card .mdp-donut-legend { gap: .5rem; }
 .mdm-card .mdp-donut-legend li { grid-template-columns: 10px minmax(0, 1fr) auto; font-size: .78rem; }
-.mdm-card .mdp-donut-legend small { grid-column: 2 / -1; text-align: left; min-width: 0; }
+.mdm-card .mdp-donut-legend li > span:nth-child(2) { overflow-wrap: break-word; }
+.mdm-card .mdp-donut-legend small { grid-column: 3; grid-row: 2; text-align: right; min-width: 0; }
+
+/* Carte étroite : la légende occupe toute la largeur sous le donut. */
+.mdp-donut-card,
+.mdm-payment-details { container-type: inline-size; }
+
+@container (max-width: 340px) {
+  .mdm-card .mdp-donut-body { grid-template-columns: 1fr; justify-items: stretch; }
+  .mdm-card .mdp-donut-body .md-donut-wrap { justify-self: center; }
+}
 
 /* Activités */
 .mdm-card .mdp-activity-list { margin: 0; padding: 0; list-style: none; }
@@ -490,7 +500,8 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
   .mdm-kpis .mdp-kpi { padding: .75rem .7rem; }
   .mdm-kpis .mdp-kpi b { font-size: 1.02rem; }
   .mdm-hero .md-value-hero b { font-size: 1.7rem; }
-  .mdm-card .mdp-donut-body { grid-template-columns: 1fr; justify-items: center; }
+  .mdm-card .mdp-donut-body { grid-template-columns: 1fr; justify-items: stretch; }
+  .mdm-card .mdp-donut-body .md-donut-wrap { justify-self: center; }
 
   /* Les deux filtres et le menu restent sur une seule ligne, sans débordement. */
   .mdm-filters { gap: .4rem; }
