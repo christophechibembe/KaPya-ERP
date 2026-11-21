@@ -126,7 +126,16 @@ async function openRejectedDialog() {
 }
 
 // Message de bienvenue gardé pour les changements de présentation (aucune requête en plus).
-let greetingCache = '';
+const greetingCache = new Map();
+const navigationLabels = new WeakMap();
+function updateNavigationLabels(mode) {
+  const compact = { accueil: 'Accueil', ventes: 'Ventes', stocks: 'Stock' };
+  document.querySelectorAll('#nav a[data-r] > span').forEach(span => {
+    if (!navigationLabels.has(span)) navigationLabels.set(span, span.textContent);
+    const label = compact[span.parentElement.dataset.r];
+    span.textContent = mode === 'modern_mobile' && label ? label : navigationLabels.get(span);
+  });
+}
 
 export async function render(main, ctx) {
   // Présentation du tableau de bord : classique (par défaut) ou moderne.
@@ -198,7 +207,7 @@ export async function render(main, ctx) {
   const modernPage = (mode, periodValue) => renderModernPage({
     mode,
     modeLabel: DASHBOARD_MODE_LABELS[mode],
-    greeting: greetingCache,
+    greeting: greetingCache.get(session().uid) || '',
     userName: ctx?.full_name || '',
     canRecordCashOut,
     monthStart,
@@ -382,10 +391,9 @@ export async function render(main, ctx) {
     }
     if (from > to) { $('#owner-content').innerHTML = '<p class="notice">La date de début doit être antérieure à la date de fin.</p>'; return; }
     // Affichage immédiat du dernier résultat sauvegardé ; les chiffres réels remplacent ce contenu dès qu'ils arrivent.
-    const cacheKey = activeMode === 'classic'
-      ? dashKey(session().uid, periodValue, from, to)
-      : dashKey(session().uid, `${periodValue}:${activeMode}`, from, to);
-    const cached = readDash(cacheKey);
+    const cacheKeyFor = mode => dashKey(session().uid, mode === 'classic' ? periodValue : `${periodValue}:${mode}`, from, to);
+    const cached = readDash(cacheKeyFor(activeMode));
+    const selectedShop = getShop();
     $('#owner-content').innerHTML = cached
       ? `<p class="muted dash-stamp">Dernier affichage : ${esc(new Date(cached.at).toLocaleString('fr-FR'))} · mise à jour en cours…</p>${cached.html}`
       : `<div class="${activeMode === 'classic' ? 'card empty' : 'mdp-loading'}">Chargement des données…</div>`;
@@ -393,7 +401,7 @@ export async function render(main, ctx) {
     const nextDay = shiftDate(to, 1);
     const startInstant = new Date(`${from}T00:00:00`).toISOString();
     const endInstant = new Date(`${nextDay}T00:00:00`).toISOString();
-    const salesSelect = 'select=id,number,sold_at,payment,paid,customers(name),sale_lines(id,qty,unit_price,articles(sku,name,unit))';
+    const salesSelect = 'select=id,number,sold_at,payment,payment_method,paid,customers(name),sale_lines(id,qty,unit_price,articles(sku,name,unit))';
     // Read cost snapshots separately: PostgREST may not expose the new FK in its schema cache yet.
     const saleCostsPromise = canSeeCosts
       ? db.select('sale_cost_snapshots', 'select=sale_line_id,unit_cost_at_sale,cost_is_estimated')
@@ -545,10 +553,13 @@ export async function render(main, ctx) {
         </div>
         ${blk('cashout', canSeeCosts ? `<section class="card owner-panel"><div class="sec-head"><h2>Dernières sorties de trésorerie</h2><span class="muted">${dateLabel}</span></div>${recentCashOut.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th>Détail</th><th class="r">Montant</th></tr></thead><tbody>${recentCashOut.map(item => `<tr><td>${fr(item.date)}</td><td>${esc(item.type)}</td><td>${esc(item.label)}</td><td class="r">${usdOnly(item.amount)}</td></tr>`).join('')}</tbody></table></div>` : '<p class="empty">Aucune sortie enregistrée sur cette période.</p>'}</section>` : '')}`;
       // Modèle commun aux deux présentations modernes : mêmes chiffres, mêmes droits, mêmes API.
-      const receiptsCount = customerPayments.length + customerDeposits.length;
-      const paymentsReceivedModern = canSeeCosts
-        ? received
-        : cashRevenue + customerPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0) + customerDeposits.reduce((sum, deposit) => sum + Number(deposit.amount || 0), 0);
+      // « Paiements reçus » désigne les règlements de créances, pas les ventes cash
+      // ni les dépôts clients. Une imputation d'acompte n'est pas un nouvel encaissement.
+      const creditIds = new Set(credits.map(sale => sale.id));
+      const creditReceipts = customerPayments.filter(payment =>
+        ['initial', 'payment'].includes(payment.kind) && creditIds.has(payment.sale_id));
+      const receiptsCount = creditReceipts.length;
+      const paymentsReceivedModern = creditReceipts.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
       const periodLabel = periodValue === 'custom' ? dateLabel : (MODERN_PERIOD_LABELS[periodValue] || dateLabel);
       const activities = [
         ...sales.slice(-6).map(sale => ({
@@ -559,6 +570,15 @@ export async function render(main, ctx) {
           direction: 'in',
           tone: sale.payment === 'credit' ? 'blue' : 'green',
           icon: 'sales'
+        })),
+        ...creditReceipts.map(payment => ({
+          date: String(payment.paid_at || ''),
+          title: payment.kind === 'initial' ? 'Versement initial' : 'Paiement de crédit',
+          subtitle: fr(payment.paid_at),
+          amount: Number(payment.amount || 0),
+          direction: 'in',
+          tone: 'green',
+          icon: 'coins'
         })),
         ...(canSeeCosts ? recentCashOut.map(item => ({
           date: String(item.date || ''),
@@ -575,7 +595,7 @@ export async function render(main, ctx) {
       const PAY_COLORS = { cash: '#0B5FFB', mobile_money: '#7C3AED', bank: '#13A552', credit: '#F97316' };
       const paymentGroups = new Map();
       sales.forEach(sale => {
-        const key = PAY_LABELS[sale.payment] ? sale.payment : 'cash';
+        const key = sale.payment === 'credit' ? 'credit' : (PAY_LABELS[sale.payment_method] ? sale.payment_method : 'cash');
         paymentGroups.set(key, (paymentGroups.get(key) || 0) + sumLines(sale.sale_lines, 'unit_price'));
       });
       const paymentSlices = [...paymentGroups].map(([key, value]) => ({ key, value, label: PAY_LABELS[key], color: PAY_COLORS[key] })).filter(slice => slice.value > 0);
@@ -610,9 +630,9 @@ export async function render(main, ctx) {
         todayLabel: fr(today),
         extra: {
           audit: auditRows,
-          moves: recentMoves,
-          cashout: recentCashOut,
-          watch: {
+          moves: enabled.has('moves') ? recentMoves : [],
+          cashout: enabled.has('cashout') ? recentCashOut : [],
+          watch: enabled.has('watch') ? {
             canSeeCosts,
             stockValue: currentStockValue,
             lowStock: lowStock.length,
@@ -621,8 +641,8 @@ export async function render(main, ctx) {
             supplierDebt,
             supplierBalancesAvailable,
             expenseTotal
-          },
-          daily: canSeeDailySummary ? {
+          } : null,
+          daily: enabled.has('daily') && canSeeDailySummary ? {
             cash: dailyCashValue,
             credit: dailyCreditValue,
             receipts: dailyReceiptValue,
@@ -636,10 +656,10 @@ export async function render(main, ctx) {
       };
       const modernPcHtml = renderModernContent(modernModel, 'modern_pc');
       const modernMobileHtml = renderModernContent(modernModel, 'modern_mobile');
-      lastPayload = { classic: classicHtml, pc: modernPcHtml, mobile: modernMobileHtml };
+      lastPayload = { classic: classicHtml, pc: modernPcHtml, mobile: modernMobileHtml, periodValue, from, to, shop: selectedShop };
       const html = activeMode === 'classic' ? classicHtml : activeMode === 'modern_pc' ? modernPcHtml : modernMobileHtml;
       $('#owner-content').innerHTML = html;
-      writeDash(cacheKey, html);
+      writeDash(cacheKeyFor(activeMode), html);
       lastRefresh = Date.now();
       paintUpdated(lastRefresh);
     } catch (error) {
@@ -691,7 +711,10 @@ export async function render(main, ctx) {
   signal.addEventListener('abort', () => {
     clearInterval(timerId);
     clearTimeout(debounce);
-    if (main._dashToken === viewToken) document.body.classList.remove('kp-dashboard-page');
+    if (main._dashToken === viewToken) {
+      document.body.classList.remove('kp-dashboard-page');
+      updateNavigationLabels('classic');
+    }
   });
 
   // Choix de la boutique (dépôt) pour le gérant qui a plusieurs boutiques.
@@ -724,7 +747,7 @@ export async function render(main, ctx) {
     activeMode = applied;
     layout();
     notify(`Présentation : ${DASHBOARD_MODE_LABELS[applied]}.`);
-    refresh();
+    if (!payloadMatchesControls()) refresh();
   }
 
   // Relie les contrôles du rendu courant (classique ou moderne), après chaque reconstruction.
@@ -743,17 +766,25 @@ export async function render(main, ctx) {
 
   // Construit l'enveloppe de la présentation choisie, puis y replace les chiffres déjà calculés.
   // La période choisie est conservée d'une présentation à l'autre.
+  function payloadMatchesControls() {
+    const period = $('#owner-period')?.value;
+    return lastPayload && lastPayload.periodValue === period && lastPayload.shop === getShop()
+      && (period !== 'custom' || (lastPayload.from === $('#owner-from')?.value && lastPayload.to === $('#owner-to')?.value));
+  }
+
   function layout() {
     const previous = $('#owner-period')?.value || '7';
     const previousFrom = $('#owner-from')?.value;
     const previousTo = $('#owner-to')?.value;
     main.innerHTML = pageHtml(activeMode, previous);
+    updateNavigationLabels(activeMode);
     const period = $('#owner-period');
     if (period) {
       const values = [...period.options].map(option => option.value);
       period.value = values.includes(previous) ? previous : '7';
       const custom = period.value === 'custom';
       main.querySelectorAll('.owner-date').forEach(element => { element.hidden = !custom; });
+      $('#owner-run').hidden = !custom;
       if (custom && previousFrom) $('#owner-from').value = previousFrom;
       if (custom && previousTo) $('#owner-to').value = previousTo;
       const chip = $('#mdp-period-chip');
@@ -761,7 +792,7 @@ export async function render(main, ctx) {
     }
     bindControls();
     fillGreeting();
-    if (!lastPayload) return;
+    if (!payloadMatchesControls()) return;
     $('#owner-content').innerHTML = activeMode === 'classic' ? lastPayload.classic : activeMode === 'modern_pc' ? lastPayload.pc : lastPayload.mobile;
     if (lastRefresh) paintUpdated(lastRefresh);
   }
@@ -773,15 +804,17 @@ export async function render(main, ctx) {
 // Message de bienvenue du tableau de bord : « Bonjour <prénom> · Bienvenue chez <entreprise> »
 async function fillGreeting() {
   try {
-    if (!greetingCache) {
-      const [profile] = await db.select('profiles', `select=org_id,full_name&id=eq.${session().uid}`);
+    const uid = session().uid;
+    if (!greetingCache.has(uid)) {
+      const [profile] = await db.select('profiles', `select=org_id,full_name&id=eq.${uid}`);
       const [org] = profile?.org_id ? await db.select('organizations', `select=name&id=eq.${profile.org_id}`) : [];
       const first = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
       const parts = [first ? `Bonjour ${first}` : 'Bonjour', org?.name ? `Bienvenue chez ${org.name}` : ''].filter(Boolean);
-      greetingCache = parts.join(' · ');
+      greetingCache.set(uid, parts.join(' · '));
     }
+    if (session().uid !== uid) return;
     const box = document.getElementById('owner-greet');
-    if (box) box.textContent = greetingCache;
+    if (box) box.textContent = greetingCache.get(uid);
   } catch { /* hors connexion : pas de message, le reste de la page fonctionne */ }
 }
 

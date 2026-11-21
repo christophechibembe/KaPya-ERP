@@ -1,6 +1,6 @@
 # Traduction anglaise
 
-Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-21 06:02.
+Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-21 06:29.
 
 - Entrées du dictionnaire : **1446**
 - Textes visibles repérés : **1707**

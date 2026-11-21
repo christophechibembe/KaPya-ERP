@@ -57,22 +57,39 @@ test('un choix explicite « Classique » est respecté, même sur grand écran',
   assert.equal(modes.resolveMode('compte-b'), 'classic');
 });
 
-test('« Moderne PC » choisi sur un téléphone bascule en mobile pour rester lisible', () => {
+test('« Moderne PC » enregistré reste sélectionné sur un téléphone', () => {
   modes.setMode('modern_pc', 'compte-c');
   const previous = win.innerWidth;
   win.innerWidth = 390;
-  assert.equal(modes.resolveMode('compte-c'), 'modern_mobile');
+  assert.equal(modes.resolveMode('compte-c'), 'modern_pc');
   win.innerWidth = previous;
 });
 
-test('sur téléphone, choisir « Moderne PC » applique la version mobile', () => {
+test('sur téléphone, choisir « Moderne PC » applique et enregistre ce même mode', () => {
   const previous = win.innerWidth;
   win.innerWidth = 390;
-  assert.equal(modes.setMode('modern_pc', 'compte-f'), 'modern_mobile');
-  assert.equal(modes.getDeviceMode(), 'modern_mobile');
+  assert.equal(modes.setMode('modern_pc', 'compte-f'), 'modern_pc');
+  assert.equal(modes.getDeviceMode(), 'modern_pc');
   assert.equal(modes.getUserMode('compte-f'), 'modern_pc');
+  assert.equal(document.documentElement.dataset.dashboardMode, 'modern_pc');
   win.innerWidth = previous;
   modes.setMode('classic', 'compte-f');
+});
+
+test('les trois choix explicites restent les mêmes à toutes les largeurs', () => {
+  const previous = win.innerWidth;
+  try {
+    for (const mode of modes.MODES) {
+      modes.setMode(mode, 'compte-responsive');
+      for (const width of [280, 320, 360, 390, 767, 768, 1199, 1200, 1440]) {
+        win.innerWidth = width;
+        assert.equal(modes.resolveMode('compte-responsive'), mode, `${mode} à ${width}px`);
+        assert.equal(modes.getDeviceMode(), mode);
+      }
+    }
+  } finally {
+    win.innerWidth = previous;
+  }
 });
 
 test('le commutateur fait le tour Classique → PC → mobile → Classique', () => {

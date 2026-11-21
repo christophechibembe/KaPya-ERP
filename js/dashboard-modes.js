@@ -2,7 +2,7 @@
 // Trois présentations pour le même tableau de bord et les mêmes données :
 //   classic       : tableau de bord historique, inchangé (par défaut)
 //   modern_pc     : cartes aérées, filtres regroupés, graphiques côte à côte
-//   modern_mobile : lecture au pouce, cartes compactes, filtres défilants
+//   modern_mobile : lecture au pouce, cartes compactes, filtres compacts
 // Aucun calcul métier ici : uniquement des préférences d'affichage.
 import { CFG } from './config.js';
 import { localStore as localStorage } from './storage.js';
@@ -60,13 +60,11 @@ export function detectMode(width = screenWidth()) {
 export function resolveMode(uid = currentUid()) {
   const config = CFG.dashboard || {};
   if (config.autoDetectDevice === false) return getStoredMode(uid) || config.mode || 'classic';
-  const mode = getStoredMode(uid) || detectMode();
-  // Un « moderne PC » choisi sur un téléphone serait illisible : on passe en mobile.
-  if (mode === 'modern_pc' && screenWidth() < BREAKPOINTS.tablet) return 'modern_mobile';
-  return mode;
+  // Chaque présentation s'adapte en CSS : la largeur ne remplace jamais un choix explicite.
+  return getStoredMode(uid) || detectMode();
 }
 
-// Applique la présentation au document (les CSS ne modifient que l'habillage).
+// Applique la présentation au document.
 export function applyMode(mode) {
   const resolved = isMode(mode) ? mode : 'classic';
   const root = document.documentElement;
@@ -82,13 +80,11 @@ export function applyMode(mode) {
 // Enregistre le choix pour ce compte ET pour cet appareil, puis l'applique.
 export function setMode(mode, uid = currentUid()) {
   if (!isMode(mode)) throw new Error('Présentation de tableau de bord inconnue.');
-  // Sur un téléphone, « Moderne PC » serait illisible : on applique la version mobile.
-  const applied = mode === 'modern_pc' && screenWidth() < BREAKPOINTS.tablet ? 'modern_mobile' : mode;
-  write(DEVICE_KEY, applied);
+  write(DEVICE_KEY, mode);
   if (uid) write(userKey(uid), mode);
-  applyMode(applied);
-  window.dispatchEvent(new CustomEvent(DASHBOARD_MODE_EVENT, { detail: { mode: applied } }));
-  return applied;
+  applyMode(mode);
+  window.dispatchEvent(new CustomEvent(DASHBOARD_MODE_EVENT, { detail: { mode } }));
+  return mode;
 }
 
 // Présentation suivante : Classique → Moderne PC → Moderne mobile → Classique.

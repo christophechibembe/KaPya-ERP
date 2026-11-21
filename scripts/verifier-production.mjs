@@ -25,6 +25,12 @@ const checks = [
     }
   },
   { url: '/js/version.js', status: 200, match: new RegExp(`BUILD = '${build}'`) },
+  { url: '/js/dashboard-modern.js', status: 200, match: /renderModernContent/ },
+  { url: '/js/dashboard-modes.js', status: 200, absent: /mode === 'modern_pc' && screenWidth\(\)/ },
+  { url: '/js/modules/accueil.js', status: 200, match: /const creditReceipts = customerPayments\.filter/ },
+  { url: '/css/dashboard-modern-pc.css', status: 200, match: /min-width: 768px/ },
+  { url: '/css/dashboard-modern-mobile.css', status: 200, match: /min-width: 1200px/ },
+  { url: '/app/js/dashboard-modern.js', status: 200, match: /renderModernContent/ },
   { url: '/js/modules/vente-rapide.js', status: 200, match: /updateZeroWarning/ },
   { url: '/js/modules/vente-rapide.js', status: 200, match: /printAfter/ },
   { url: '/js/print.js', status: 200, match: /companyLogo/ },

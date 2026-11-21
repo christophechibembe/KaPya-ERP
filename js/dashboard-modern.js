@@ -283,7 +283,7 @@ function mobileContent(model) {
   const totalSales = model.salesBuckets.reduce((sum, bucket) => sum + bucket.value, 0);
   const slices = model.paymentSlices;
   const legend = slices.map(slice => `<li><span class="md-dotc" style="background:${slice.color}"></span><span>${esc(slice.label)}</span><b>${usdOnly(slice.value)}</b><small>${pct(slice.value, model.revenue)} %</small></li>`).join('');
-  const treasury = model.canSeeCosts ? `<details class="mdm-card mdm-more">
+  const treasury = model.blocks.kpi && model.canSeeCosts ? `<details class="mdm-card mdm-more">
     <summary>Trésorerie et stock</summary>
     <div class="mdm-rows">
       <div><span>Entrées de trésorerie</span><b>${usdOnly(model.cashIn)}</b></div>
@@ -303,11 +303,11 @@ function mobileContent(model) {
   </section>` : '';
   return `<div class="mdm-body">
     ${model.offlineNote}
-    <section class="mdm-hero" aria-label="Chiffre d’affaires">
+    ${model.blocks.kpi ? `<section class="mdm-hero" aria-label="Chiffre d’affaires">
       <div class="mdm-hero-top"><span>Chiffre d’affaires</span><span class="mdm-hero-ico">${ico('sales')}</span></div>
       <b>${usdOnly(model.revenue)}</b>
       <div class="mdm-hero-foot"><span>${model.salesCount} vente(s)</span><span>${esc(model.periodLabel)}</span></div>
-    </section>
+    </section>` : ''}
     ${model.blocks.kpi ? `<section class="mdm-kpis" aria-label="Indicateurs clés">${mobileKpis(model)}</section>` : ''}
     ${chartCard}${donutCard}
     <section class="mdm-card mdm-activity">
