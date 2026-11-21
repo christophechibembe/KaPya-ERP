@@ -5,6 +5,7 @@ export const NEWS = {
   version: APP_VERSION,
   title: 'Nouveautés de KaPya ERP',
   items: [
+    'Mode sombre : tous les écrans, formulaires, dialogues et les trois tableaux de bord suivent désormais le thème choisi.',
     'Démo sans inscription : essayez une boutique, un restaurant ou un salon avec des données fictives, séparées des comptes réels.',
     'Crédits : préparez et vérifiez le rappel WhatsApp avant de l’ouvrir. Aucun envoi automatique.',
     'Alertes : estimez le réapprovisionnement selon les ventes récentes, votre horizon et le délai fournisseur.'

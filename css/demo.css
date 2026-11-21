@@ -16,6 +16,15 @@
 .demo-steps p{margin:5px 0 9px}
 #demo-guide{max-width:640px;max-height:85vh;overflow:auto}
 .demo-mode [data-act="lock"]{display:none}
+/* Thème sombre : la barre reste un bandeau d'information, sans surface claire. */
+:root[data-theme="dark"] .demo-bar{background:#3A3018;color:#E8C77A;border-bottom-color:#6B5520}
+:root[data-theme="dark"] .demo-bar strong{color:#F3DDA6}
+:root[data-theme="dark"] .demo-bar span{color:#E8C77A}
+:root[data-theme="dark"] .demo-bar a{color:#F3DDA6}
+:root[data-theme="dark"] .demo-bar .btn{background:#4A7FD6;color:#fff}
+:root[data-theme="dark"] .demo-bar .ghost{background:transparent;color:#E8C77A;border-color:#8A6D2A}
+:root[data-theme="dark"] .demo-bar select,
+:root[data-theme="dark"] .demo-bar button{background:#1C2739;color:#DDE4F0;border-color:#2A3549}
 @media(max-width:650px){
   .demo-bar{padding:8px;gap:7px}
   .demo-bar>div{width:100%}

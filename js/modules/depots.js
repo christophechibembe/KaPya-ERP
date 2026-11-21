@@ -33,7 +33,7 @@ export async function render(main, ctx) {
   stocks.forEach(row => { sumByArticle[row.article_id] = (sumByArticle[row.article_id] || 0) + Number(row.qty || 0); });
   const ecarts = articlesAll ? articlesAll.filter(a => Math.abs((sumByArticle[a.id] || 0) - Number(a.stock || 0)) > 0.0001) : [];
   const alerteHtml = ecarts.length
-    ? `<div class="card" role="alert" style="border:1px solid #f59e0b;background:#fffbeb;margin-bottom:1rem"><h2 style="margin:0 0 .4rem;font-size:1rem">Écart de stock détecté (${ecarts.length} article(s))</h2><p class="muted">Pour ces articles, la somme des dépôts ne correspond pas au stock total. Vérifiez-les avant l'inventaire.</p><ul style="margin:.4rem 0 0 1.1rem">${ecarts.slice(0, 10).map(a => `<li>${esc(a.sku || '')} — ${esc(a.name || '')} : dépôts ${n(sumByArticle[a.id] || 0)}, stock total ${n(a.stock || 0)}</li>`).join('')}</ul></div>`
+    ? `<div class="card depot-gap" role="alert"><h2 style="margin:0 0 .4rem;font-size:1rem">Écart de stock détecté (${ecarts.length} article(s))</h2><p class="muted">Pour ces articles, la somme des dépôts ne correspond pas au stock total. Vérifiez-les avant l'inventaire.</p><ul style="margin:.4rem 0 0 1.1rem">${ecarts.slice(0, 10).map(a => `<li>${esc(a.sku || '')} — ${esc(a.name || '')} : dépôts ${n(sumByArticle[a.id] || 0)}, stock total ${n(a.stock || 0)}</li>`).join('')}</ul></div>`
     : '';
   const byWarehouse = id => stocks.filter(s => s.warehouse_id === id && Number(s.qty) !== 0);
 
