@@ -150,3 +150,5 @@ La carte **Mode hors-ligne** affiche :
   annulations.
 - `tests/offline-record-updates.test.mjs` : mises à jour optimistes et restauration.
 - `npm.cmd test` : suite complète, dont les tests navigateur de la démonstration.
+- `docs/TEST-HORS-LIGNE-ANDROID.md` : liste de contrôle à faire sur un téléphone
+  Android, notamment pour vérifier le rejeu après fermeture complète de Chrome.
