@@ -7,7 +7,8 @@ import { isVersionConflict, conflictError } from './conflict.js';
 // (avec un identifiant unique, pour qu'une pièce envoyée deux fois ne soit enregistrée qu'une fois).
 import { CFG } from './config.js';
 import { demoDb } from './demo.js';
-import { cget, cset, ckeys, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll } from './cache.js';
+import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll, CACHE_TTL_DAYS } from './cache.js';
+import { localSelect } from './offline-query.mjs';
 import { replaceArticles } from './localdb.js';
 // Colonnes des produits, sans le stock total (le total passe par article_total_stock, réservé au gérant et au responsable)
 export const ART_COLS = 'id,sku,name,unit,price_buy,price_sell,min_stock,barcode,unit_weight,track_expiry,archived_at,updated_at,version';
@@ -287,6 +288,16 @@ async function markQueuedChangeSynced(item) {
     return changed;
   });
 }
+// Demande au navigateur de réveiller l'application quand le réseau revient.
+// Le service worker ne peut pas rejouer la file seul (il n'a pas la session) :
+// il prévient les onglets ouverts, qui lancent alors syncNow().
+function requestBackgroundSync() {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => reg.sync?.register('kapya-sync')).catch(() => {});
+  } catch { /* navigateur sans Background Sync */ }
+}
+
 async function enqueue(path, body, fn, options = {}) {
   if (['create_sale', 'create_purchase', 'create_transfer', 'create_customer_deposit', 'record_credit_payment'].includes(fn)) body.p_id ||= newId();
   if (INSERT_TABLE[fn]) body.id ||= newId();
@@ -305,6 +316,7 @@ async function enqueue(path, body, fn, options = {}) {
   await outboxAdd({ path, body, fn, method: options.method || 'POST', prefer: options.prefer, rollback, created: Date.now(), status: 'pending' });
   await applyLocalStock(fn, body).catch(() => {});
   await applyLocalQueuedChange(fn, body).catch(() => {});
+  requestBackgroundSync();
   emit();
   return INSERT_TABLE[fn] ? body.id : body.p_id;
 }
@@ -330,8 +342,8 @@ async function authed(path, o = {}) {
       const c = await cget(path).catch(() => undefined);
       if (c !== undefined) return c;
       const table = (path.match(/^\/rest\/v1\/([a-z_]+)\?/) || [])[1];
-      if (table && LOCAL_TABLES[table]) {
-        const full = await cget(LOCAL_TABLES[table]).catch(() => undefined);
+      if (table && OFFLINE_TABLES[table]) {
+        const full = await cget(OFFLINE_TABLES[table]).catch(() => undefined);
         if (Array.isArray(full)) { const local = localSelect(path, full); if (local !== undefined) return local; }
       }
       throw Object.assign(new Error('Hors ligne : cette information n’a pas encore été chargée. Reconnectez-vous une fois pour la mettre à jour.'), { offline: true, status: 0 });
@@ -381,17 +393,54 @@ export const db = CFG.demo ? demoDb : realDb;
 
 // Envoi des pièces en attente, puis rafraîchissement du cache. Ne fait rien hors ligne.
 let syncing = false;
+const SYNC_ATTEMPTS_KEY = 'kp.syncAttempts', SYNC_ATTEMPT_AT_KEY = 'kp.syncAttemptAt';
+const markSyncStart = () => localStorage.setItem(SYNC_ATTEMPT_AT_KEY, String(Date.now()));
+const markSyncResult = failed => {
+  if (failed) localStorage.setItem(SYNC_ATTEMPTS_KEY, String((Number(localStorage.getItem(SYNC_ATTEMPTS_KEY)) || 0) + 1));
+  else localStorage.removeItem(SYNC_ATTEMPTS_KEY);
+};
+// État de reprise, lu par la synchronisation automatique de l'application.
+export const syncMeta = () => ({
+  attempts: Number(localStorage.getItem(SYNC_ATTEMPTS_KEY)) || 0,
+  lastAttempt: Number(localStorage.getItem(SYNC_ATTEMPT_AT_KEY)) || 0
+});
+// Index local des ventes récentes (pour chercher et réafficher hors ligne)
+export const LOCAL_SALES_KEY = '/local/sales-index';
+const SALES_INDEX_PATH = '/rest/v1/sales?select=id,number,sold_at,created_at,to_pickup,customer_id,customer_label,payment,payment_method,payment_reference,paid,warehouse_id,customers(name),sale_lines(id,article_id,qty,unit_price,unit_cost,unit_cost_at_sale,cost_is_estimated,discount_pct,warehouse_id,articles(id,sku,name,unit,unit_weight,price_buy))&order=sold_at.desc,created_at.desc&limit=2000';
+
+// Requêtes préchargées qui servent aussi de copie locale interrogeable hors ligne.
+// Les chemins sont partagés avec OFFLINE_TABLES pour éviter deux requêtes identiques.
+const OFFLINE_PATHS = {
+  sales: LOCAL_SALES_KEY,
+  sale_payments: '/rest/v1/sale_payments?select=id,sale_id,amount,paid_at,kind,created_at,customer_deposit_id,method,reference,operator,sales(number,customer_label,customer_id)&order=paid_at.desc,created_at.desc&limit=2000',
+  purchases: '/rest/v1/purchases?select=id,supplier_id,number,bought_at,created_at,usd_cdf,payment_balance_opening,warehouse_id,suppliers(name,phone),purchase_lines(id,article_id,qty,unit_cost,warehouse_id,articles(id,sku,name,unit,price_buy))&order=bought_at.desc,created_at.desc&limit=1000',
+  purchase_payments: '/rest/v1/purchase_payments?select=id,purchase_id,amount,paid_at,created_at,purchases(number,supplier_id,suppliers(name))&order=paid_at.desc,created_at.desc&limit=2000',
+  business_expenses: '/rest/v1/business_expenses?select=id,label,category,amount,paid_at,created_at&order=paid_at.desc,created_at.desc&limit=2000',
+  customer_returns: '/rest/v1/customer_returns?select=id,number,sale_id,warehouse_id,returned_on,total_usd,note,created_at&order=returned_on.desc,created_at.desc&limit=1000',
+  credit_notes: '/rest/v1/credit_notes?select=id,number,sale_id,customer_id,issued_on,total_usd,note,created_at&order=issued_on.desc,created_at.desc&limit=1000',
+  customer_deposits: '/rest/v1/customer_deposits?select=id,receipt_number,customer_id,amount,remaining,received_at,created_at,customers(name,phone)&order=received_at.desc,created_at.desc&limit=1000',
+  cash_closures: '/rest/v1/cash_closures?select=*&order=business_date.desc,closed_at.desc&limit=1000',
+  cash_closures_shop: '/rest/v1/cash_closures_shop?select=*&order=business_date.desc,closed_at.desc&limit=1000',
+  stock_lots: '/rest/v1/stock_lots?select=id,expiry_date,qty_left,article_id,warehouse_id,articles(name,sku,unit)&qty_left=gt.0&order=expiry_date.asc&limit=2000'
+};
 const PREFETCH = [
   // Lots en stock (sans filtre de date : le filtre se fait à l'écran, pour que la copie reste valable tous les jours)
-  '/rest/v1/stock_lots?select=id,expiry_date,qty_left,article_id,articles(name)&qty_left=gt.0&order=expiry_date.asc',
+  OFFLINE_PATHS.stock_lots,
   `/rest/v1/articles?select=${ART_COLS}&order=name`,
   '/rest/v1/customers?select=*&order=name', '/rest/v1/suppliers?select=*&order=name',
   '/rest/v1/customers?select=id,name&order=name', '/rest/v1/suppliers?select=id,name&order=name',
   '/rest/v1/customers?select=id,name,phone,email&order=name', '/rest/v1/suppliers?select=id,name,phone,email&order=name',
   '/rest/v1/customers?select=id,name,phone&order=name',
   '/rest/v1/sales?select=id,payment,paid,customer_id,sale_lines(qty,unit_price)&payment=eq.credit',
-  '/rest/v1/purchases?select=id,number,bought_at,suppliers(name),purchase_lines(qty,unit_cost,articles(sku,name,unit))&order=bought_at.desc,created_at.desc',
-  '/rest/v1/customer_deposits?select=id,receipt_number,customer_id,amount,remaining,received_at,created_at,customers(name,phone)&order=received_at.desc,created_at.desc',
+  OFFLINE_PATHS.purchases,
+  OFFLINE_PATHS.sale_payments,
+  OFFLINE_PATHS.purchase_payments,
+  OFFLINE_PATHS.business_expenses,
+  OFFLINE_PATHS.customer_returns,
+  OFFLINE_PATHS.credit_notes,
+  OFFLINE_PATHS.customer_deposits,
+  OFFLINE_PATHS.cash_closures,
+  OFFLINE_PATHS.cash_closures_shop,
   '/rest/v1/organizations?select=name,address,phone,email,tax_id,rc,logo,receipt_footer',
   '/rest/v1/settings?select=usd_cdf,rate_date&limit=1'];
 const ARCHIVABLE = new Set(['articles', 'customers', 'suppliers']);
@@ -409,10 +458,6 @@ function mergeRows(cached, changed, p) {
 }
 
 // Rafraîchit le catalogue : copie complète (sinceIso = null) ou seulement les changements depuis sinceIso
-// Index local des ventes récentes (pour chercher hors ligne)
-export const LOCAL_SALES_KEY = '/local/sales-index';
-const SALES_INDEX_PATH = '/rest/v1/sales?select=id,number,sold_at,to_pickup,customer_id,customer_label,payment,payment_method,payment_reference,paid,warehouse_id,customers(name),sale_lines(qty,unit_price,articles(name,sku,unit,unit_weight))&order=sold_at.desc,created_at.desc&limit=2000';
-
 async function refreshCatalog(token, sinceIso) {
   try { await cset(LOCAL_SALES_KEY, await raw(SALES_INDEX_PATH, { token })); } catch (e) { if (isNet(e)) return; }
   const whPath = '/rest/v1/warehouses?select=id,name,is_default&active=eq.true&order=is_default.desc,name';
@@ -433,41 +478,15 @@ async function refreshCatalog(token, sinceIso) {
   }
 }
 
-// Lecture hors ligne « comme une base » (étape B) : tables articles, clients, fournisseurs.
-// Supporte : colonnes simples, filtres eq/neq/gt/gte/lt/lte/in, tri (order), limite (limit).
-// Toute autre requête (jointures, filtres inconnus) reste sur la copie exacte.
-const LOCAL_TABLES = { articles: `/rest/v1/articles?select=${ART_COLS}&order=name&archived_at=is.null`, customers: '/rest/v1/customers?select=*&order=name', suppliers: '/rest/v1/suppliers?select=*&order=name' };
-function localSelect(path, canonicalRows) {
-  const [base, qs = ''] = path.replace(/^\/rest\/v1\//, '').split('?');
-  const params = qs.split('&').filter(Boolean).map(kv => { const i = kv.indexOf('='); return [kv.slice(0, i), decodeURIComponent(kv.slice(i + 1))]; });
-  let cols = null, order = [], limit = null; const filters = [];
-  for (const [k, v] of params) {
-    if (k === 'select') { if (v.includes('(')) return undefined; cols = v === '*' ? null : v.split(',').map(c => c.trim()); }
-    else if (k === 'order') { order = v.split(',').map(o => { const [c, d] = o.split('.'); return { c, desc: d === 'desc' }; }); }
-    else if (k === 'limit') limit = Number(v);
-    else if (k === 'offset') return undefined;
-    else {
-      const m = v.match(/^(eq|neq|gt|gte|lt|lte|in)\.(.*)$/); if (!m) return undefined;
-      filters.push({ c: k, op: m[1], v: m[2] });
-    }
-  }
-  const num = x => (typeof x === 'number' ? x : (x === '' || x == null || isNaN(Number(x)) ? null : Number(x)));
-  const match = (row, f) => {
-    const a = row[f.c];
-    if (f.op === 'in') { const set = f.v.replace(/^\(|\)$/g, '').split(',').map(x => x.trim()); return set.includes(String(a)); }
-    if (f.op === 'eq') return String(a) === f.v;
-    if (f.op === 'neq') return String(a) !== f.v;
-    const na = num(a), nv = num(f.v);
-    if (na !== null && nv !== null) return ({ gt: na > nv, gte: na >= nv, lt: na < nv, lte: na <= nv })[f.op];
-    const sa = String(a ?? ''), sv = f.v;
-    return ({ gt: sa > sv, gte: sa >= sv, lt: sa < sv, lte: sa <= sv })[f.op];
-  };
-  let rows = (canonicalRows || []).filter(r => filters.every(f => match(r, f)));
-  if (order.length) rows = [...rows].sort((x, y) => { for (const o of order) { const a = x[o.c], b = y[o.c]; if (a === b) continue; const r = (num(a) !== null && num(b) !== null) ? num(a) - num(b) : String(a ?? '').localeCompare(String(b ?? ''), 'fr'); return o.desc ? -r : r; } return 0; });
-  if (limit) rows = rows.slice(0, limit);
-  if (cols) rows = rows.map(r => Object.fromEntries(cols.map(c => [c, r[c]])));
-  return rows;
-}
+// Lecture hors ligne « comme une base » : chaque table préchargée peut être filtrée,
+// triée et limitée sur l'appareil (colonnes simples et relations déjà embarquées).
+// Toute requête non simulable (filtre sur une relation, opérateur inconnu) reste sur la copie exacte.
+export const OFFLINE_TABLES = {
+  articles: `/rest/v1/articles?select=${ART_COLS}&order=name&archived_at=is.null`,
+  customers: '/rest/v1/customers?select=*&order=name',
+  suppliers: '/rest/v1/suppliers?select=*&order=name',
+  ...OFFLINE_PATHS
+};
 
 // ── Plages de numéros de factures par appareil (fonctionnement hors ligne) ──
 const RANGE_KEY = 'kp.numRange', DEVICE_KEY = 'kp.device', RANGE_SIZE = 150, RANGE_LOW = 30;
@@ -513,8 +532,10 @@ export async function selectArticlesWithTotal(qs) {
   return rows.map(r => ({ ...r, stock: m.get(r.id) ?? 0 }));
 }
 export async function syncNow() {
-  if (CFG.demo || syncing || !S) return;
+  if (CFG.demo || syncing || !S || !navigator.onLine) return;
   syncing = true;
+  let networkStop = false;
+  markSyncStart();
   try {
     await ensureToken();
     await ensureInvoiceRange().catch(() => {});
@@ -527,7 +548,7 @@ export async function syncNow() {
         await outboxDel(it.seq); await markQueuedChangeSynced(it);
       }
       catch (e) {
-        if (replayOutcome(e) === 'stop') break;                        // toujours hors ligne, ou session à renouveler
+        if (replayOutcome(e) === 'stop') { networkStop = true; break; }  // toujours hors ligne, ou session à renouveler
         const rejected = { ...it, status: 'rejected', error: e.message };
         await outboxPut(rejected); // refusée par le serveur (stock, données)
         try { document.dispatchEvent(new CustomEvent('kp:rejected', { detail: { message: e.message } })); } catch {}
@@ -551,12 +572,22 @@ export async function syncNow() {
       localStorage.setItem('kp.lastPrefetch', String(Date.now()));
       if (fullDue) localStorage.setItem('kp.lastFull', String(Date.now()));
     }
-  } catch { /* hors ligne : on réessaiera */ }
-  finally { syncing = false; emit(); }
+  } catch (e) { if (isNet(e) || e?.status === 401) networkStop = true; /* hors ligne : on réessaiera */ }
+  finally { syncing = false; markSyncResult(networkStop); emit(); }
 }
 export const pendingFor = async table => (await outboxAll()).filter(it => it.fn === FN[table]);
 export const lastSyncTime = () => Number(localStorage.getItem('kp.lastSync')) || 0;
 export const pendingCount = async () => (await outboxAll()).length;
+// Diagnostic complet pour Paramètres > Mode hors-ligne.
+export async function offlineStatus() {
+  const [queue, cache] = await Promise.all([queueStats(), cacheStats().catch(() => ({ count: 0, oldest: 0, newest: 0 }))]);
+  return { online: navigator.onLine, ...queue, ...cache, cacheDays: CACHE_TTL_DAYS, lastSync: lastSyncTime(), ...syncMeta() };
+}
+export const queueStats = async () => {
+  const all = await outboxAll();
+  const rejected = all.filter(it => it.status === 'rejected').length;
+  return { total: all.length, pending: all.length - rejected, rejected };
+};
 // Opérations en attente d'un type donné (paiements de crédit, etc.)
 export const pendingOps = async fn => (await outboxAll()).filter(it => it.fn === fn && it.status !== 'rejected');
 export const rejectedItems = async () => (await outboxAll()).filter(it => it.status === 'rejected');

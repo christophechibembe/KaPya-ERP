@@ -1,6 +1,6 @@
 import { CFG } from '../config.js';
 import { ownOrgRows } from '../own-org.js';
-import { esc, getRate, n, ico, notify, fmtDate } from '../ui.js';
+import { esc, getRate, n, ico, notify, fmtDate, askConfirm } from '../ui.js';
 import { ROLES, can } from '../roles.js';
 import { saveRate } from '../rate.js';
 import { resetLocal } from '../demo.js';
@@ -10,7 +10,8 @@ import { openDialog, showDialog, fld } from '../ui.js';
 import { hasPin, setPin, checkPin, removePin, setAutoLock, autoLockMinutes, lockNow, AUTO_CHOICES } from '../lock.js';
 import { loadShops } from '../shops.js';
 import { thermalUsbCard, bindThermalUsb } from '../thermal-usb.js';
-import { rangeStatus, ensureInvoiceRange } from '../api.js';
+import { rangeStatus, ensureInvoiceRange, offlineStatus, syncNow, clearOffline, rejectedItems, retryRejected, discardRejected } from '../api.js';
+import { offlineSummary } from '../offline.js';
 import { BUSINESS_TYPES, TOGGLABLE, getBusinessType, getHiddenFeatures } from '../business.js';
 import { getPlan, featuresOf } from '../plans.js';
 import { mfaStatus, mfaEnroll, mfaVerify, mfaUnenroll } from '../api.js';
@@ -227,6 +228,88 @@ function rangeCard() {
     <div class="acts"><button class="ghost" id="range-go" type="button">Réserver une plage maintenant</button></div></section>`;
 }
 
+// Carte : état du mode hors-ligne (copie locale, file d'attente, reprise).
+function offlineCard(ctx) {
+  if (ctx?.platform) return '';
+  return `<section class="card set" id="offline-card"><div class="set-main"><h2>Mode hors-ligne</h2>
+    <p class="muted">${CFG.demo ? 'Mode démonstration : les données restent dans ce navigateur.' : 'Les ventes, achats, encaissements, retours et clôtures sont enregistrés sur cet appareil, puis envoyés dès le retour du réseau. Les écrans déjà chargés restent consultables sans connexion.'}</p></div>
+    <div id="offline-state" role="status" aria-live="polite"><p class="muted">Chargement…</p></div>
+    <div class="acts">
+      <button class="ghost" id="offline-sync" type="button">${ico('refresh')}<span>Synchroniser maintenant</span></button>
+      <button class="ghost" id="offline-rejected" type="button" hidden>Voir les pièces refusées</button>
+      <button class="ghost" id="offline-clear" type="button">Vider les données hors ligne</button>
+    </div></section>`;
+}
+
+async function bindOffline(main) {
+  const card = main.querySelector('#offline-card');
+  if (!card) return;
+  const state = card.querySelector('#offline-state');
+  const syncButton = card.querySelector('#offline-sync');
+  const rejectedButton = card.querySelector('#offline-rejected');
+  const clearButton = card.querySelector('#offline-clear');
+  const dlg = () => document.getElementById('dlg') || document.body.appendChild(Object.assign(document.createElement('dialog'), { id: 'dlg' }));
+
+  async function refresh() {
+    try {
+      const status = await offlineStatus();
+      const summary = offlineSummary(status);
+      const range = rangeStatus();
+      const rangeLabel = range.next === null ? 'aucune plage réservée'
+        : range.ok ? `${range.left} numéro(s) restant(s)` : 'plage épuisée, à renouveler';
+      const tone = summary.status === 'rejected' ? 'bad' : summary.status === 'synced' ? 'ok' : 'warn';
+      state.innerHTML = `<div class="tw"><table><tbody>
+        <tr><th>Réseau</th><td><span class="sync ${tone}">${summary.online ? 'En ligne' : 'Hors ligne'}</span></td></tr>
+        <tr><th>Dernière synchronisation</th><td>${summary.lastSyncLabel ? esc(summary.lastSyncLabel) : 'jamais'}</td></tr>
+        <tr><th>File d’attente</th><td>${summary.pending} en attente · ${summary.rejected} refusée(s)</td></tr>
+        <tr><th>Copie locale</th><td>${summary.cacheCount} requête(s)${summary.cacheAgeLabel ? ` · ${esc(summary.cacheAgeLabel)}` : ''} · conservée ${summary.cacheDays} jours</td></tr>
+        <tr><th>Numéros de facture</th><td>${esc(rangeLabel)}</td></tr>
+      </tbody></table></div>`;
+      rejectedButton.hidden = !summary.rejected;
+    } catch (error) {
+      state.textContent = 'État hors-ligne indisponible : ' + error.message;
+    }
+  }
+
+  syncButton.onclick = async () => {
+    syncButton.disabled = true;
+    state.innerHTML = '<p class="muted">Synchronisation en cours…</p>';
+    try { await syncNow(); notify('Synchronisation terminée.', 'Mode hors-ligne'); }
+    catch (error) { notify('Synchronisation impossible : ' + error.message, 'Mode hors-ligne'); }
+    finally { syncButton.disabled = false; refresh(); }
+  };
+
+  rejectedButton.onclick = async () => {
+    const list = await rejectedItems().catch(() => []);
+    const body = list.length
+      ? list.map(item => `<div class="row" style="justify-content:space-between;gap:10px;margin:8px 0">
+          <span>${esc(new Date(item.created).toLocaleString('fr-FR'))} · ${esc(item.error || 'refusée')}</span>
+          <span><button class="ghost" type="button" data-retry="${item.seq}">Réessayer</button>
+          <button class="ghost" type="button" data-discard="${item.seq}">Retirer</button></span></div>`).join('')
+      : '<p class="muted">Aucune pièce refusée.</p>';
+    const d = dlg();
+    showDialog(d, 'Pièces refusées', body);
+    d.querySelectorAll('[data-retry]').forEach(button => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await retryRejected(Number(button.dataset.retry)); notify('Nouvelle tentative effectuée.', 'Mode hors-ligne'); d.close(); refresh(); }
+      catch (error) { notify('Réessai impossible : ' + error.message, 'Mode hors-ligne'); button.disabled = false; }
+    }));
+    d.querySelectorAll('[data-discard]').forEach(button => button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await discardRejected(Number(button.dataset.discard)); d.close(); refresh(); }
+      catch (error) { notify('Retrait impossible : ' + error.message, 'Mode hors-ligne'); button.disabled = false; }
+    }));
+  };
+
+  clearButton.onclick = async () => {
+    if (!(await askConfirm('Vider la copie locale et la file d’attente ? Les pièces non envoyées seront perdues.', { danger: true }))) return;
+    try { await clearOffline(); notify('Données hors ligne vidées.', 'Mode hors-ligne'); refresh(); }
+    catch (error) { notify('Suppression impossible : ' + error.message, 'Mode hors-ligne'); }
+  };
+
+  await refresh();
+}
+
 // Carte : éléments archivés (produits, clients, fournisseurs) avec restauration
 function archivedCard() {
   return `<section class="card set" id="arch-card"><div class="set-main"><h2>Éléments archivés</h2>
@@ -371,6 +454,7 @@ export function render(main, ctx) {
     ${printCard()}
     ${thermalUsbCard()}
     ${rangeCard()}
+    ${offlineCard(ctx)}
     ${archivedCard()}
     ${inventoryCard(ctx)}
     ${rateCard(ctx)}${section('Présentation du tableau de bord', dashboardModeCard(ctx), true)}
@@ -381,6 +465,7 @@ export function render(main, ctx) {
   bindRate(main, ctx);
   bindMfa(main);
   bindVat(main);
+  bindOffline(main);
   bindInstall(main);
   bindThermalUsb(main);
   // Renouvellement : carte chargée (elle lit l'abonnement), puis formulaire relié
@@ -420,7 +505,7 @@ async function renderTeam(main, ctx) {
   main.innerHTML = `<div class="page-head"><div><h1>Paramètres</h1><p class="sub">Équipe et invitations.</p></div></div>
     ${languageCard()}
     ${installCard()}
-    ${rateCard(ctx)}${section('Présentation du tableau de bord', dashboardModeCard(ctx), true)}
+    ${rateCard(ctx)}${offlineCard(ctx)}${section('Présentation du tableau de bord', dashboardModeCard(ctx), true)}
     ${section('Votre formule', planCard(ctx))}${section('TVA', vatCard(ctx))}${section('Reçus et logo (super administrateur)', receiptCard(ctx))}${section('Erreurs récentes (super administrateur)', errorsCard(ctx))}${section('Journal des actions (super administrateur)', auditCard(ctx))}${section('Fonctionnement de l’entreprise', businessCard(ctx), false)}${section('Mon compte et sécurité', securityCard() + aboutLink())}
     <details class="pref-sec"><summary>Membres</summary><section class="card set"><div class="set-main"><h2>Membres</h2><p class="muted">Les administrateurs peuvent changer le rôle des membres.</p><div id="members" class="team">Chargement…</div></div></section></details>
     <details class="pref-sec"><summary>Inviter un membre</summary><section class="card set"><div class="set-main"><h2>Inviter un membre</h2><p class="muted">Crée un code valable 7 jours. Le membre le saisit à l’inscription.</p></div>
@@ -430,6 +515,7 @@ async function renderTeam(main, ctx) {
   bindRate(main, ctx);
   bindInstall(main);
   bindVat(main);
+  bindOffline(main);
   bindSecurity(main, ctx);
   bindLanguage(main);
   bindDashboardMode(main, ctx);

@@ -1,10 +1,10 @@
 # Traduction anglaise
 
-Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-22 12:21.
+Rapport généré par `scripts/audit-i18n.mjs` le 2026-11-22 12:58.
 
-- Entrées du dictionnaire : **1504**
-- Textes visibles repérés : **1748**
-- Traduits : **1748** (100.0 %)
+- Entrées du dictionnaire : **1537**
+- Textes visibles repérés : **1766**
+- Traduits : **1766** (100.0 %)
 - Restant à traduire : **0**
 
 La traduction fonctionne par correspondance exacte : un texte absent du dictionnaire
@@ -42,7 +42,7 @@ reste en français. Le mécanisme est dans `js/i18n.js` (aucune dépendance).
 | `js\modules\facture.js` | 56 | 0 |
 | `js\modules\historique.js` | 10 | 0 |
 | `js\modules\lots.js` | 25 | 0 |
-| `js\modules\parametres.js` | 173 | 0 |
+| `js\modules\parametres.js` | 191 | 0 |
 | `js\modules\parties.js` | 12 | 0 |
 | `js\modules\plus.js` | 4 | 0 |
 | `js\modules\proforma.js` | 29 | 0 |

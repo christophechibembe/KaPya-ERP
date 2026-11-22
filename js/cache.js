@@ -20,8 +20,10 @@ const run = (store, mode, fn) => open().then(d => new Promise((ok, ko) => {
   t.onerror = () => ko(t.error);
   t.onabort = () => ko(t.error);
 }));
-// Données de lecture hors ligne : conservées 10 jours au maximum, puis supprimées.
-const CACHE_TTL = 10 * 24 * 60 * 60 * 1000;
+// Données de lecture hors ligne : conservées 30 jours au maximum, puis supprimées.
+// Une période longue évite de perdre la copie locale après une absence ou des vacances.
+export const CACHE_TTL_DAYS = 30;
+const CACHE_TTL = CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
 export const cget = async k => {
   const entry = await run('kv', 'readonly', s => s.get(k));
   if (!entry || typeof entry !== 'object' || typeof entry.t !== 'number') return undefined;
@@ -30,6 +32,16 @@ export const cget = async k => {
 };
 export const cset = (k, v) => run('kv', 'readwrite', s => s.put({ v, t: Date.now() }, k));
 export const ckeys = () => run('kv', 'readonly', s => s.getAllKeys());
+// Diagnostic de la copie locale : nombre d'entrées et date de la plus ancienne.
+export const cacheStats = async () => {
+  const entries = await run('kv', 'readonly', s => s.getAll());
+  const times = entries.map(entry => Number(entry?.t)).filter(time => Number.isFinite(time) && time > 0);
+  return {
+    count: entries.length,
+    oldest: times.length ? Math.min(...times) : 0,
+    newest: times.length ? Math.max(...times) : 0
+  };
+};
 export const outboxAdd = item => run('outbox', 'readwrite', s => s.add(item));
 export const outboxAll = () => run('outbox', 'readonly', s => s.getAll());
 export const outboxDel = seq => run('outbox', 'readwrite', s => s.delete(seq));
