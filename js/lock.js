@@ -17,8 +17,20 @@ const hashPbkdf2 = async (pin, salt) => {
 const config = () => { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch { return null; } };
 const fails = () => { try { return JSON.parse(localStorage.getItem(FAILS_KEY)) || { n: 0, until: 0 }; } catch { return { n: 0, until: 0 }; } };
 export const AUTO_CHOICES = [[0, 'jamais'], [5, '5 minutes'], [10, '10 minutes'], [30, '30 minutes']];
+// Verrouillage dès que l'application passe en arrière-plan (après un court délai,
+// pour ne pas gêner un sélecteur de fichier ou une fenêtre d'impression).
+export const HIDE_LOCK_DELAY_MS = 1500;
 
 export const hasPin = () => !!config()?.hash;
+// Verrouillage en quittant l'application : actif par défaut dès qu'un code existe.
+export const hideLockEnabled = () => {
+  const value = config()?.hideLock;
+  return value === undefined ? true : !!value;
+};
+export const setHideLock = enabled => {
+  const c = config(); if (!c) return;
+  localStorage.setItem(KEY, JSON.stringify({ ...c, hideLock: !!enabled }));
+};
 // Secondes restantes avant un nouvel essai (0 si l'essai est permis).
 export const pinWaitSeconds = () => Math.max(0, Math.ceil((fails().until - Date.now()) / 1000));
 
@@ -105,6 +117,15 @@ function resetIdle() {
 export function initLock({ logout }) {
   onLogout = logout;
   ['pointerdown', 'keydown', 'touchstart'].forEach(name => addEventListener(name, () => { if (!locked) resetIdle(); }, { passive: true }));
+  // Copie locale sur l'appareil : si l'application passe en arrière-plan assez longtemps,
+  // on redemande le code au retour. Le délai court évite les faux positifs (impression, fichier).
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (!locked && hasPin() && hideLockEnabled() && hiddenAt && Date.now() - hiddenAt >= HIDE_LOCK_DELAY_MS) lockNow();
+    hiddenAt = 0;
+    if (!locked) resetIdle();
+  });
   resetIdle();
 }
 import { localStore as localStorage } from './storage.js';

@@ -278,7 +278,7 @@ export async function render(main, c) {
       del.onclick = async () => {
         if (!del.dataset.ok) { del.dataset.ok = 1; del.textContent = 'Confirmer l’annulation ?'; return; }
         del.disabled = true;
-        try { await db.delete(c.table, p.id); $('#dlg').close(); await load(); }
+        try { await db.delete(c.table, p.id); $('#dlg').close(); await load(); notify(navigator.onLine ? 'Pièce annulée.' : 'Annulation enregistrée sur cet appareil. Elle sera envoyée au retour du réseau.'); }
         catch (x) { del.disabled = false; del.textContent = 'Annuler la pièce'; delete del.dataset.ok; notify('Annulation impossible : ' + x.message); }
       };
     }

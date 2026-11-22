@@ -7,10 +7,10 @@ import { resetLocal } from '../demo.js';
 import { db, session } from '../api.js';
 import { getLanguage, setLanguage } from '../i18n.js';
 import { openDialog, showDialog, fld } from '../ui.js';
-import { hasPin, setPin, checkPin, removePin, setAutoLock, autoLockMinutes, lockNow, AUTO_CHOICES } from '../lock.js';
+import { hasPin, setPin, checkPin, removePin, setAutoLock, autoLockMinutes, lockNow, AUTO_CHOICES, hideLockEnabled, setHideLock } from '../lock.js';
 import { loadShops } from '../shops.js';
 import { thermalUsbCard, bindThermalUsb } from '../thermal-usb.js';
-import { rangeStatus, ensureInvoiceRange, offlineStatus, syncNow, clearOffline, rejectedItems, retryRejected, discardRejected } from '../api.js';
+import { rangeStatus, ensureInvoiceRange, offlineStatus, syncNow, clearOffline, rejectedItems, retryRejected, discardRejected, historyDepth, setHistoryDepth, HISTORY_DEPTH_CHOICES } from '../api.js';
 import { offlineSummary } from '../offline.js';
 import { BUSINESS_TYPES, TOGGLABLE, getBusinessType, getHiddenFeatures } from '../business.js';
 import { getPlan, featuresOf } from '../plans.js';
@@ -42,6 +42,15 @@ function section(title, html, open = false) {
   if (!html || !html.trim()) return '';
   return `<details class="pref-sec" ${open ? 'open' : ''}><summary>${title}</summary>${html}</details>`;
 }
+// Actions volontairement en ligne : membres, rôles et inventaire physique.
+// Mieux vaut un message clair qu'une file d'attente qui modifierait les droits hors contrôle.
+function requireOnline(message) {
+  if (CFG.demo || navigator.onLine) return true;
+  notify(message, 'Hors ligne');
+  return false;
+}
+const MEMBERS_ONLINE = 'La gestion des membres et des rôles nécessite une connexion.';
+const INVENTORY_ONLINE = 'L’inventaire physique nécessite une connexion : ouverture, comptage et validation se font en ligne.';
 function receiptCard(ctx) {
   if (!ctx?.platform) return '';
   return `<section class="card set"><div class="set-main"><h2>Pied de page des reçus (super administrateur)</h2><p class="muted">Mentions légales et coordonnées affichées en bas des reçus et factures de l’entreprise choisie.</p></div>
@@ -83,6 +92,7 @@ function securityCard() {
   const current = autoLockMinutes();
   return `<section class="card set"><div class="set-main"><h2>Code de verrouillage</h2><p class="muted">Actif sur cet appareil. Verrouillage automatique après inactivité :</p></div>
     <select id="pin-auto" aria-label="Verrouillage automatique">${AUTO_CHOICES.map(([m, l]) => `<option value="${m}"${m === current ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    <label class="check"><input type="checkbox" id="pin-hide"${hideLockEnabled() ? ' checked' : ''}> Verrouiller dès que l’application passe en arrière-plan (après quelques secondes)</label>
     <div class="acts"><button class="ghost" id="pin-lock" type="button">Verrouiller maintenant</button><button class="ghost" id="pin-change" type="button">Changer le code</button><button class="ghost" id="pin-off" type="button">Désactiver</button></div></section>`;
 }
 // Lien discret vers les informations sur le développeur.
@@ -194,6 +204,7 @@ function bindSecurity(main, ctx) {
     try { await setPin(first, 10); rerender(); } catch (x) { err.textContent = x.message; }
   });
   main.querySelector('#pin-auto')?.addEventListener('change', event => setAutoLock(event.target.value));
+  main.querySelector('#pin-hide')?.addEventListener('change', event => setHideLock(event.target.checked));
   main.querySelector('#pin-lock')?.addEventListener('click', lockNow);
   main.querySelector('#pin-change')?.addEventListener('click', () => openDialog(dialogFor('pin-dlg'), 'Changer le code',
     fld('code', 'Code actuel', 'password', 'inputmode="numeric" maxlength="6" required') + fld('pin1', 'Nouveau code (4 à 6 chiffres)', 'password', 'inputmode="numeric" maxlength="6" required') + fld('pin2', 'Confirmer le nouveau code', 'password', 'inputmode="numeric" maxlength="6" required'),
@@ -231,9 +242,12 @@ function rangeCard() {
 // Carte : état du mode hors-ligne (copie locale, file d'attente, reprise).
 function offlineCard(ctx) {
   if (ctx?.platform) return '';
+  const depth = historyDepth();
   return `<section class="card set" id="offline-card"><div class="set-main"><h2>Mode hors-ligne</h2>
-    <p class="muted">${CFG.demo ? 'Mode démonstration : les données restent dans ce navigateur.' : 'Les ventes, achats, encaissements, retours et clôtures sont enregistrés sur cet appareil, puis envoyés dès le retour du réseau. Les écrans déjà chargés restent consultables sans connexion.'}</p></div>
+    <p class="muted">${CFG.demo ? 'Mode démonstration : les données restent dans ce navigateur.' : 'Les ventes, achats, encaissements, retours, annulations et clôtures sont enregistrés sur cet appareil, puis envoyés dès le retour du réseau. Les écrans déjà chargés restent consultables sans connexion.'}</p></div>
     <div id="offline-state" role="status" aria-live="polite"><p class="muted">Chargement…</p></div>
+    <label>Historique conservé sur cet appareil<select id="offline-depth" aria-label="Profondeur de l’historique hors ligne">${HISTORY_DEPTH_CHOICES.map(([value, label]) => `<option value="${value}"${value === depth ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
+    <p class="hint">Plus la profondeur est grande, plus la copie locale occupe d’espace et plus le rafraîchissement est long. Les pièces plus anciennes restent consultables en ligne.</p>
     <div class="acts">
       <button class="ghost" id="offline-sync" type="button">${ico('refresh')}<span>Synchroniser maintenant</span></button>
       <button class="ghost" id="offline-rejected" type="button" hidden>Voir les pièces refusées</button>
@@ -248,7 +262,19 @@ async function bindOffline(main) {
   const syncButton = card.querySelector('#offline-sync');
   const rejectedButton = card.querySelector('#offline-rejected');
   const clearButton = card.querySelector('#offline-clear');
+  const depthSelect = card.querySelector('#offline-depth');
   const dlg = () => document.getElementById('dlg') || document.body.appendChild(Object.assign(document.createElement('dialog'), { id: 'dlg' }));
+
+  depthSelect.onchange = async () => {
+    const chosen = Number(depthSelect.value);
+    if (!(await askConfirm(`Conserver jusqu’à ${chosen.toLocaleString('fr-FR')} pièces sur cet appareil ? La copie locale sera retéléchargée à la prochaine synchronisation.`))) {
+      depthSelect.value = String(historyDepth());
+      return;
+    }
+    setHistoryDepth(chosen);
+    notify('Profondeur d’historique enregistrée. Rechargement…', 'Mode hors-ligne');
+    location.reload();
+  };
 
   async function refresh() {
     try {
@@ -257,12 +283,15 @@ async function bindOffline(main) {
       const range = rangeStatus();
       const rangeLabel = range.next === null ? 'aucune plage réservée'
         : range.ok ? `${range.left} numéro(s) restant(s)` : 'plage épuisée, à renouveler';
+      const background = 'serviceWorker' in navigator && !!globalThis.ServiceWorkerRegistration && 'sync' in ServiceWorkerRegistration.prototype;
       const tone = summary.status === 'rejected' ? 'bad' : summary.status === 'synced' ? 'ok' : 'warn';
       state.innerHTML = `<div class="tw"><table><tbody>
         <tr><th>Réseau</th><td><span class="sync ${tone}">${summary.online ? 'En ligne' : 'Hors ligne'}</span></td></tr>
         <tr><th>Dernière synchronisation</th><td>${summary.lastSyncLabel ? esc(summary.lastSyncLabel) : 'jamais'}</td></tr>
         <tr><th>File d’attente</th><td>${summary.pending} en attente · ${summary.rejected} refusée(s)</td></tr>
         <tr><th>Copie locale</th><td>${summary.cacheCount} requête(s)${summary.cacheAgeLabel ? ` · ${esc(summary.cacheAgeLabel)}` : ''} · conservée ${summary.cacheDays} jours</td></tr>
+        <tr><th>Historique local</th><td>${Number(status.historyDepth || 0).toLocaleString('fr-FR')} pièces maximum par table de mouvement</td></tr>
+        <tr><th>Application fermée</th><td>${background ? 'Reprise automatique possible sur ce navigateur' : 'Non prise en charge par ce navigateur : la file repart à la prochaine ouverture'}</td></tr>
         <tr><th>Numéros de facture</th><td>${esc(rangeLabel)}</td></tr>
       </tbody></table></div>`;
       rejectedButton.hidden = !summary.rejected;
@@ -347,6 +376,7 @@ function inventoryCard(ctx) {
 }
 
 async function openInventory() {
+  if (!requireOnline(INVENTORY_ONLINE)) return;
   const dlg = document.getElementById('dlg') || document.body.appendChild(Object.assign(document.createElement('dialog'), { id: 'dlg' }));
   const whs = await db.select('warehouses', 'select=id,name&active=eq.true&order=name').catch(() => []);
   const drafts = await db.select('inventories', 'select=id,warehouse_id,created_at&status=eq.draft&order=created_at.desc').catch(() => []);
@@ -357,6 +387,7 @@ async function openInventory() {
     <div id="inv-sheet"></div>`;
   openDialog(dlg, 'Inventaire physique', body, async () => {}, null, (d) => {
     d.querySelector('#inv-new').addEventListener('click', async () => {
+      if (!requireOnline(INVENTORY_ONLINE)) return;
       try { const id = await db.rpc('create_inventory', { p_warehouse: d.querySelector('#inv-wh').value }); notify('Inventaire ouvert.'); await showSheet(d, id); }
       catch (e) { notify('Impossible : ' + e.message); }
     });
@@ -376,6 +407,7 @@ async function showSheet(d, invId) {
       <td class="r" data-diff="${esc(l.article_id)}">${l.counted == null ? '—' : (Number(l.counted) - Number(l.theoretical)).toFixed(3).replace(/\.?0+$/, '')}</td></tr>`).join('')}</tbody></table></div>
     <div class="row" style="margin-top:10px"><button class="btn" type="button" id="inv-validate">Valider l’inventaire</button></div>`;
   sheet.querySelectorAll('[data-inv-art]').forEach(inp => inp.addEventListener('change', async () => {
+    if (!requireOnline(INVENTORY_ONLINE)) { inp.value = inp.defaultValue; return; }
     const v = inp.value === '' ? null : Number(inp.value);
     try {
       await db.rpc('set_inventory_count', { p_inventory: invId, p_article: inp.dataset.invArt, p_counted: v });
@@ -385,6 +417,7 @@ async function showSheet(d, invId) {
     } catch (e) { notify('Saisie impossible : ' + e.message); }
   }));
   sheet.querySelector('#inv-validate').addEventListener('click', async () => {
+    if (!requireOnline(INVENTORY_ONLINE)) return;
     if (!confirm('Valider l’inventaire ? Les écarts seront corrigés dans le stock. Cette action est définitive.')) return;
     try { const n = await db.rpc('validate_inventory', { p_inventory: invId }); notify(`Inventaire validé : ${n} correction(s) de stock.`); sheet.innerHTML = '<p class="muted">Inventaire validé.</p>'; }
     catch (e) { notify('Validation impossible : ' + e.message); }
@@ -533,23 +566,27 @@ async function renderTeam(main, ctx) {
       // Retirer un membre : il n'appartient plus à l'entreprise, son siège est libéré.
       // Il peut ensuite rejoindre une autre entreprise avec un code.
       members.querySelectorAll('button[data-remove]').forEach(btn => btn.onclick = async () => {
+        if (!requireOnline(MEMBERS_ONLINE)) return;
         if (!(await askConfirm(`Retirer ${btn.dataset.name} de l'entreprise ? Il ne verra plus les données, et son siège sera libéré.`))) return;
         try { await db.rpc('remove_member', { p_user: btn.dataset.remove }); loadMembers(); }
         catch (e) { notify('Retrait impossible : ' + e.message); }
       });
       members.querySelectorAll('select[data-shop]').forEach(sel => sel.onchange = async () => {
+        if (!requireOnline(MEMBERS_ONLINE)) { loadMembers(); return; }
         if (!sel.value) return;
         const all = !!members.querySelector(`[data-transfer="${sel.dataset.shop}"]`)?.checked;
         try { await db.upsert('user_warehouses', { user_id: sel.dataset.shop, warehouse_id: sel.value, can_transfer_all: all }, 'user_id'); loadMembers(); }
         catch (e) { notify('Changement impossible : ' + e.message); loadMembers(); }
       });
       members.querySelectorAll('input[data-transfer]').forEach(box => box.onchange = async () => {
+        if (!requireOnline(MEMBERS_ONLINE)) { loadMembers(); return; }
         const shop = members.querySelector(`select[data-shop="${box.dataset.transfer}"]`)?.value;
         if (!shop) { notify('Choisissez d’abord la boutique de ce facturier.'); box.checked = !box.checked; return; }
         try { await db.upsert('user_warehouses', { user_id: box.dataset.transfer, warehouse_id: shop, can_transfer_all: box.checked }, 'user_id'); loadMembers(); }
         catch (e) { notify('Changement impossible : ' + e.message); loadMembers(); }
       });
       members.querySelectorAll('select[data-id]').forEach(sel => sel.onchange = async () => {
+        if (!requireOnline(MEMBERS_ONLINE)) { loadMembers(); return; }
         try { await db.update('profiles', sel.dataset.id, { role: sel.value }); loadMembers(); }
         catch (e) { notify('Changement impossible : ' + e.message); loadMembers(); }
       });
@@ -559,11 +596,12 @@ async function renderTeam(main, ctx) {
   f.onsubmit = async e => {
     e.preventDefault(); const er = f.querySelector('.err');
     try {
-      // Code généré ici (8 caractères hexadécimaux, en majuscules), envoyé avec l'entreprise : aucune valeur par défaut côté base
+      // Code généré ici (8 caractères hexadécimaux, en majuscules), envoyé avec l'entreprise : aucune valeur par défaut côté base.
+      // Hors ligne, l'invitation est mise en file : le code n'est actif qu'une fois synchronisé.
       const bytes = crypto.getRandomValues(new Uint8Array(4));
       const code = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
       await db.insert('invitations', { code, org_id: ctx.org_id, role: f.irole.value }, 'minimal');
-      main.querySelector('#codes').innerHTML = `<p class="muted" style="margin-top:.9rem">Code à transmettre (valable 7 jours) :</p><span class="code">${esc(code)}</span>`; er.textContent = '';
+      main.querySelector('#codes').innerHTML = `<p class="muted" style="margin-top:.9rem">Code à transmettre (valable 7 jours)${navigator.onLine ? '' : ' — il sera actif dès la prochaine synchronisation'} :</p><span class="code">${esc(code)}</span>`; er.textContent = '';
     }
     catch (x) { er.textContent = x.message; }
   };

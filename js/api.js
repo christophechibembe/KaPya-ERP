@@ -7,8 +7,10 @@ import { isVersionConflict, conflictError } from './conflict.js';
 // (avec un identifiant unique, pour qu'une pièce envoyée deux fois ne soit enregistrée qu'une fois).
 import { CFG } from './config.js';
 import { demoDb } from './demo.js';
-import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll, CACHE_TTL_DAYS } from './cache.js';
+import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll, CACHE_TTL_DAYS, mirrorSet, mirrorGet, mirrorDel } from './cache.js';
 import { localSelect } from './offline-query.mjs';
+import { normalizeHistoryDepth } from './offline.js';
+import { documentLines, stockDelta } from './offline-delete.mjs';
 import { replaceArticles } from './localdb.js';
 // Colonnes des produits, sans le stock total (le total passe par article_total_stock, réservé au gérant et au responsable)
 export const ART_COLS = 'id,sku,name,unit,price_buy,price_sell,min_stock,barcode,unit_weight,track_expiry,archived_at,updated_at,version';
@@ -27,13 +29,41 @@ export function newId() {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 let S = JSON.parse(localStorage.getItem(K) || 'null');
-const save = s => { S = s; s ? localStorage.setItem(K, JSON.stringify(s)) : localStorage.removeItem(K); };
+const save = s => {
+  if (s) s = { ...s, updated: Date.now() };
+  S = s;
+  s ? localStorage.setItem(K, JSON.stringify(s)) : localStorage.removeItem(K);
+  // Miroir accessible au service worker : lui seul peut rejouer la file quand l'application est fermée.
+  // Ce miroir reste dans l'origine de l'application (même niveau de protection que la session locale).
+  if (!CFG.demo) {
+    (s ? mirrorSet('session', s) : mirrorDel('session')).catch(() => {});
+  }
+};
+// Reprend la session mise à jour par le service worker (jeton renouvelé pendant que l'application était fermée).
+// La copie la plus récente gagne ; aucune session d'un autre compte n'est adoptée silencieusement.
+export async function restoreMirroredSession() {
+  if (CFG.demo) return S;
+  try {
+    await mirrorSet('config', { url: CFG.url, key: CFG.key });
+    const mirrored = await mirrorGet('session');
+    // Sans session locale, on ne reconnecte jamais automatiquement : c'est une déconnexion volontaire.
+    if (!S?.uid) return S;
+    if (mirrored?.uid && mirrored.uid !== S.uid) return S;
+    if (mirrored?.access && mirrored?.refresh && Number(mirrored.updated || 0) > Number(S.updated || 0)) {
+      S = { access: mirrored.access, refresh: mirrored.refresh, uid: mirrored.uid, exp: mirrored.exp, updated: mirrored.updated };
+      localStorage.setItem(K, JSON.stringify(S));
+      return S;
+    }
+    if (S) await mirrorSet('session', S);
+  } catch { /* stockage indisponible : la session locale reste utilisable */ }
+  return S;
+}
 const toS = d => ({ access: d.access_token, refresh: d.refresh_token, uid: d.user.id, exp: Date.now() + d.expires_in * 1000 });
 const isNet = e => !e.status;                       // pas de réponse HTTP : réseau coupé
 const emit = () => document.dispatchEvent(new Event('kp:sync'));
 const QUEUE = { create_customer_return: 'customer_returns', create_credit_note: 'credit_notes', create_sale: 'sales', create_purchase: 'purchases', create_transfer: 'transfers', create_customer_deposit: 'customer_deposits', update_sale: 'sales', record_credit_payment: 'sale_payments', save_cash_closure: 'cash_closures', save_shop_closure: 'cash_closures_shop', set_sale_payment_method: 'sales', set_initial_payment_method: 'sale_payments' };
 const FN = { sales: 'create_sale', purchases: 'create_purchase', transfers: 'create_transfer', customer_returns: 'create_customer_return', credit_notes: 'create_credit_note' };
-const INSERT_TABLE = { insert_customer: 'customers', insert_supplier: 'suppliers', insert_article: 'articles' };
+const INSERT_TABLE = { insert_customer: 'customers', insert_supplier: 'suppliers', insert_article: 'articles', insert_invitation: 'invitations' };
 const UPDATE_TABLE = { update_customer: 'customers', update_supplier: 'suppliers', update_article: 'articles' };
 
 async function raw(path, { method = 'GET', body, token, prefer } = {}) {
@@ -55,14 +85,28 @@ async function raw(path, { method = 'GET', body, token, prefer } = {}) {
   return d;
 }
 async function refresh() {
-  try { save(toS(await raw('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: S.refresh } }))); }
-  catch (e) { if (!isNet(e)) save(null); throw e; }
+  // En cas d'échec, la session n'est pas effacée ici : ensureToken peut d'abord reprendre
+  // le miroir déjà renouvelé par le service worker.
+  save(toS(await raw('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: S.refresh } })));
 }
 // Renouvelle le jeton si besoin. Hors ligne, on garde la session : les données viennent du cache.
 async function ensureToken() {
   if (!S || Date.now() < S.exp - 30000) return;
+  const previous = S;
   try { await refresh(); }
-  catch (e) { if (!isNet(e)) throw Object.assign(e, { status: 401 }); }
+  catch (e) {
+    if (isNet(e)) return;
+    // Le service worker a peut-être renouvelé le jeton pendant que l'application était fermée.
+    try {
+      const mirrored = await mirrorGet('session');
+      if (mirrored?.access && mirrored.uid === previous.uid && Number(mirrored.updated || 0) > Number(previous.updated || 0)) {
+        save(mirrored);
+        return;
+      }
+    } catch { /* miroir indisponible */ }
+    save(null);
+    throw Object.assign(e, { status: 401 });
+  }
 }
 
 // Pièce hors ligne : mise en file d'attente, et stock affiché corrigé dans le cache des articles.
@@ -164,6 +208,57 @@ async function applyLocalQueuedChange(fn, body, pending = true) {
   } else if (fn === 'create_customer_deposit') await applyLocalDeposit(body, pending);
   else if (fn === 'update_sale') await applyLocalUpdateSale(body, pending);
   else if (fn === 'record_credit_payment') await applyLocalCreditPayment(body, pending);
+  else if (fn === 'delete_document') await applyLocalDeleteDocument(body, pending);
+}
+
+// Retrouve la copie la plus complète d'une pièce (celle qui contient ses lignes), avec sa clé de cache.
+async function findCachedDocument(table, id) {
+  let fallback = null;
+  for (const key of (await ckeys()).filter(x => typeof x === 'string' && x.startsWith(tableCachePrefix(table)))) {
+    const rows = await cget(key);
+    if (!Array.isArray(rows)) continue;
+    const row = rows.find(item => item.id === id);
+    if (!row) continue;
+    if (documentLines(table, row).length) return { key, row };
+    fallback ||= { key, row };
+  }
+  // Dernier recours pour une vente : l'index local de recherche contient aussi ses lignes.
+  if (table === 'sales') {
+    const index = await cget(LOCAL_SALES_KEY).catch(() => null);
+    const row = Array.isArray(index) ? index.find(item => item.id === id) : null;
+    if (row) return { key: LOCAL_SALES_KEY, row };
+  }
+  return fallback;
+}
+async function adjustCachedStock(deltas) {
+  for (const { article_id, qty } of deltas) await mutateCachedRows('articles', rows => {
+    let changed = false;
+    rows.forEach(article => { if (article.id === article_id) { article.stock = Number(article.stock || 0) + qty; changed = true; } });
+    return changed;
+  });
+}
+// Suppression optimiste : retire la pièce de la copie locale et remet le stock à l'endroit.
+// Ne fait rien si la pièce a déjà été retirée (rejeu d'une opération déjà appliquée).
+async function applyLocalDeleteDocument(body, pending = true) {
+  const { table, id } = body || {};
+  const found = await findCachedDocument(table, id);
+  if (!found) return false;
+  await adjustCachedStock(stockDelta(table, documentLines(table, found.row)));
+  for (const key of (await ckeys()).filter(x => typeof x === 'string' && x.startsWith(tableCachePrefix(table)))) {
+    const rows = await cget(key);
+    if (!Array.isArray(rows) || !rows.some(row => row.id === id)) continue;
+    await cset(key, rows.filter(row => row.id !== id));
+  }
+  if (table === 'sales') {
+    const index = await cget(LOCAL_SALES_KEY).catch(() => null);
+    if (Array.isArray(index)) await cset(LOCAL_SALES_KEY, index.filter(row => row.id !== id));
+  }
+  // Les encaissements de la vente disparaissent aussi côté serveur (cascade) : on les retire de la copie locale.
+  if (table === 'sales') for (const key of (await ckeys()).filter(x => typeof x === 'string' && x.startsWith(tableCachePrefix('sale_payments')))) {
+    const rows = await cget(key);
+    if (Array.isArray(rows) && rows.some(row => row.sale_id === id)) await cset(key, rows.filter(row => row.sale_id !== id));
+  }
+  return pending;
 }
 async function captureQueuedRollback(fn, body) {
   if (INSERT_TABLE[fn]) return { table: INSERT_TABLE[fn], rowId: body.id };
@@ -191,6 +286,14 @@ async function captureQueuedRollback(fn, body) {
   if (fn === 'record_credit_payment') {
     const sale = (await cachedRows('sales')).find(row => row.id === body.p_sale_id);
     return { saleId: body.p_sale_id, previousPaid: Number(sale?.paid || 0) };
+  }
+  if (fn === 'delete_document') {
+    const found = await findCachedDocument(body.table, body.id);
+    if (!found) return { table: body.table, rowId: body.id, previousRow: null, articleStocks: {} };
+    const articleIds = new Set(documentLines(body.table, found.row).map(line => line.article_id).filter(Boolean));
+    const articleStocks = {};
+    (await cachedRows('articles')).forEach(article => { if (articleIds.has(article.id)) articleStocks[article.id] = Number(article.stock || 0); });
+    return { table: body.table, rowId: body.id, key: found.key, previousRow: JSON.parse(JSON.stringify(found.row)), articleStocks };
   }
   return null;
 }
@@ -225,6 +328,30 @@ async function rollbackQueuedChange(item) {
   } else if (fn === 'record_credit_payment') await mutateCachedRows('sales', rows => {
     let changed = false; rows.forEach(row => { if (row.id === rollback?.saleId) { row.paid = rollback.previousPaid; row.sale_payments = (row.sale_payments || []).filter(payment => payment.id !== body.p_id); changed = true; } }); return changed;
   });
+  else if (fn === 'delete_document' && rollback?.previousRow) {
+    const row = rollback.previousRow;
+    let restored = false;
+    if (rollback.key) {
+      const rows = await cget(rollback.key).catch(() => null);
+      if (Array.isArray(rows)) {
+        if (!rows.some(item => item.id === row.id)) rows.push(row);
+        await cset(rollback.key, rows);
+        restored = true;
+      }
+    }
+    // L'index local des ventes sert à la recherche hors ligne : il doit retrouver la pièce restaurée.
+    if (body.table === 'sales') {
+      const index = await cget(LOCAL_SALES_KEY).catch(() => null);
+      if (Array.isArray(index) && !index.some(item => item.id === row.id)) await cset(LOCAL_SALES_KEY, [row, ...index]);
+    }
+    for (const [id, stock] of Object.entries(rollback.articleStocks || {})) await mutateCachedRows('articles', rows => {
+      let changed = false; rows.forEach(item => { if (item.id === id) { item.stock = stock; changed = true; } }); return changed;
+    });
+    // Si la clé d'origine a disparu, on remet au moins la pièce dans une copie connue de la table.
+    if (!restored) await mutateCachedRows(body.table, rows => {
+      rows.unshift(row); return true;
+    });
+  }
 }
 async function reapplyLaterQueuedChanges(item) {
   if (UPDATE_TABLE[item.fn]) {
@@ -354,7 +481,7 @@ async function authed(path, o = {}) {
     if (!isNet(e)) throw e;
     const fn = (path.match(/rpc\/(\w+)$/) || [])[1];
     if (QUEUE[fn]) return enqueue(path, o.body, fn);
-    if (o.offlineQueue) return enqueue(o.offlineQueue.path, o.body, o.offlineQueue.fn, o.offlineQueue);
+    if (o.offlineQueue) return enqueue(o.offlineQueue.path, o.offlineQueue.body || o.body, o.offlineQueue.fn, o.offlineQueue);
     throw Object.assign(new Error('Connexion requise pour cette action.'), { offline: true });
   }
 }
@@ -366,7 +493,7 @@ const realDb = {
     return authed(`/rest/v1/${t}?${q}`);
   },
   insert: (t, row, mode = 'representation') => {
-    const insertFn = { customers: 'insert_customer', suppliers: 'insert_supplier', articles: 'insert_article' }[t];
+    const insertFn = { customers: 'insert_customer', suppliers: 'insert_supplier', articles: 'insert_article', invitations: 'insert_invitation' }[t];
     const body = insertFn ? { ...row, id: row.id || newId() } : row;
     const offlineQueue = insertFn ? { fn: insertFn, path: `/rest/v1/${t}?on_conflict=id`, method: 'POST', prefer: 'resolution=merge-duplicates,return=minimal' } : undefined;
     return authed(`/rest/v1/${t}`, { method: 'POST', body, prefer: `return=${mode}`, offlineQueue });
@@ -385,7 +512,20 @@ const realDb = {
         return result;
       });
   },
-  delete: (t, id) => authed(`/rest/v1/${t}?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' }),
+  delete: (t, id) => {
+    const path = `/rest/v1/${t}?id=eq.${encodeURIComponent(id)}`;
+    // Annulation d'une vente ou d'un achat : mise en file, retrait immédiat de la copie locale,
+    // restauration si le serveur refuse (droits, pièce déjà utilisée, etc.).
+    const offlineQueue = ['sales', 'purchases'].includes(t)
+      ? { fn: 'delete_document', path, method: 'DELETE', body: { table: t, id } }
+      : undefined;
+    return authed(path, { method: 'DELETE', prefer: 'return=minimal', offlineQueue })
+      .then(result => {
+        // Annulation réussie en ligne : la copie locale et le stock suivent immédiatement.
+        if (offlineQueue) applyLocalDeleteDocument(offlineQueue.body).catch(() => {});
+        return result;
+      });
+  },
   upsert: (t, row, key) => authed(`/rest/v1/${t}?on_conflict=${key}`, { method: 'POST', body: row, prefer: 'resolution=merge-duplicates,return=representation' }),
   rpc: (fn, args = {}) => authed(`/rest/v1/rpc/${fn}`, { method: 'POST', body: args }),
 };
@@ -406,21 +546,33 @@ export const syncMeta = () => ({
 });
 // Index local des ventes récentes (pour chercher et réafficher hors ligne)
 export const LOCAL_SALES_KEY = '/local/sales-index';
-const SALES_INDEX_PATH = '/rest/v1/sales?select=id,number,sold_at,created_at,to_pickup,customer_id,customer_label,payment,payment_method,payment_reference,paid,warehouse_id,customers(name),sale_lines(id,article_id,qty,unit_price,unit_cost,unit_cost_at_sale,cost_is_estimated,discount_pct,warehouse_id,articles(id,sku,name,unit,unit_weight,price_buy))&order=sold_at.desc,created_at.desc&limit=2000';
+// Profondeur de l'historique conservé sur l'appareil (réglable dans Paramètres > Mode hors-ligne).
+// Les pièces plus anciennes restent consultables en ligne, mais peuvent manquer hors connexion.
+export const HISTORY_DEPTH_CHOICES = [[2000, '2 000 pièces (standard)'], [10000, '10 000 pièces (étendu)'], [20000, '20 000 pièces (maximum)']];
+export const HISTORY_DEPTH_KEY = 'kp.historyDepth';
+export function historyDepth() {
+  return normalizeHistoryDepth(localStorage.getItem(HISTORY_DEPTH_KEY));
+}
+export function setHistoryDepth(depth) {
+  localStorage.setItem(HISTORY_DEPTH_KEY, String(normalizeHistoryDepth(depth)));
+  return historyDepth();
+}
+const HISTORY_LIMIT = historyDepth();
+const SALES_INDEX_PATH = `/rest/v1/sales?select=id,number,sold_at,created_at,to_pickup,customer_id,customer_label,payment,payment_method,payment_reference,paid,warehouse_id,customers(name),sale_lines(id,article_id,qty,unit_price,unit_cost,unit_cost_at_sale,cost_is_estimated,discount_pct,warehouse_id,articles(id,sku,name,unit,unit_weight,price_buy))&order=sold_at.desc,created_at.desc&limit=${HISTORY_LIMIT}`;
 
 // Requêtes préchargées qui servent aussi de copie locale interrogeable hors ligne.
 // Les chemins sont partagés avec OFFLINE_TABLES pour éviter deux requêtes identiques.
 const OFFLINE_PATHS = {
   sales: LOCAL_SALES_KEY,
-  sale_payments: '/rest/v1/sale_payments?select=id,sale_id,amount,paid_at,kind,created_at,customer_deposit_id,method,reference,operator,sales(number,customer_label,customer_id)&order=paid_at.desc,created_at.desc&limit=2000',
-  purchases: '/rest/v1/purchases?select=id,supplier_id,number,bought_at,created_at,usd_cdf,payment_balance_opening,warehouse_id,suppliers(name,phone),purchase_lines(id,article_id,qty,unit_cost,warehouse_id,articles(id,sku,name,unit,price_buy))&order=bought_at.desc,created_at.desc&limit=1000',
-  purchase_payments: '/rest/v1/purchase_payments?select=id,purchase_id,amount,paid_at,created_at,purchases(number,supplier_id,suppliers(name))&order=paid_at.desc,created_at.desc&limit=2000',
-  business_expenses: '/rest/v1/business_expenses?select=id,label,category,amount,paid_at,created_at&order=paid_at.desc,created_at.desc&limit=2000',
-  customer_returns: '/rest/v1/customer_returns?select=id,number,sale_id,warehouse_id,returned_on,total_usd,note,created_at&order=returned_on.desc,created_at.desc&limit=1000',
-  credit_notes: '/rest/v1/credit_notes?select=id,number,sale_id,customer_id,issued_on,total_usd,note,created_at&order=issued_on.desc,created_at.desc&limit=1000',
-  customer_deposits: '/rest/v1/customer_deposits?select=id,receipt_number,customer_id,amount,remaining,received_at,created_at,customers(name,phone)&order=received_at.desc,created_at.desc&limit=1000',
-  cash_closures: '/rest/v1/cash_closures?select=*&order=business_date.desc,closed_at.desc&limit=1000',
-  cash_closures_shop: '/rest/v1/cash_closures_shop?select=*&order=business_date.desc,closed_at.desc&limit=1000',
+  sale_payments: `/rest/v1/sale_payments?select=id,sale_id,amount,paid_at,kind,created_at,customer_deposit_id,method,reference,operator,sales(number,customer_label,customer_id)&order=paid_at.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  purchases: `/rest/v1/purchases?select=id,supplier_id,number,bought_at,created_at,usd_cdf,payment_balance_opening,warehouse_id,suppliers(name,phone),purchase_lines(id,article_id,qty,unit_cost,warehouse_id,articles(id,sku,name,unit,price_buy))&order=bought_at.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  purchase_payments: `/rest/v1/purchase_payments?select=id,purchase_id,amount,paid_at,created_at,purchases(number,supplier_id,suppliers(name))&order=paid_at.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  business_expenses: `/rest/v1/business_expenses?select=id,label,category,amount,paid_at,created_at&order=paid_at.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  customer_returns: `/rest/v1/customer_returns?select=id,number,sale_id,warehouse_id,returned_on,total_usd,note,created_at&order=returned_on.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  credit_notes: `/rest/v1/credit_notes?select=id,number,sale_id,customer_id,issued_on,total_usd,note,created_at&order=issued_on.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  customer_deposits: `/rest/v1/customer_deposits?select=id,receipt_number,customer_id,amount,remaining,received_at,created_at,customers(name,phone)&order=received_at.desc,created_at.desc&limit=${HISTORY_LIMIT}`,
+  cash_closures: `/rest/v1/cash_closures?select=*&order=business_date.desc,closed_at.desc&limit=${HISTORY_LIMIT}`,
+  cash_closures_shop: `/rest/v1/cash_closures_shop?select=*&order=business_date.desc,closed_at.desc&limit=${HISTORY_LIMIT}`,
   stock_lots: '/rest/v1/stock_lots?select=id,expiry_date,qty_left,article_id,warehouse_id,articles(name,sku,unit)&qty_left=gt.0&order=expiry_date.asc&limit=2000'
 };
 const PREFETCH = [
@@ -459,10 +611,11 @@ function mergeRows(cached, changed, p) {
 
 // Rafraîchit le catalogue : copie complète (sinceIso = null) ou seulement les changements depuis sinceIso
 async function refreshCatalog(token, sinceIso) {
-  try { await cset(LOCAL_SALES_KEY, await raw(SALES_INDEX_PATH, { token })); } catch (e) { if (isNet(e)) return; }
+  let complete = true;
+  try { await cset(LOCAL_SALES_KEY, await raw(SALES_INDEX_PATH, { token })); } catch (e) { if (isNet(e)) return false; }
   const whPath = '/rest/v1/warehouses?select=id,name,is_default&active=eq.true&order=is_default.desc,name';
   let whs = [];
-  try { whs = await raw(whPath, { token }); await cset(whPath, whs); } catch (e) { if (isNet(e)) return; }
+  try { whs = await raw(whPath, { token }); await cset(whPath, whs); } catch (e) { if (isNet(e)) return false; }
   const keys = [...PREFETCH.map(k => (tableOf(k) && ARCHIVABLE.has(tableOf(k)) && !/archived_at=/.test(k) ? k + '&archived_at=is.null' : k)), ...whs.map(w => `/rest/v1/warehouse_stock?select=id,article_id,qty&warehouse_id=eq.${w.id}`)];
   for (const p of keys) {
     try {
@@ -474,8 +627,9 @@ async function refreshCatalog(token, sinceIso) {
       } else {
         await cset(p, await raw(p, { token }));
       }
-    } catch (e) { if (isNet(e)) break; }
+    } catch (e) { if (isNet(e)) { complete = false; break; } }
   }
+  return complete;
 }
 
 // Lecture hors ligne « comme une base » : chaque table préchargée peut être filtrée,
@@ -539,10 +693,24 @@ export async function syncNow() {
   try {
     await ensureToken();
     await ensureInvoiceRange().catch(() => {});
+    // Le service worker a pu envoyer des pièces pendant que l'application était fermée.
+    // « sent » : le serveur les a reçues, on termine le travail local (badges, cache) puis on les retire.
+    // « rejected » par le service worker : la copie locale n'a pas encore été remise en état, on le fait ici.
+    for (const it of await outboxAll()) {
+      if (it.status === 'sent') {
+        await markQueuedChangeSynced(it).catch(() => {});
+        await outboxDel(it.seq);
+        emit();
+      } else if (it.status === 'rejected' && it.swRollback) {
+        await rollbackQueuedChange(it).then(() => reapplyLaterQueuedChanges(it)).catch(() => {});
+        await outboxPut({ ...it, swRollback: false, rolledBack: true });
+        emit();
+      }
+    }
     for (const it of await outboxAll()) {
       if (it.status === 'rejected') continue;
       try {
-        const result = await raw(it.path, { method: it.method || 'POST', body: it.body, token: S.access, prefer: it.prefer });
+        const result = await raw(it.path, { method: it.method || 'POST', body: it.method === 'DELETE' ? undefined : it.body, token: S.access, prefer: it.prefer });
         // Mise à jour protégée par la version : aucune ligne modifiée = la fiche a changé ailleurs.
         if (isVersionConflict({ method: it.method, path: it.path, result })) throw conflictError();
         await outboxDel(it.seq); await markQueuedChangeSynced(it);
@@ -561,32 +729,40 @@ export async function syncNow() {
     // Entre-temps : seules les lignes modifiées depuis la dernière synchronisation sont téléchargées et fusionnées.
     const PREFETCH_EVERY = 20 * 60 * 1000, FULL_EVERY = 24 * 60 * 60 * 1000;
     const last = Number(localStorage.getItem('kp.lastPrefetch') || 0);
-    if (Date.now() - last > PREFETCH_EVERY) {
-      const fullDue = !last || Date.now() - Number(localStorage.getItem('kp.lastFull') || 0) > FULL_EVERY;
+    const depth = historyDepth(), depthChanged = Number(localStorage.getItem('kp.historyDepthSynced') || 0) !== depth;
+    if (depthChanged || Date.now() - last > PREFETCH_EVERY) {
+      const fullDue = depthChanged || !last || Date.now() - Number(localStorage.getItem('kp.lastFull') || 0) > FULL_EVERY;
       const sinceIso = new Date(last - 5 * 60 * 1000).toISOString(); // marge pour l'écart d'horloge
-      await refreshCatalog(S.access, fullDue ? null : sinceIso);
+      const complete = await refreshCatalog(S.access, fullDue ? null : sinceIso);
       // Base locale des produits : tenue à jour à chaque rafraîchissement du catalogue
-      const arts = await cget(`/rest/v1/articles?select=${ART_COLS}&order=name&archived_at=is.null`).catch(() => null);
-      if (Array.isArray(arts)) await replaceArticles(arts).catch(() => {});
-      localStorage.setItem('kp.lastSync', String(Date.now()));
-      localStorage.setItem('kp.lastPrefetch', String(Date.now()));
-      if (fullDue) localStorage.setItem('kp.lastFull', String(Date.now()));
+      if (complete) {
+        const arts = await cget(`/rest/v1/articles?select=${ART_COLS}&order=name&archived_at=is.null`).catch(() => null);
+        if (Array.isArray(arts)) await replaceArticles(arts).catch(() => {});
+        localStorage.setItem('kp.lastSync', String(Date.now()));
+        localStorage.setItem('kp.lastPrefetch', String(Date.now()));
+        if (fullDue) {
+          localStorage.setItem('kp.lastFull', String(Date.now()));
+          localStorage.setItem('kp.historyDepthSynced', String(depth));
+        }
+      }
     }
   } catch (e) { if (isNet(e) || e?.status === 401) networkStop = true; /* hors ligne : on réessaiera */ }
   finally { syncing = false; markSyncResult(networkStop); emit(); }
 }
-export const pendingFor = async table => (await outboxAll()).filter(it => it.fn === FN[table]);
+export const pendingFor = async table => (await outboxAll()).filter(it => it.fn === FN[table] && it.status !== 'sent');
 export const lastSyncTime = () => Number(localStorage.getItem('kp.lastSync')) || 0;
 export const pendingCount = async () => (await outboxAll()).length;
 // Diagnostic complet pour Paramètres > Mode hors-ligne.
 export async function offlineStatus() {
   const [queue, cache] = await Promise.all([queueStats(), cacheStats().catch(() => ({ count: 0, oldest: 0, newest: 0 }))]);
-  return { online: navigator.onLine, ...queue, ...cache, cacheDays: CACHE_TTL_DAYS, lastSync: lastSyncTime(), ...syncMeta() };
+  return { online: navigator.onLine, ...queue, ...cache, cacheDays: CACHE_TTL_DAYS, historyDepth: historyDepth(), lastSync: lastSyncTime(), ...syncMeta() };
 }
 export const queueStats = async () => {
   const all = await outboxAll();
   const rejected = all.filter(it => it.status === 'rejected').length;
-  return { total: all.length, pending: all.length - rejected, rejected };
+  const sent = all.filter(it => it.status === 'sent').length;
+  const reconcile = all.filter(it => it.status === 'rejected' && it.swRollback).length;
+  return { total: all.length, pending: all.length - rejected - sent, rejected, sent, reconcile };
 };
 // Opérations en attente d'un type donné (paiements de crédit, etc.)
 export const pendingOps = async fn => (await outboxAll()).filter(it => it.fn === fn && it.status !== 'rejected');
@@ -595,11 +771,24 @@ export const rejectedItems = async () => (await outboxAll()).filter(it => it.sta
 export async function retryRejected(seq) {
   const it = (await outboxAll()).find(x => x.seq === seq);
   if (!it) return;
-  const { status, error, ...rest } = it;
+  const { status, error, swRollback, rolledBack, ...rest } = it;
+  // Une pièce refusée a été annulée dans la copie locale. Avant de réessayer, on réapplique
+  // son effet (stock, fiche, suppression) pour que l'écran reste juste si le serveur l'accepte.
+  rest.rollback = await captureQueuedRollback(rest.fn, rest.body).catch(() => rest.rollback);
   await outboxPut(rest);
+  await applyLocalStock(rest.fn, rest.body).catch(() => {});
+  await applyLocalQueuedChange(rest.fn, rest.body).catch(() => {});
+  emit();
   await syncNow();
 }
-export async function discardRejected(seq) { await outboxDel(seq); }
+export async function discardRejected(seq) {
+  const it = (await outboxAll()).find(x => x.seq === seq);
+  if (!it) return;
+  // Si le service worker a refusé l'opération sans pouvoir annuler son effet local, on l'annule ici.
+  if (it.swRollback) await rollbackQueuedChange(it).then(() => reapplyLaterQueuedChanges(it)).catch(() => {});
+  await outboxDel(seq);
+  emit();
+}
 export async function dropRejected() { for (const it of await rejectedItems()) await outboxDel(it.seq); emit(); }
 export const clearOffline = () => clearAll();
 

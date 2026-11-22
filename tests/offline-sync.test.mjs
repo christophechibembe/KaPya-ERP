@@ -1,8 +1,9 @@
 // Hors-ligne : rythme de reprise, résumé pour l'écran et interrogation de la copie locale.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { retryDelay, syncDecision, formatAge, offlineSummary, SYNC_INTERVAL_MS, BACKOFF_MAX_MS } from '../js/offline.js';
+import { retryDelay, syncDecision, formatAge, offlineSummary, SYNC_INTERVAL_MS, BACKOFF_MAX_MS, normalizeHistoryDepth, DEFAULT_HISTORY_DEPTH, HISTORY_DEPTHS } from '../js/offline.js';
 import { localSelect } from '../js/offline-query.mjs';
+import { documentLines, stockDelta } from '../js/offline-delete.mjs';
 
 test('reprise : le délai double à chaque échec puis plafonne', () => {
   assert.equal(retryDelay(0), 15000);
@@ -82,4 +83,24 @@ test('copie locale : une requête non simulable renvoie undefined', () => {
   assert.equal(localSelect('/rest/v1/sale_payments?select=id&paid_at=is.null', payments), undefined);
   assert.equal(localSelect('/rest/v1/sale_payments?select=id&offset=2', payments), undefined);
   assert.equal(localSelect('/rest/v1/sale_payments?select=id&order=sales.number.asc', payments), undefined);
+});
+
+test('profondeur d’historique : valeurs bornées et valeur par défaut', () => {
+  assert.equal(normalizeHistoryDepth('10000'), 10000);
+  assert.equal(normalizeHistoryDepth(20000), 20000);
+  assert.equal(normalizeHistoryDepth('tout'), DEFAULT_HISTORY_DEPTH);
+  assert.equal(normalizeHistoryDepth(-1), DEFAULT_HISTORY_DEPTH);
+  assert.equal(normalizeHistoryDepth(999999), DEFAULT_HISTORY_DEPTH);
+  assert.deepEqual(HISTORY_DEPTHS, [2000, 10000, 20000]);
+});
+
+test('annulation hors ligne : le stock revient pour une vente et sort pour un achat', () => {
+  const sale = { sale_lines: [{ article_id: 'a1', qty: 2 }, { article_id: 'a1', qty: 3 }, { article_id: 'a2', qty: 1 }] };
+  const purchase = { purchase_lines: [{ article_id: 'a1', qty: 4 }, { article_id: 'a3', qty: 2 }] };
+  assert.deepEqual(documentLines('sales', sale), sale.sale_lines);
+  assert.deepEqual(documentLines('purchases', purchase), purchase.purchase_lines);
+  assert.deepEqual(stockDelta('sales', sale.sale_lines), [{ article_id: 'a1', qty: 5 }, { article_id: 'a2', qty: 1 }]);
+  assert.deepEqual(stockDelta('purchases', purchase.purchase_lines), [{ article_id: 'a1', qty: -4 }, { article_id: 'a3', qty: -2 }]);
+  assert.deepEqual(stockDelta('sales', []), []);
+  assert.deepEqual(stockDelta('transfers', sale.sale_lines), []);
 });

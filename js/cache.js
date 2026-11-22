@@ -1,8 +1,9 @@
 // Stockage hors ligne (IndexedDB, sans dépendance) :
 // - kv : réponses de lecture mises en cache (clé = chemin de la requête) ;
-// - outbox : pièces (ventes, achats) enregistrées hors ligne, en attente d'envoi.
+// - outbox : pièces (ventes, achats) enregistrées hors ligne, en attente d'envoi ;
+// - sync : miroir de session et configuration accessibles au service worker (reprise application fermée).
 import { isDemo } from './demo-mode.js';
-const NAME = isDemo ? 'kapya-demo-offline' : 'kapya-offline', VER = 1;
+const NAME = isDemo ? 'kapya-demo-offline' : 'kapya-offline', VER = 2;
 let dbp = null;
 const open = () => dbp ||= new Promise((ok, ko) => {
   const r = indexedDB.open(NAME, VER);
@@ -10,6 +11,7 @@ const open = () => dbp ||= new Promise((ok, ko) => {
     const d = r.result;
     if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
     if (!d.objectStoreNames.contains('outbox')) d.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true });
+    if (!d.objectStoreNames.contains('sync')) d.createObjectStore('sync');
   };
   r.onsuccess = () => ok(r.result);
   r.onerror = () => { dbp = null; ko(r.error); };
@@ -46,5 +48,16 @@ export const outboxAdd = item => run('outbox', 'readwrite', s => s.add(item));
 export const outboxAll = () => run('outbox', 'readonly', s => s.getAll());
 export const outboxDel = seq => run('outbox', 'readwrite', s => s.delete(seq));
 export const outboxPut = item => run('outbox', 'readwrite', s => s.put(item));
+// Miroir pour le service worker : session et configuration Supabase.
+// Il ne sert qu'à rejouer la file quand l'application est fermée ; il est effacé à la déconnexion.
+export const mirrorSet = (key, value) => run('sync', 'readwrite', s => s.put(value, key));
+export const mirrorGet = key => run('sync', 'readonly', s => s.get(key));
+export const mirrorDel = key => run('sync', 'readwrite', s => s.delete(key));
 export const clearCache = () => run('kv', 'readwrite', s => s.clear());
-export const clearAll = () => Promise.all([clearCache(), run('outbox', 'readwrite', s => s.clear())]);
+// Efface aussi le miroir de session : « vider les données hors ligne » ne laisse pas
+// de jeton utilisable par le service worker en arrière-plan.
+export const clearAll = () => Promise.all([
+  clearCache(),
+  run('outbox', 'readwrite', s => s.clear()),
+  run('sync', 'readwrite', s => s.clear())
+]);
