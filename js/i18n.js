@@ -893,7 +893,27 @@ const EN = {
   'Voir le détail : Sorties de trésorerie': 'View details: Cash outflows',
   'Voir le détail : Flux net de trésorerie': 'View details: Net cash flow',
   'Voir le détail : Valeur du stock': 'View details: Stock value',
-  'Voir le détail : Créances clients restantes': 'View details: Outstanding receivables'
+  'Voir le détail : Créances clients restantes': 'View details: Outstanding receivables',
+  'Aucune opération sur cette période.': 'No transaction in this period.',
+  'Balance': 'Trial balance',
+  'Balance (Excel)': 'Trial balance (Excel)',
+  'Comptabilité': 'Accounting',
+  'Débit': 'Debit',
+  'Dépenses': 'Expenses',
+  'Intitulé': 'Name',
+  'Journal (Excel)': 'Journal (Excel)',
+  'Journal comptable': 'Accounting journal',
+  'Journal, balance et TVA de la période.': 'Journal, trial balance and VAT for the period.',
+  'La comptabilité est incluse dans la formule Standard et dans la formule Premium.': 'Accounting is included in the Standard and Premium plans.',
+  'Libellé': 'Description',
+  'Pièce': 'Document',
+  'Résultat': 'Result',
+  'Solde': 'Balance',
+  'TVA à payer': 'VAT due',
+  'TVA collectée sur les ventes': 'VAT collected on sales',
+  'TVA désactivée. Activez-la dans Paramètres > TVA pour la calculer et l’afficher ici.': 'VAT is disabled. Enable it in Settings > VAT to calculate and display it here.',
+  'TVA récupérable sur les achats': 'VAT recoverable on purchases',
+  'Voir ma formule': 'View my plan'
 };
 
 export const getLanguage = () => localStorage.getItem(KEY) === 'en' ? 'en' : 'fr';
