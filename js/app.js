@@ -1,7 +1,7 @@
 import { CFG } from './config.js';
 import { localStore as localStorage } from './storage.js';
 import { mountDemoBar } from './demo-ui.js';
-import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline, lastSyncTime, queueStats, syncMeta } from './api.js';
+import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline, lastSyncTime, queueStats, syncMeta, restoreMirroredSession } from './api.js';
 import { clearCache } from './cache.js';
 import { syncDecision, SYNC_CHECK_MS } from './offline.js';
 import { renderAuth, renderOrg, renderMfa, recoveryFromLink } from './auth.js';
@@ -256,7 +256,8 @@ async function autoSync() {
   if (CFG.demo) return;
   const queue = await queueStats().catch(() => ({ pending: 0, rejected: 0 }));
   const meta = syncMeta();
-  const decision = syncDecision({ online: navigator.onLine, pending: queue.pending,
+  const decision = syncDecision({ online: navigator.onLine,
+    pending: queue.pending + (queue.sent || 0) + (queue.reconcile || 0),
     lastAttempt: meta.lastAttempt, attempts: meta.attempts, lastSync: lastSyncTime() });
   if (!decision.run) return;
   await syncNow();
@@ -272,6 +273,8 @@ addEventListener('offline', updateSync);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSync(); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', event => {
   if (event.data?.type === 'kp-sync') autoSync();
+  // Le service worker a renouvelé le jeton pour envoyer la file : on reprend sa session.
+  if (event.data?.type === 'kp-session') restoreMirroredSession();
 });
 addEventListener('hashchange', route);
 
@@ -307,6 +310,7 @@ async function ownOrgRow() {
 }
 
 async function start() {
+  await restoreMirroredSession().catch(() => {});
   if (!CFG.demo && CFG.url.includes('VOTRE')) { root.innerHTML = '<div class="auth"><div class="card"><h1>Configuration requise</h1><p>Renseignez l’URL et la clé publique Supabase dans <code>js/config.js</code>.</p></div></div>'; return; }
   if (recoveryFromLink(root, start)) return;
   if (!session()) return renderAuth(root, start, new URLSearchParams(location.search).has('inscription') ? 'up' : 'in');

@@ -18,9 +18,11 @@ métier sont enregistrées dans une file d'attente puis envoyées au retour de l
 | Synchronisation automatique au retour du réseau | oui |
 | Reprise avec délai progressif après échec | oui |
 | Diagnostic et file refusée dans Paramètres | oui |
-| Supprimer une fiche hors ligne | non : l'action demande le réseau |
-| RPC non prévues dans la file (inventaire, rôles…) | non : le réseau est requis |
-| Synchronisation application fermée | non : la file repart à la réouverture |
+| Supprimer une vente ou un achat hors ligne | oui, annulation mise en file et stock corrigé |
+| Inventaire physique et changement de rôle hors ligne | non : message explicite, le réseau reste requis |
+| Créer une invitation hors ligne | oui : le code devient actif à la synchronisation |
+| Synchronisation application fermée | oui sur Chromium (Background Sync) ; ailleurs, la file repart à la réouverture |
+| Historique local réglable | oui : 2 000, 10 000 ou 20 000 pièces |
 
 ## Lectures hors ligne
 
@@ -32,7 +34,7 @@ Les requêtes suivantes sont préchargées et peuvent être filtrées, triées e
 l'appareil :
 
 - articles, clients, fournisseurs ;
-- ventes récentes (2 000) avec leurs lignes et articles ;
+- ventes récentes (2 000 par défaut, réglable) avec leurs lignes et articles ;
 - encaissements clients (`sale_payments`) et règlements fournisseurs (`purchase_payments`) ;
 - achats avec lignes et fournisseurs ;
 - dépenses (`business_expenses`) ;
@@ -40,6 +42,12 @@ l'appareil :
 - acomptes clients (`customer_deposits`) ;
 - clôtures de caisse (`cash_closures`, `cash_closures_shop`) ;
 - lots en stock et stock par dépôt.
+
+La profondeur d'historique est réglable dans **Paramètres > Mode hors-ligne** :
+2 000 pièces (standard), 10 000 (étendu) ou 20 000 (maximum). Un changement déclenche un
+téléchargement complet de la copie locale. Plus la valeur est grande, plus l'espace utilisé
+et la durée de rafraîchissement augmentent. Les pièces au-delà de la fenêtre restent
+consultables en ligne, mais peuvent manquer hors connexion.
 
 La copie locale est conservée **30 jours**. Au-delà, l'écran demande une reconnexion pour
 recharger les données. Le préchargement se fait au plus toutes les 20 minutes ; toutes les
@@ -59,11 +67,17 @@ La file `outbox` accepte :
 - acomptes (`create_customer_deposit`) et encaissements de crédit (`record_credit_payment`) ;
 - clôtures de caisse (`save_cash_closure`, `save_shop_closure`) ;
 - changements de mode de paiement ;
-- création et modification de clients, fournisseurs et articles.
+- création et modification de clients, fournisseurs et articles ;
+- création d'une invitation (`insert_invitation`) ;
+- annulation de ventes et d'achats (`delete_document`).
 
 Chaque pièce reçoit un identifiant unique avant l'envoi : une pièce envoyée deux fois n'est
 enregistrée qu'une fois. Les stocks et les fiches sont mis à jour localement tout de suite,
 avec un badge « en attente ».
+
+Une annulation de vente ou d'achat retire la pièce de la copie locale immédiatement et
+applique le mouvement de stock inverse : le stock vendu revient, le stock acheté sort.
+Si le serveur refuse l'annulation, la pièce et le stock sont restaurés.
 
 En cas de refus serveur (stock insuffisant, donnée invalide), la modification locale est
 annulée et la pièce passe en **refusée**. Elle reste visible dans Paramètres > Mode
@@ -85,9 +99,15 @@ Sans pièce en attente, la file est vérifiée au plus toutes les 5 minutes ; le
 des données se fait au plus toutes les 20 minutes. Après un échec réseau, le délai double :
 15 s, 30 s, 1 min, 2 min, 5 min, puis 15 min maximum.
 
-Le service worker ne peut pas rejouer la file seul : il ne possède pas la session Supabase.
-Le Background Sync sert donc à réveiller les onglets ouverts. Si l'application est fermée,
-la file repart à la prochaine ouverture.
+Le service worker rejoue la file avec un miroir de session et de configuration conservé
+dans IndexedDB (jamais `localStorage`, inaccessible au service worker). Il renouvelle le
+jeton si besoin, envoie les pièces et marque leur résultat ; à la réouverture, l'application
+termine le travail local et reprend la session renouvelée.
+
+Cette reprise **application fermée** dépend du Background Sync : elle fonctionne sur
+Chromium (Chrome, Edge, Android), pas sur Safari/iOS. Ailleurs, la file repart normalement
+à la prochaine ouverture. Les pièces restent idempotentes : un envoi simultané par l'onglet
+et le service worker ne crée pas de doublon.
 
 ## Diagnostic dans Paramètres
 
@@ -97,26 +117,36 @@ La carte **Mode hors-ligne** affiche :
 - la date de la dernière synchronisation ;
 - le nombre de pièces en attente et refusées ;
 - le nombre d'entrées de la copie locale, leur âge et la durée de conservation ;
+- la profondeur d'historique conservée (réglable) ;
+- la disponibilité de la reprise application fermée sur ce navigateur ;
 - les numéros de facture encore réservés sur l'appareil ;
 - un bouton **Synchroniser maintenant** ;
 - un bouton **Voir les pièces refusées** ;
 - un bouton **Vider les données hors ligne** (avec confirmation, car les pièces non
-  envoyées sont perdues).
+  envoyées sont perdues et le miroir de session du service worker est effacé).
 
 ## Limites assumées
 
-- Une suppression, un inventaire physique, un changement de rôle ou une invitation demandent
-  le réseau : ces opérations ne sont pas mises en file.
-- Les lectures très anciennes au-delà des limites de préchargement (2 000 ventes, 1 000
-  achats, etc.) peuvent manquer hors ligne.
-- Le cache local contient des données commerciales : il faut verrouiller l'appareil et
-  utiliser le code de verrouillage de KaPya.
+- L'inventaire physique et les changements de rôle demandent le réseau. Ces opérations
+  sont sensibles : un message explicite s'affiche hors ligne plutôt qu'une file qui
+  modifierait les droits ou le stock sans contrôle.
+- Une invitation créée hors ligne n'est active qu'après la synchronisation : ne transmettez
+  le code qu'une fois l'appareil reconnecté (ou vérifiez la file dans Paramètres).
+- La reprise application fermée dépend du navigateur (Background Sync sur Chromium).
+- Les lectures au-delà de la fenêtre d'historique réglée peuvent manquer hors ligne ; elles
+  restent disponibles en ligne.
+- Le cache local et le miroir de session contiennent des données sensibles : il faut
+  verrouiller l'appareil, utiliser un code de verrouillage et se déconnecter sur un appareil
+  partagé. Le verrouillage en arrière-plan est activé par défaut avec un code.
+- Le code de verrouillage protège l'écran, pas le disque : activez aussi le chiffrement de
+  l'appareil (Android, iOS, Windows) pour protéger les fichiers IndexedDB en cas de vol.
 - La synchronisation de deux appareils sur la même fiche reste protégée par la version,
   mais elle n'est pas un travail collaboratif en temps réel.
 
 ## Vérifications
 
 - `tests/offline-sync.test.mjs` : délai de reprise, décision de synchronisation, résumé,
-  interrogation de la copie locale.
+  interrogation de la copie locale, profondeur d'historique et mouvements de stock des
+  annulations.
 - `tests/offline-record-updates.test.mjs` : mises à jour optimistes et restauration.
 - `npm.cmd test` : suite complète, dont les tests navigateur de la démonstration.

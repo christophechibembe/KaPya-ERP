@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.50.4-build144';
+const VERSION = 'kapya-erp-1.50.5-build145';
 const SHELL = [
   './',
   './404.html',
@@ -53,6 +53,7 @@ const SHELL = [
   './js/lock.js',
   './js/localdb.js',
   './js/offline.js',
+  './js/offline-delete.mjs',
   './js/offline-query.mjs',
   './js/modules/abonnes.js',
   './js/modules/accueil.js',
@@ -143,12 +144,107 @@ self.addEventListener('fetch', e => {
 });
 
 
-// Reprise après coupure : le service worker ne possède pas la session Supabase.
-// Il prévient donc les onglets ouverts, qui rejouent la file d'attente avec leurs droits.
-self.addEventListener('sync', e => {
-  if (e.tag !== 'kapya-sync') return;
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    .then(list => list.forEach(client => client.postMessage({ type: 'kp-sync' }))));
+// Reprise après coupure : le service worker rejoue la file d'attente même si l'application est fermée.
+// Il utilise le miroir de session déposé dans IndexedDB (jamais localStorage, inaccessible ici).
+// Limite honnête : le Background Sync n'existe que sur Chromium (Chrome/Edge/Android), pas sur Safari/iOS.
+const OFFLINE_DB = 'kapya-offline', OFFLINE_DB_VERSION = 2;
+function openOfflineDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(OFFLINE_DB, OFFLINE_DB_VERSION);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true });
+      if (!db.objectStoreNames.contains('sync')) db.createObjectStore('sync');
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+function idbRequest(store, mode, run) {
+  return openOfflineDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(store, mode), request = run(tx.objectStore(store));
+    tx.oncomplete = () => resolve(request.result);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  }));
+}
+const idbGet = (store, key) => idbRequest(store, 'readonly', s => s.get(key));
+const idbGetAll = store => idbRequest(store, 'readonly', s => s.getAll());
+const idbPut = (store, value, key) => idbRequest(store, 'readwrite', s => key === undefined ? s.put(value) : s.put(value, key));
+const idbDelete = (store, key) => idbRequest(store, 'readwrite', s => s.delete(key));
+
+function notifyClients(message) {
+  return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(list => list.forEach(client => client.postMessage(message)));
+}
+async function refreshMirroredSession(config, session) {
+  const response = await fetch(config.url + '/auth/v1/token?grant_type=refresh_token', {
+    method: 'POST',
+    headers: { apikey: config.key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: session.refresh })
+  });
+  if (!response.ok) throw new Error('Session à renouveler');
+  const data = await response.json();
+  const next = { access: data.access_token, refresh: data.refresh_token, uid: data.user?.id || session.uid,
+    exp: Date.now() + Number(data.expires_in || 3600) * 1000, updated: Date.now() };
+  await idbPut('sync', next, 'session');
+  await notifyClients({ type: 'kp-session' });
+  return next;
+}
+async function sendQueuedItem(config, item, token) {
+  const headers = { apikey: config.key, Authorization: 'Bearer ' + token };
+  if (item.method !== 'DELETE') headers['Content-Type'] = 'application/json';
+  if (item.prefer) headers.Prefer = item.prefer;
+  const response = await fetch(config.url + item.path, {
+    method: item.method || 'POST', headers,
+    body: item.method === 'DELETE' ? undefined : JSON.stringify(item.body)
+  });
+  let message = '';
+  if (!response.ok) {
+    try { const data = await response.json(); message = data?.msg || data?.message || data?.error_description || `Erreur ${response.status}`; }
+    catch { message = `Erreur ${response.status}`; }
+  }
+  return { ok: response.ok, status: response.status, message };
+}
+async function replayOfflineQueue() {
+  // Un onglet ouvert sait déjà se synchroniser : on évite deux renouvellements de jeton
+  // concurrents et deux envois de la même pièce. Le service worker n'agit que sans client.
+  const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  if (clients.length) return notifyClients({ type: 'kp-sync' });
+  const [config, mirrored] = await Promise.all([idbGet('sync', 'config'), idbGet('sync', 'session')]);
+  if (!config?.url || !config?.key || !mirrored?.refresh) return notifyClients({ type: 'kp-sync' });
+  let session = mirrored;
+  if (!session.access || Date.now() > Number(session.exp || 0) - 30000) {
+    try { session = await refreshMirroredSession(config, session); }
+    catch (error) { await notifyClients({ type: 'kp-sync' }); throw error; } // le navigateur réessaiera
+  }
+  const items = (await idbGetAll('outbox')).filter(item => item.status !== 'rejected' && item.status !== 'sent');
+  let interrupted = false;
+  for (const item of items) {
+    try {
+      let result = await sendQueuedItem(config, item, session.access);
+      if (result.status === 401) {
+        session = await refreshMirroredSession(config, session);
+        result = await sendQueuedItem(config, item, session.access);
+      }
+      // L'application a pu traiter la pièce entre-temps : ne jamais la ressusciter.
+      if (!(await idbGet('outbox', item.seq))) continue;
+      if (result.ok) await idbPut('outbox', { ...item, status: 'sent', sentAt: Date.now() });
+      else if (result.status === 401) { interrupted = true; break; } // session à renouveler : on n'abandonne pas la pièce
+      else await idbPut('outbox', { ...item, status: 'rejected', error: result.message,
+        swRollback: true, rejectedAt: Date.now() });
+    } catch { interrupted = true; break; } // toujours hors ligne : nouvelle tentative du navigateur
+  }
+  await notifyClients({ type: 'kp-sync' });
+  if (interrupted) throw new Error('Synchronisation interrompue : réseau indisponible');
+}
+self.addEventListener('sync', event => {
+  if (event.tag !== 'kapya-sync') return;
+  event.waitUntil(replayOfflineQueue().catch(async error => {
+    await notifyClients({ type: 'kp-sync' });
+    throw error; // échec réel : le navigateur reprogramme la tentative
+  }));
 });
 
 // Notifications push (téléphone, ordinateur)

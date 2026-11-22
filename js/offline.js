@@ -38,6 +38,15 @@ export function syncDecision({ online = true, pending = 0, lastAttempt = 0, atte
   return { run: false, reason: 'idle' };
 }
 
+// Profondeur de l'historique conservé sur l'appareil (copie locale hors ligne).
+// Les valeurs sont volontairement bornées : « tout » n'est pas raisonnable sur un téléphone.
+export const HISTORY_DEPTHS = [2000, 10000, 20000];
+export const DEFAULT_HISTORY_DEPTH = 2000;
+export function normalizeHistoryDepth(value) {
+  const depth = Math.floor(Number(value));
+  return HISTORY_DEPTHS.includes(depth) ? depth : DEFAULT_HISTORY_DEPTH;
+}
+
 export function formatAge(ms) {
   const value = Number(ms);
   if (!Number.isFinite(value) || value < 0) return '';

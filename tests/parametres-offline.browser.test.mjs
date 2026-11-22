@@ -34,7 +34,7 @@ test('Paramètres : la carte hors-ligne affiche l’état réel de l’appareil'
   await until(`document.querySelector('#offline-card') && document.querySelector('#offline-state table')`);
 
   const labels = await page.evaluate(`[...document.querySelectorAll('#offline-state th')].map(th => th.textContent)`);
-  assert.deepEqual(labels, ['Réseau', 'Dernière synchronisation', 'File d’attente', 'Copie locale', 'Numéros de facture']);
+  assert.deepEqual(labels, ['Réseau', 'Dernière synchronisation', 'File d’attente', 'Copie locale', 'Historique local', 'Application fermée', 'Numéros de facture']);
   assert.match(await page.evaluate(`document.querySelector('#offline-state').textContent`), /0 en attente · 0 refusée\(s\)/);
   assert.match(await page.evaluate(`document.querySelector('#offline-card').textContent`), /Mode démonstration/);
 
