@@ -1,8 +1,9 @@
 import { CFG } from './config.js';
 import { localStore as localStorage } from './storage.js';
 import { mountDemoBar } from './demo-ui.js';
-import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline, lastSyncTime } from './api.js';
+import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline, lastSyncTime, queueStats, syncMeta } from './api.js';
 import { clearCache } from './cache.js';
+import { syncDecision, SYNC_CHECK_MS } from './offline.js';
 import { renderAuth, renderOrg, renderMfa, recoveryFromLink } from './auth.js';
 import { mfaStatus } from './api.js';
 import { loadVat } from './vat.js';
@@ -176,6 +177,7 @@ function shell() {
   document.getElementById('lock-m').onclick = lockButton;
   if (CFG.demo) mountDemoBar();
   route(); updateSync();
+  startAutoSync();
   // Notifications : compteur sur la cloche, liste au clic
   const refreshBell = async () => {
     const { collectNotifications, renderNotifications } = await import('./notif-centre.js');
@@ -247,8 +249,30 @@ function placePageSearch() {
 }
 document.addEventListener('kp:rate', () => { const el = document.getElementById('rate'); if (el) el.textContent = rateChip(); });
 document.addEventListener('kp:sync', updateSync);
-addEventListener('online', async () => { updateSync(); await syncNow(); route(); });
+// Synchronisation automatique : au retour du réseau, au retour sur l'onglet, et toutes les minutes.
+// La décision (délai de reprise, période) est prise par un module pur et testable.
+let autoSyncTimer = null;
+async function autoSync() {
+  if (CFG.demo) return;
+  const queue = await queueStats().catch(() => ({ pending: 0, rejected: 0 }));
+  const meta = syncMeta();
+  const decision = syncDecision({ online: navigator.onLine, pending: queue.pending,
+    lastAttempt: meta.lastAttempt, attempts: meta.attempts, lastSync: lastSyncTime() });
+  if (!decision.run) return;
+  await syncNow();
+  updateSync();
+}
+function startAutoSync() {
+  if (autoSyncTimer) clearInterval(autoSyncTimer);
+  autoSyncTimer = setInterval(autoSync, SYNC_CHECK_MS);
+  autoSync();
+}
+addEventListener('online', async () => { updateSync(); await autoSync(); route(); });
 addEventListener('offline', updateSync);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) autoSync(); });
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', event => {
+  if (event.data?.type === 'kp-sync') autoSync();
+});
 addEventListener('hashchange', route);
 
 // Écran de bienvenue : affiché une seule fois par compte, à la première connexion sur cet appareil.

@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.50.3-build143';
+const VERSION = 'kapya-erp-1.50.4-build144';
 const SHELL = [
   './',
   './404.html',
@@ -52,6 +52,8 @@ const SHELL = [
   './js/i18n.js',
   './js/lock.js',
   './js/localdb.js',
+  './js/offline.js',
+  './js/offline-query.mjs',
   './js/modules/abonnes.js',
   './js/modules/accueil.js',
   './js/modules/achats.js',
@@ -140,6 +142,14 @@ self.addEventListener('fetch', e => {
   }).catch(() => caches.match(e.request).then(r => r || caches.match('./index.html'))));
 });
 
+
+// Reprise après coupure : le service worker ne possède pas la session Supabase.
+// Il prévient donc les onglets ouverts, qui rejouent la file d'attente avec leurs droits.
+self.addEventListener('sync', e => {
+  if (e.tag !== 'kapya-sync') return;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then(list => list.forEach(client => client.postMessage({ type: 'kp-sync' }))));
+});
 
 // Notifications push (téléphone, ordinateur)
 self.addEventListener('push', e => {
