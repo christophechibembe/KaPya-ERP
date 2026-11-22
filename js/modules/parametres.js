@@ -421,7 +421,7 @@ async function renderTeam(main, ctx) {
     ${languageCard()}
     ${installCard()}
     ${rateCard(ctx)}${section('Présentation du tableau de bord', dashboardModeCard(ctx), true)}
-    ${section('Votre formule', planCard(ctx))}${section('Reçus et logo (super administrateur)', receiptCard(ctx))}${section('Erreurs récentes (super administrateur)', errorsCard(ctx))}${section('Journal des actions (super administrateur)', auditCard(ctx))}${section('Fonctionnement de l’entreprise', businessCard(ctx), false)}${section('Mon compte et sécurité', securityCard() + aboutLink())}
+    ${section('Votre formule', planCard(ctx))}${section('TVA', vatCard(ctx))}${section('Reçus et logo (super administrateur)', receiptCard(ctx))}${section('Erreurs récentes (super administrateur)', errorsCard(ctx))}${section('Journal des actions (super administrateur)', auditCard(ctx))}${section('Fonctionnement de l’entreprise', businessCard(ctx), false)}${section('Mon compte et sécurité', securityCard() + aboutLink())}
     <details class="pref-sec"><summary>Membres</summary><section class="card set"><div class="set-main"><h2>Membres</h2><p class="muted">Les administrateurs peuvent changer le rôle des membres.</p><div id="members" class="team">Chargement…</div></div></section></details>
     <details class="pref-sec"><summary>Inviter un membre</summary><section class="card set"><div class="set-main"><h2>Inviter un membre</h2><p class="muted">Crée un code valable 7 jours. Le membre le saisit à l’inscription.</p></div>
       <form class="rf" id="inv"><label for="irole" class="sr">Rôle</label><select id="irole">${Object.keys(ROLES).filter(k => k !== 'admin').map(k => `<option value="${k}">${ROLES[k]}</option>`).join('')}</select><button class="btn" type="submit">Créer le code</button><p class="err" role="alert"></p></form>
@@ -429,6 +429,7 @@ async function renderTeam(main, ctx) {
     <section class="card set"><div class="set-main"><h2>Type de compte</h2><p class="muted">${esc(accountType(ctx))}</p></div></section>`;
   bindRate(main, ctx);
   bindInstall(main);
+  bindVat(main);
   bindSecurity(main, ctx);
   bindLanguage(main);
   bindDashboardMode(main, ctx);

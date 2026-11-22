@@ -11,7 +11,7 @@ alter table public.organizations alter column plan set default 'standard';
 create or replace function public.plan_allows(p_feature text) returns boolean language sql stable security definer set search_path = public as $$
   select case (select o.plan from public.organizations o where o.id = public.my_org())
     when 'premium' then true
-    when 'standard' then p_feature in ('depots','transferts','alertes','exports','sauvegarde','whatsapp')
+    when 'standard' then p_feature in ('depots','transferts','alertes','exports','comptabilite','sauvegarde','whatsapp')
     else false
   end
 $$;

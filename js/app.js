@@ -22,8 +22,8 @@ import { watchLanguage } from './i18n.js';
 import { initDashboardMode } from './dashboard-modes.js';
 initDashboardMode();
 
-const ROUTES = { abonnes: 'Abonnés', workers: 'Personnel et paiements', vente: 'Vente', facture: 'Vente avancée', accueil: 'Tableau de bord', ventes: 'Historique', proformas: 'Proformas', avoirs: 'Avoirs', retours: 'Retours', lots: 'Lots et péremption', bons: 'Bons de commande', credits: 'Crédits clients', acomptes: 'Acomptes clients', caisse: 'Clôture de caisse', historique: 'Historique des actions', sauvegarde: 'Sauvegarde', depots: 'Dépôts', alertes: 'Alertes et rappels', stocks: 'Produits & Stocks', achats: 'Achats', fournisseurs: 'Fournisseurs', clients: 'Clients', rapports: 'Rapports', exports: 'Exports comptables', parametres: 'Paramètres', plus: 'Plus' };
-const ICON = { workers: 'users', exports: 'download', abonnes: 'users', facture: 'invoice', accueil: 'grid', ventes: 'history', proformas: 'doc', vente: 'cart', avoirs: 'minus', retours: 'return', bons: 'clipboard', credits: 'card', acomptes: 'wallet', caisse: 'cash', historique: 'history', sauvegarde: 'database', depots: 'warehouse', alertes: 'bell', stocks: 'stock', achats: 'purchases', fournisseurs: 'truck', clients: 'user', rapports: 'chart', parametres: 'cog', plus: 'dots' };
+const ROUTES = { abonnes: 'Abonnés', workers: 'Personnel et paiements', vente: 'Vente', facture: 'Vente avancée', accueil: 'Tableau de bord', ventes: 'Historique', proformas: 'Proformas', avoirs: 'Avoirs', retours: 'Retours', lots: 'Lots et péremption', bons: 'Bons de commande', credits: 'Crédits clients', acomptes: 'Acomptes clients', caisse: 'Clôture de caisse', historique: 'Historique des actions', sauvegarde: 'Sauvegarde', depots: 'Dépôts', alertes: 'Alertes et rappels', stocks: 'Produits & Stocks', achats: 'Achats', fournisseurs: 'Fournisseurs', clients: 'Clients', rapports: 'Rapports', comptabilite: 'Comptabilité', exports: 'Exports comptables', parametres: 'Paramètres', plus: 'Plus' };
+const ICON = { workers: 'users', exports: 'download', abonnes: 'users', facture: 'invoice', accueil: 'grid', ventes: 'history', proformas: 'doc', vente: 'cart', avoirs: 'minus', retours: 'return', bons: 'clipboard', credits: 'card', acomptes: 'wallet', caisse: 'cash', historique: 'history', sauvegarde: 'database', depots: 'warehouse', alertes: 'bell', stocks: 'stock', achats: 'purchases', fournisseurs: 'truck', clients: 'user', rapports: 'chart', comptabilite: 'chart', parametres: 'cog', plus: 'dots' };
 const LOADERS = {
   accueil: () => import('./modules/accueil.js'),
   ventes: () => import('./modules/ventes.js'),
@@ -34,6 +34,7 @@ const LOADERS = {
   fournisseurs: () => import('./modules/fournisseurs.js'),
   clients: () => import('./modules/clients.js'),
   rapports: () => import('./modules/rapports.js'),
+  comptabilite: () => import('./modules/comptabilite.js'),
   parametres: () => import('./modules/parametres.js'),
   plus: () => import('./modules/plus.js'),
   facture: () => import('./modules/facture.js'),
@@ -60,7 +61,7 @@ const NAV_GROUPS = [
   ['Pilotage', ['accueil', 'alertes']],
   ['Ventes et encaissements', ['vente', 'ventes', 'proformas', 'avoirs', 'retours', 'credits', 'acomptes', 'caisse']],
   ['Clients et stock', ['clients', 'stocks', 'lots', 'depots', 'achats', 'bons', 'fournisseurs']],
-  ['Analyse', ['rapports', 'exports', 'historique']],
+  ['Analyse', ['rapports', 'comptabilite', 'exports', 'historique']],
   ['Administration', ['abonnes', 'workers', 'sauvegarde', 'parametres']],
 ];
 const navHtml = ctx => NAV_GROUPS.map(([title, keys]) => {

@@ -17,6 +17,7 @@ const MATRIX = {
   'fournisseurs.view': ['admin', 'manager', 'comptable', 'user'],
   'fournisseurs.write': ['admin', 'manager'],
   'rapports.view': ['admin', 'manager', 'comptable', 'user'],
+  'comptabilite.view': ['admin', 'manager', 'comptable'],
   'rapports.activity': ALL,
   'caisse.view': ['admin', 'manager', 'facturier', 'comptable'],
   'caisse.write': ['admin', 'manager', 'facturier'],
@@ -34,5 +35,5 @@ const MATRIX = {
 };
 export const can = (role, cap) => (MATRIX[cap] || []).includes(role);
 // Espace du menu -> droit de lecture requis (null = accessible à tous)
-const VIEW = { exports: 'rapports.view', facture: 'ventes.write', accueil: null, ventes: 'ventes.view', proformas: 'ventes.write', avoirs: 'ventes.cancel', retours: 'ventes.write', lots: 'stock.view', bons: 'achats.view', vente: 'ventes.write', credits: 'credits.view', acomptes: 'credits.view', stocks: 'stock.view', achats: 'achats.view', fournisseurs: 'fournisseurs.view', clients: 'clients.view', rapports: 'rapports.activity', caisse: 'caisse.view', historique: 'historique.view', sauvegarde: 'sauvegarde.export', workers: 'workers.view', depots: 'stock.view', parametres: 'taux.view', plus: null };
+const VIEW = { exports: 'rapports.view', facture: 'ventes.write', accueil: null, ventes: 'ventes.view', proformas: 'ventes.write', avoirs: 'ventes.cancel', retours: 'ventes.write', lots: 'stock.view', bons: 'achats.view', vente: 'ventes.write', credits: 'credits.view', acomptes: 'credits.view', stocks: 'stock.view', achats: 'achats.view', fournisseurs: 'fournisseurs.view', clients: 'clients.view', rapports: 'rapports.activity', comptabilite: 'comptabilite.view', caisse: 'caisse.view', historique: 'historique.view', sauvegarde: 'sauvegarde.export', workers: 'workers.view', depots: 'stock.view', parametres: 'taux.view', plus: null };
 export const canView = (role, key) => !VIEW[key] || can(role, VIEW[key]);
