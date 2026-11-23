@@ -7,7 +7,7 @@ import { isVersionConflict, conflictError } from './conflict.js';
 // (avec un identifiant unique, pour qu'une pièce envoyée deux fois ne soit enregistrée qu'une fois).
 import { CFG } from './config.js';
 import { demoDb } from './demo.js';
-import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll, CACHE_TTL_DAYS, mirrorSet, mirrorGet, mirrorDel } from './cache.js';
+import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll, CACHE_TTL_DAYS, mirrorSet, mirrorGet, mirrorDel, sweepCache } from './cache.js';
 import { localSelect } from './offline-query.mjs';
 import { normalizeHistoryDepth } from './offline.js';
 import { documentLines, stockDelta } from './offline-delete.mjs';
@@ -690,6 +690,15 @@ export async function selectArticlesWithTotal(qs) {
 // en attente jusqu'au retour de ce compte (les pièces sans uid sont d'anciennes pièces).
 const mine = it => !it.uid || it.uid === S?.uid;
 
+// Balayage des entrées de cache expirées, au plus une fois par jour, sans bloquer la synchronisation.
+const SWEEP_EVERY = 24 * 60 * 60 * 1000;
+function maybeSweepCache() {
+  const last = Number(localStorage.getItem('kp.lastSweep') || 0);
+  if (Date.now() - last < SWEEP_EVERY) return;
+  localStorage.setItem('kp.lastSweep', String(Date.now()));
+  sweepCache().catch(() => {});
+}
+
 export async function syncNow() {
   if (CFG.demo || syncing || !S || !navigator.onLine) return;
   syncing = true;
@@ -698,6 +707,7 @@ export async function syncNow() {
   try {
     await ensureToken();
     await ensureInvoiceRange().catch(() => {});
+    maybeSweepCache();
     // Le service worker a pu envoyer des pièces pendant que l'application était fermée.
     // « sent » : le serveur les a reçues, on termine le travail local (badges, cache) puis on les retire.
     // « rejected » par le service worker : la copie locale n'a pas encore été remise en état, on le fait ici.
