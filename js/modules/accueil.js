@@ -6,6 +6,7 @@ import { can } from '../roles.js';
 import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, nextMode as nextDashboardMode, setMode as setDashboardMode, MODE_LABELS as DASHBOARD_MODE_LABELS } from '../dashboard-modes.js';
 import { renderModernPage, renderModernContent, renderModernLoading, renderModernFailure, renderModernDetail, bindModernInteractions, paintModernComparisons, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
 import { previousPeriod, periodFigures, modernDetails } from '../dashboard-insights.mjs';
+import { pendingSaleRows, pendingSaleTotal } from '../offline-pending.mjs';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
 
 const isoDate = date => {
@@ -93,7 +94,7 @@ async function offlineBanner() {
   if (!off && !pend && !rej) return '';
   const t = lastSyncTime();
   const when = t ? new Date(t).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'inconnue';
-  return `<div class="card sync-note" role="status"><b>${off ? 'Hors ligne' : 'En attente d’envoi'}</b> · données du ${esc(when)}${pend ? ` · ${pend} opération(s) en attente, incluses dans le résumé du jour` : ''}${rej ? ` · <button type="button" class="lnk" data-rej-open><b>${rej} opération(s) refusée(s) : voir et corriger</b></button>` : ''}</div>`;
+  return `<div class="card sync-note" role="status"><b>${off ? 'Hors ligne' : 'En attente d’envoi'}</b> · données du ${esc(when)}${pend ? ` · ${pend} opération(s) en attente d'envoi ; les ventes en attente sont comptées dans les chiffres, avec la mention « En attente »` : ''}${rej ? ` · <button type="button" class="lnk" data-rej-open><b>${rej} opération(s) refusée(s) : voir et corriger</b></button>` : ''}</div>`;
 }
 
 
@@ -471,7 +472,15 @@ export async function render(main, ctx) {
       const ownerDailyCashAvailable = !canSeeDailySummary || Array.isArray(ownerDailyCash);
       // Comparaison sur la seule date : si la base renvoie un horodatage, « 2026-11-17T09:30 » ne doit pas être exclu de la journée du 17.
       const dayOnly = value => String(value ?? '').slice(0, 10);
-      const sales = salesRows.filter(sale => dayOnly(sale.sold_at) >= from && dayOnly(sale.sold_at) <= to);
+      const salesFromServer = salesRows.filter(sale => dayOnly(sale.sold_at) >= from && dayOnly(sale.sold_at) <= to);
+      // Ventes de cet appareil pas encore envoyées : sans elles, une vente faite hors ligne
+      // semble ne jamais arriver au tableau de bord. Elles portent la mention « en attente ».
+      const pendingItems = await pendingFor('sales').catch(() => []);
+      const pendingSales = pendingSaleRows(pendingItems, { from, to, shop: selectedShop, articles });
+      const pendingTodaySales = pendingSaleRows(pendingItems, { from: today, to: today, shop: selectedShop, articles });
+      // Même ordre que le serveur (date croissante), les pièces en attente après celles du serveur.
+      const sales = [...salesFromServer, ...pendingSales].sort((a, b) => dayOnly(a.sold_at).localeCompare(dayOnly(b.sold_at))
+        || (a.pending === b.pending ? 0 : a.pending ? 1 : -1));
       const purchases = purchaseRows.filter(purchase => dayOnly(purchase.bought_at) >= from && dayOnly(purchase.bought_at) <= to);
       const moves = moveRows.filter(move => move.created_at?.slice(0, 10) >= from && move.created_at?.slice(0, 10) <= to);
       const revenue = sales.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0);
@@ -481,16 +490,22 @@ export async function render(main, ctx) {
       const creditRevenue = creditSalesRows.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0);
       const salesCost = canSeeCosts && saleCostsAvailable ? sales.reduce((sum, sale) => sum + (sale.sale_lines || []).reduce((part, line) => {
         const snapshot = saleCostsByLine.get(line.id);
-        return part + Number(line.qty || 0) * Number(snapshot?.unit_cost_at_sale ?? 0);
+        // Vente en attente : aucun coût figé hors ligne, on estime au prix d'achat actuel.
+        return part + Number(line.qty || 0) * Number(line.pending ? line.articles?.price_buy ?? 0 : snapshot?.unit_cost_at_sale ?? 0);
       }, 0), 0) : 0;
-      const estimatedCostLines = canSeeCosts && saleCostsAvailable ? sales.flatMap(sale => sale.sale_lines || []).filter(line => saleCostsByLine.get(line.id)?.cost_is_estimated).length : 0;
+      const estimatedCostLines = canSeeCosts && saleCostsAvailable ? sales.flatMap(sale => sale.sale_lines || []).filter(line => line.pending || saleCostsByLine.get(line.id)?.cost_is_estimated).length : 0;
       const gross = revenue - salesCost;
       const currentStockValue = canSeeCosts ? articles.reduce((sum, article) => sum + Number(article.stock || 0) * Number(article.price_buy || 0), 0) : 0;
       const purchaseValue = purchases.reduce((sum, purchase) => sum + sumLines(purchase.purchase_lines, 'unit_cost'), 0);
       const pendTotals = to >= today ? await pendingTodayTotals(today) : { cash: 0, credit: 0, receipts: 0, count: 0 };
-      const dailyCreditValue = ownerDailySales.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0) + pendTotals.credit;
+      // Les ventes en attente du jour font déjà partie de `sales` : on ne les ajoute pas
+      // une deuxième fois via pendTotals. Seuls les encaissements de crédits faits hors
+      // ligne restent à ajouter, car ils n'ont aucune ligne serveur.
+      const pendingTodayCash = pendingTodaySales.filter(sale => sale.payment !== 'credit').reduce((sum, sale) => sum + pendingSaleTotal(sale), 0);
+      const pendingTodayCredit = pendingTodaySales.filter(sale => sale.payment === 'credit').reduce((sum, sale) => sum + pendingSaleTotal(sale), 0);
+      const dailyCreditValue = ownerDailySales.reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0) + pendingTodayCredit;
       const dailyReceiptValue = ownerDailyReceipts.reduce((sum, receipt) => sum + Number(receipt.amount || 0), 0) + pendTotals.receipts;
-      const dailyCashValue = (ownerDailyCash || []).reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0) + pendTotals.cash;
+      const dailyCashValue = (ownerDailyCash || []).reduce((sum, sale) => sum + sumLines(sale.sale_lines, 'unit_price'), 0) + pendingTodayCash;
       const offlineNote = await offlineBanner();
       const auditRows = await auditPromise;
       const ACTION_LABEL = { update: 'Modifiée', delete: 'Supprimée', insert: 'Créée' };
@@ -506,7 +521,7 @@ export async function render(main, ctx) {
       supplierPaymentsAll.forEach(payment => paidByPurchase.set(payment.purchase_id, (paidByPurchase.get(payment.purchase_id) || 0) + Number(payment.amount || 0)));
       const supplierDebt = supplierBalances.reduce((sum, balance) => sum + Math.max(Number(balance.opening_balance || 0) - (paidByPurchase.get(balance.purchase_id) || 0), 0), 0);
       const cashOut = supplierPaid + expenseTotal;
-      const cashNet = received + pendTotals.cash + pendTotals.receipts - cashOut;
+      const cashNet = received + pendTotals.receipts - cashOut;
       const outstanding = credits.reduce((sum, sale) => sum + Math.max(sumLines(sale.sale_lines, 'unit_price') - Number(sale.paid || 0), 0), 0);
       const lowStock = articles.filter(article => Number(article.stock) <= Number(article.min_stock));
       // Lots qui périment dans les 30 jours : alerte seulement, la vente n'est pas bloquée
@@ -519,10 +534,10 @@ export async function render(main, ctx) {
       const inflowBuckets = bucketData(from, to, movementIn, move => move.created_at, () => 1);
       const outflowBuckets = bucketData(from, to, movementOut, move => move.created_at, () => 1);
       const dateLabel = from === to ? fr(from) : `${fr(from)} – ${fr(to)}`;
-      const salesSub = `${sales.length} vente(s) · ${fcOnly(revenue)}`;
+      const salesSub = `${sales.length} vente(s)${pendingSales.length ? ` dont ${pendingSales.length} en attente` : ''} · ${fcOnly(revenue)}`;
       lastSummary = { sales, revenue, outstanding, lowStock, expiring, cashNet, canSeeCosts, from, to, dateText: dateLabel };
       const profitDetail = !saleCostsAvailable ? 'Configuration SQL des coûts manquante' : salesCost > 0 ? `Marge brute · ${revenue ? (gross / revenue * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '0'} %` : 'Aucun coût de vente enregistré sur cette période';
-      const costHint = canSeeCosts ? `<p class="owner-note">${!saleCostsAvailable ? 'Le calcul du bénéfice sera disponible après installation du script SQL « couts-et-tresorerie.sql » dans Supabase.' : `Le coût est figé au moment de la vente. ${estimatedCostLines ? `${estimatedCostLines} ligne(s) ancienne(s) utilisent une estimation basée sur le prix d’achat actuel.` : 'Les coûts des ventes affichées sont enregistrés au moment de la vente.'} Le résultat net déduit du bénéfice brut les dépenses saisies dans Caisse sur la période.`}</p>` : '';
+      const costHint = canSeeCosts ? `<p class="owner-note">${!saleCostsAvailable ? 'Le calcul du bénéfice sera disponible après installation du script SQL « couts-et-tresorerie.sql » dans Supabase.' : `Le coût est figé au moment de la vente. ${estimatedCostLines ? `${estimatedCostLines} ligne(s) utilisent une estimation basée sur le prix d'achat actuel (coût non figé ou vente en attente d'envoi).` : 'Les coûts des ventes affichées sont enregistrés au moment de la vente.'} Le résultat net déduit du bénéfice brut les dépenses saisies dans Caisse sur la période.`}</p>` : '';
       const recentMoves = moves.slice(0, 8);
       const recentCashOut = [
         ...supplierPayments.map(payment => ({ date: payment.paid_at, label: `Paiement ${payment.purchases?.number || 'fournisseur'} · ${payment.purchases?.suppliers?.name || 'Fournisseur'}`, amount: Number(payment.amount), type: 'Fournisseur' })),
@@ -581,7 +596,8 @@ export async function render(main, ctx) {
           amount: sumLines(sale.sale_lines, 'unit_price'),
           direction: 'in',
           tone: sale.payment === 'credit' ? 'blue' : 'green',
-          icon: 'sales'
+          icon: 'sales',
+          pending: Boolean(sale.pending)
         })),
         ...creditReceipts.map(payment => ({
           date: String(payment.paid_at || ''),
@@ -618,6 +634,7 @@ export async function render(main, ctx) {
         paymentsAvailable,
         blocks: { kpi: enabled.has('kpi'), charts: enabled.has('charts') },
         salesCount: sales.length,
+        pendingSalesCount: pendingSales.length,
         cashCount: cashSalesRows.length,
         creditCount: creditSalesRows.length,
         receiptsCount,
@@ -664,8 +681,8 @@ export async function render(main, ctx) {
             receipts: dailyReceiptValue,
             cashAvailable: ownerDailyCashAvailable,
             available: ownerDailyAvailable,
-            cashCount: (ownerDailyCash || []).length,
-            creditCount: ownerDailySales.length,
+            cashCount: (ownerDailyCash || []).length + pendingTodaySales.filter(sale => sale.payment !== 'credit').length,
+            creditCount: ownerDailySales.length + pendingTodaySales.filter(sale => sale.payment === 'credit').length,
             receiptCount: ownerDailyReceipts.length
           } : null
         }

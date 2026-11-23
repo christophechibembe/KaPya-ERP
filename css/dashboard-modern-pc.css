@@ -738,3 +738,11 @@ body.kp-dashboard-page.dashboard-mode-pc main {
 :root[data-theme="dark"] .md-detail-note { color: var(--mdp-mute); }
 :root[data-theme="dark"] .md-detail-total { color: var(--mdp-blue); }
 
+
+/* Vente enregistrée sur l'appareil mais pas encore envoyée. */
+.mdp-act-pending {
+  font-size: .68rem; font-weight: 700; letter-spacing: .02em;
+  color: #B45309; background: #FEF3C7; border-radius: 999px;
+  padding: .1rem .45rem; width: fit-content; margin-top: .15rem;
+}
+:root[data-theme="dark"] .mdp-act-pending { color: #FCD34D; background: rgba(245, 158, 11, .18); }

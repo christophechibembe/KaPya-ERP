@@ -360,7 +360,7 @@ const EN = {
   // Abonnés et plateforme.
   'Abonnés': 'Subscribers', 'Vue d’ensemble': 'Overview', 'Entreprises': 'Businesses', 'Toutes': 'All',
   'Toutes les entreprises de la plateforme. Une entreprise suspendue ou expirée n’a plus accès à ses données.': 'All businesses on the platform. A suspended or expired business no longer has access to its data.',
-  'Actif': 'Active', 'Actives': 'Active', 'Activé': 'Activated', 'En attente': 'Pending', 'Expirée': 'Expired', 'Suspendu': 'Suspended', 'Suspendues': 'Suspended', 'Bientôt': 'Soon',
+  'Actif': 'Active', 'Actives': 'Active', 'Activé': 'Activated', 'En attente': 'Pending', 'En attente d\'envoi': 'Waiting to send', 'Expirée': 'Expired', 'Suspendu': 'Suspended', 'Suspendues': 'Suspended', 'Bientôt': 'Soon',
   'Échéance': 'Due date', 'Échéance ≤ 7 j': 'Due within 7 days', 'Formule': 'Plan', 'Code': 'Code', 'Codes créés': 'Codes created', 'Créé le': 'Created on', 'Reçu le': 'Received on',
   'Nouvel abonné': 'New subscriber', 'Rechercher une entreprise': 'Search for a business', 'Rechercher un code': 'Search for a code', 'Exporter (CSV)': 'Export (CSV)',
   'Créez un code pour une nouvelle entreprise. L’abonné crée son compte, puis saisit ce code.': 'Create a code for a new business. The subscriber creates their account, then enters this code.',
