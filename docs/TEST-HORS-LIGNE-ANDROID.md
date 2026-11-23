@@ -8,6 +8,9 @@ verrouillage au retour d'arrière-plan.
 
 <https://kapya-erp.pages.dev/>
 
+L'installation et l'usage courant sur Android sont décrits dans le guide utilisateur
+(`guide.html`, section 12).
+
 Durée : 10 à 15 minutes. À faire une fois, puis à refaire après toute modification
 du service worker ou de la file d'attente.
 
