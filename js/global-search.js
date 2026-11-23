@@ -34,7 +34,8 @@ async function searchSales(term) {
     rows = all.filter(s => foldKey(s.number).includes(t) || foldKey(s.customer_label).includes(t) || foldKey(s.customers?.name).includes(t)).slice(0, 6);
   }
   const items = (Array.isArray(rows) ? rows : []).map(s => ({ label: `Vente ${s.number || ''}`.trim(), sub: [s.customer_label || s.customers?.name, s.sold_at ? String(s.sold_at).slice(0, 10) : ''].filter(Boolean).join(' · '), go: '#/ventes', q: s.number || '' }));
-  return { offline: false, items };
+  // Hors connexion, seules les ventes conservées sur l'appareil sont fouillées : l'interface le signale.
+  return { offline: !navigator.onLine, items };
 }
 
 async function searchAll(term, pages, parties) {
@@ -50,7 +51,7 @@ async function searchAll(term, pages, parties) {
     { title: 'Produits', items: products.map(a => ({ label: articleLabel(a), sub: `Réf. ${a.sku || '—'}`, go: '#/stocks', q: a.name })) },
     { title: 'Clients', items: customers.map(c => ({ label: c.name, sub: c.phone || 'Client', go: '#/clients', q: c.name })) },
     { title: 'Fournisseurs', items: suppliers.map(s => ({ label: s.name, sub: s.phone || 'Fournisseur', go: '#/fournisseurs', q: s.name })) },
-    { title: 'Ventes', items: sales.items, note: sales.offline ? 'Indisponible hors connexion' : '' },
+    { title: 'Ventes', items: sales.items, note: sales.offline ? 'Recherche limitée aux ventes récentes enregistrées sur cet appareil hors connexion' : '' },
     { title: 'Pages', items: pageHits.map(p => ({ label: p.label, sub: 'Ouvrir l’écran', go: `#/${p.key}`, q: '' })) }
   ];
   return groups.filter(g => g.items.length || g.note);

@@ -49,12 +49,16 @@ export async function render(main, ctx) {
   async function load() {
     $('#credit-table').setAttribute('aria-busy', 'true');
     try {
-      const [sales, organizations] = await Promise.all([
+      const [sales, notes, organizations] = await Promise.all([
         // Liste complète des crédits de l'entreprise (toutes boutiques), même pour un facturier ; repli sur la requête normale hors ligne.
          db.rpc('credit_sales_all').catch(() => db.select('sales', 'select=id,customer_id,number,sold_at,customer_label,payment,paid,usd_cdf,customers(name,phone),sale_lines(qty,unit_price,articles(sku,name)),sale_payments(id,amount,paid_at,kind,created_at,customer_deposit_id,customer_deposits(receipt_number))&payment=eq.credit&order=sold_at.desc,created_at.desc')),
+        // Le repli hors ligne ne renvoie pas credit_notes_total : les avoirs viennent de la copie locale.
+        db.select('credit_notes', 'select=sale_id,total_usd').catch(() => []),
         ownOrgRows('name,address,phone,email,tax_id,rc,logo,receipt_footer').catch(() => [])
       ]);
       org = organizations[0] || {};
+      const creditedBySale = new Map();
+      (Array.isArray(notes) ? notes : []).forEach(note => creditedBySale.set(note.sale_id, (creditedBySale.get(note.sale_id) || 0) + Number(note.total_usd || 0)));
       const creditSales = sales.filter(sale => sale.payment === 'credit');
       rows = creditSales.map(sale => {
         const events = sale.sale_payments || [];
@@ -65,7 +69,8 @@ export async function render(main, ctx) {
         const initial = Math.max(paid - recorded, 0);
         if (initial > 0.005) events.push({ id: `opening-${sale.id}`, amount: initial, paid_at: sale.sold_at, kind: 'initial' });
         const total = totalOf(sale);
-        const credited = Number(sale.credit_notes_total) || 0;
+        const credited = sale.credit_notes_total !== undefined && sale.credit_notes_total !== null
+          ? Number(sale.credit_notes_total) : (creditedBySale.get(sale.id) || 0);
         return { ...sale, total, paid, credited, balance: Math.max(total - paid - credited, 0), customer: sale.customers?.name || sale.customer_label || 'Client comptoir', phone: sale.customers?.phone || '', sale_payments: events };
       });
       draw();
@@ -131,7 +136,7 @@ export async function render(main, ctx) {
       const cancel = event.target.closest('[data-cancel-payment]');
       if (print) {
         const payment = payments.find(item => item.id === print.dataset.printPayment);
-        if (payment) printCreditPaymentReceipt({ org: org.name || 'KaPya ERP', info: org, number: paymentReceiptNumber(sale, payment), invoiceNumber: sale.number || '—', client: sale.customer, date: payment.paid_at, amount: Number(payment.amount), total: sale.total, paid: Number(print.dataset.paidAfter), remaining: Math.max(sale.total - Number(print.dataset.paidAfter), 0), rate: sale.usd_cdf }, '85');
+        if (payment) printCreditPaymentReceipt({ org: org.name || 'KaPya ERP', info: org, number: paymentReceiptNumber(sale, payment), invoiceNumber: sale.number || '—', client: sale.customer, date: payment.paid_at, amount: Number(payment.amount), total: sale.total, paid: Number(print.dataset.paidAfter), remaining: Math.max(sale.total - sale.credited - Number(print.dataset.paidAfter), 0), rate: sale.usd_cdf }, '85');
       } else if (edit && writable) {
         const payment = payments.find(item => item.id === edit.dataset.editPayment);
         if (payment) { $('#credit-dlg').close(); editPayment(sale, payment); }

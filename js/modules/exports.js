@@ -17,14 +17,21 @@ const withWarehouse = (table, cols, filter) =>
 
 // Chaque fonction renvoie la liste (en-tête inclus) ; Excel et PDF en sont deux sorties.
 async function salesRows(from, to) {
-  const sales = await withWarehouse('sales', 'id,number,sold_at,payment,paid,customer_label,customers(name),sale_lines(qty,unit_price)',
-    `and=(sold_at.gte.${from},sold_at.lte.${to})&order=sold_at.asc,number.asc`);
+  const [sales, notes] = await Promise.all([
+    withWarehouse('sales', 'id,number,sold_at,payment,paid,customer_label,customers(name),sale_lines(qty,unit_price)',
+      `and=(sold_at.gte.${from},sold_at.lte.${to})&order=sold_at.asc,number.asc`),
+    // Les avoirs réduisent le reste dû, comme sur l'écran Crédits et la facture imprimée.
+    db.select('credit_notes', 'select=sale_id,total_usd').catch(() => [])
+  ]);
+  const creditedBySale = new Map();
+  (Array.isArray(notes) ? notes : []).forEach(note => creditedBySale.set(note.sale_id, (creditedBySale.get(note.sale_id) || 0) + Number(note.total_usd || 0)));
   const rows = [['Numéro', 'Date', 'Client', 'Dépôt', 'Mode de paiement', 'Total (USD)', 'Versé (USD)', 'Reste dû (USD)']];
   for (const s of sales) {
     const total = r2(sum(s.sale_lines, l => Number(l.qty) * Number(l.unit_price)));
     const paid = r2(Number(s.paid || 0));
+    const credited = r2(creditedBySale.get(s.id) || 0);
     rows.push([s.number || '', s.sold_at, s.customers?.name || s.customer_label || 'Client particulier', s.warehouses?.name || '',
-      s.payment === 'credit' ? 'Crédit' : 'Espèces', total, paid, r2(Math.max(total - paid, 0))]);
+      s.payment === 'credit' ? 'Crédit' : 'Espèces', total, paid, r2(Math.max(total - paid - credited, 0))]);
   }
   return rows;
 }

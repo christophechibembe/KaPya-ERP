@@ -4,12 +4,16 @@ import { ownOrgRows } from './own-org.js';
 import { db } from './api.js';
 import { isDemo, demoMark } from './demo-mode.js';
 
-const safe = value => {
+// Neutralise les débuts de cellule qu'un tableur interprète comme une formule :
+// =, +, @, -, ainsi qu'une tabulation ou un retour chariot en tête.
+// Un nombre négatif simple (-5, -5,25) reste un nombre et n'est pas préfixé.
+export const excelSafe = value => {
   if (value == null) return '';
   const text = String(value);
-  // Évite qu'un libellé importé soit interprété comme une formule par un tableur.
-  return /^[\s]*[=+@]/.test(text) ? `'${text}` : text;
+  const formula = /^[\s]*[=+@]/.test(text) || /^[\t\r]/.test(text) || /^[\s]*-(?!\d+(?:[.,]\d+)?\s*$)/.test(text);
+  return formula ? `'${text}` : text;
 };
+const safe = excelSafe;
 const html = value => safe(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const titleCase = value => value.replace(/[-_]+/g, ' ').replace(/\b\w/g, letter => letter.toLocaleUpperCase('fr'));
 

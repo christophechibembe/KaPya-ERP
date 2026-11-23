@@ -88,3 +88,18 @@ test('détails : les indicateurs protégés sont absents et une panne de paiemen
   assert.equal(details.stockValue, undefined);
   assert.equal(details.paymentsReceived.available, false);
 });
+
+test('créances : les avoirs réduisent le solde, le détail et son total', () => {
+  const credits = [
+    { id: 'a', number: 'CREDIT-A', sold_at: '2026-11-21', paid: 30, credit_notes_total: 20, sale_lines: [{ qty: 1, unit_price: 100 }] },
+    { id: 'b', number: 'CREDIT-B', sold_at: '2026-11-20', paid: 0, credit_notes_total: 150, sale_lines: [{ qty: 1, unit_price: 100 }] }
+  ];
+  // Créance réelle : 100 - 30 - 20 = 50. La seconde facture est soldée par son avoir.
+  const model = { outstanding: 50, canSeeCosts: false, paymentsAvailable: true, saleCostsAvailable: true };
+  const details = modernDetails(model, {
+    sales: [], credits, payments: [], deposits: [], supplierPayments: [], expenses: [],
+    articles: [], costs: new Map(), pending: { cash: 0, receipts: 0 }
+  });
+  assert.deepEqual(details.outstanding.rows.map(row => row.amount), [50]);
+  assert.equal(details.outstanding.rows.reduce((sum, row) => sum + row.amount, 0), details.outstanding.total);
+});
