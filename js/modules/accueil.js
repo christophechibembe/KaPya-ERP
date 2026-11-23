@@ -7,7 +7,7 @@ import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, n
 import { renderModernPage, renderModernContent, renderModernLoading, renderModernFailure, renderModernDetail, bindModernInteractions, paintModernComparisons, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
 import { previousPeriod, periodFigures, modernDetails } from '../dashboard-insights.mjs';
 import { creditBalance } from '../sale-math.js';
-import { pendingSaleRows, pendingSaleTotal } from '../offline-pending.mjs';
+import { pendingSaleRows, pendingSaleTotal, pendingCreditRows } from '../offline-pending.mjs';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
 
 const isoDate = date => {
@@ -486,6 +486,9 @@ export async function render(main, ctx) {
       const pendingItems = await pendingFor('sales').catch(() => []);
       const pendingSales = pendingSaleRows(pendingItems, { from, to, shop: selectedShop, articles });
       const pendingTodaySales = pendingSaleRows(pendingItems, { from: today, to: today, shop: selectedShop, articles });
+      // Créances nées hors ligne : ventes à crédit en attente, moins les versements
+      // de crédit en attente sur ces mêmes ventes (aucun double comptage).
+      const pendingCredits = pendingCreditRows(pendingItems, await pendingOps('record_credit_payment').catch(() => []), { shop: selectedShop });
       // Même ordre que le serveur (date croissante), les pièces en attente après celles du serveur.
       const sales = [...salesFromServer, ...pendingSales].sort((a, b) => dayOnly(a.sold_at).localeCompare(dayOnly(b.sold_at))
         || (a.pending === b.pending ? 0 : a.pending ? 1 : -1));
@@ -530,7 +533,8 @@ export async function render(main, ctx) {
       const supplierDebt = supplierBalances.reduce((sum, balance) => sum + Math.max(Number(balance.opening_balance || 0) - (paidByPurchase.get(balance.purchase_id) || 0), 0), 0);
       const cashOut = supplierPaid + expenseTotal;
       const cashNet = received + pendTotals.receipts - cashOut;
-      const outstanding = credits.reduce((sum, sale) => sum + creditBalance(sumLines(sale.sale_lines, 'unit_price'), Number(sale.paid || 0), Number(sale.credit_notes_total || 0)), 0);
+      const outstanding = credits.reduce((sum, sale) => sum + creditBalance(sumLines(sale.sale_lines, 'unit_price'), Number(sale.paid || 0), Number(sale.credit_notes_total || 0)), 0)
+        + pendingCredits.reduce((sum, sale) => sum + sale.balance, 0);
       const lowStock = articles.filter(article => Number(article.stock) <= Number(article.min_stock));
       // Lots qui périment dans les 30 jours : alerte seulement, la vente n'est pas bloquée
       const expiryLimit = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
@@ -695,7 +699,7 @@ export async function render(main, ctx) {
           } : null
         }
       };
-      const source = { sales, credits, payments: customerPayments, deposits: customerDeposits, supplierPayments, expenses, articles, costs: saleCostsByLine, pending: pendTotals };
+      const source = { sales, credits, payments: customerPayments, deposits: customerDeposits, supplierPayments, expenses, articles, costs: saleCostsByLine, pending: pendTotals, pendingCredits };
       modernModel.details = modernDetails(modernModel, source);
       const modernPcHtml = renderModernContent(modernModel, 'modern_pc');
       const modernMobileHtml = renderModernContent(modernModel, 'modern_mobile');

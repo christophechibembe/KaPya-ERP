@@ -1,8 +1,14 @@
+import { creditBalance } from './sale-math.js';
+
 // Ventes enregistrées sur cet appareil et pas encore envoyées au serveur.
 // Le tableau de bord doit les compter : sinon une vente faite hors ligne semble
 // ne jamais arriver, alors qu'elle est bien dans la file d'attente et dans
 // l'historique. Elles portent la mention « en attente » et quittent ces calculs
 // dès que la file est vidée, pour ne jamais compter deux fois.
+// Les créances ne font pas exception : une vente à crédit saisie hors ligne est
+// un montant réellement dû. Elle est calculée à part des ventes déjà arrivées
+// au serveur (renvoyées par la base), pour ne jamais compter deux fois ni
+// oublier un versement déjà enregistré localement.
 
 export const PENDING_SALE_LABEL = 'En attente';
 
@@ -75,4 +81,38 @@ export function pendingSaleCost(rows) {
 
 export function pendingLineCount(rows) {
   return (rows || []).reduce((count, sale) => count + (sale.sale_lines || []).length, 0);
+}
+
+// Créances nées hors ligne : une vente à crédit en attente est un montant dû
+// réel, et un versement de crédit en attente le réduit déjà. Les paiements
+// rattachés à une vente déjà au serveur sont ignorés : la copie locale en a
+// déjà tenu compte, les compter ici ferait le double.
+export function pendingCreditRows(items, payments = [], { shop = '' } = {}) {
+  const sales = new Map();
+  for (const item of items || []) {
+    if (!item || item.fn !== 'create_sale') continue;
+    // Une pièce refusée est annulée localement ; une pièce envoyée est au serveur.
+    if (item.status === 'rejected' || item.status === 'sent') continue;
+    const body = item.body || {};
+    if (body.p_payment !== 'credit') continue;
+    if (shop && body.p_warehouse !== shop) continue;
+    const id = body.p_id;
+    if (!id) continue;
+    sales.set(id, {
+      id,
+      number: body.p_number || '',
+      sold_at: dayOnly(body.p_date),
+      total: pendingLineTotal(body.p_lines),
+      paid: Number(body.p_paid) || 0
+    });
+  }
+  for (const item of payments || []) {
+    if (!item || item.fn !== 'record_credit_payment') continue;
+    if (item.status === 'rejected' || item.status === 'sent') continue;
+    const sale = sales.get(item.body?.p_sale_id);
+    if (sale) sale.paid += Number(item.body?.p_amount) || 0;
+  }
+  return [...sales.values()]
+    .map(sale => ({ ...sale, balance: creditBalance(sale.total, sale.paid) }))
+    .sort((a, b) => a.sold_at.localeCompare(b.sold_at) || String(a.number).localeCompare(String(b.number)));
 }

@@ -7,6 +7,7 @@ import { buildFullReport } from '../full-report.js';
 import { can } from '../roles.js';
 import { companyLogo } from '../print.js';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
+import { shopReturnFilter, shopCreditNoteSelect, shopCreditNoteFilter } from '../report-scope.mjs';
 
 const today = () => new Date().toLocaleDateString('sv-SE');
 const fr = value => value ? new Date(`${value}T12:00:00`).toLocaleDateString('fr-FR') : '—';
@@ -404,10 +405,13 @@ export async function render(main, ctx) {
 
   // Période : ventes, retours, avoirs, dépenses et résultat net
   async function periodFigures(from, to) {
+    const shop = getShop();
     const [sales, returns, notes, expenseRows] = await Promise.all([
       db.select('sales', `select=id,number,sold_at,paid,payment,customer_label,customers(name),sale_lines(qty,unit_price,unit_cost,articles(id,sku,name,unit,price_buy))&sold_at=gte.${from}&sold_at=lte.${to}${shopSalesFilter()}&order=sold_at.desc`),
-      db.select('customer_returns', `select=sale_id,returned_on,total_usd,customer_return_lines(qty,unit_price,articles(id,price_buy))&returned_on=gte.${from}&returned_on=lte.${to}`).catch(() => []),
-      db.select('credit_notes', `select=sale_id,total_usd,issued_on&issued_on=gte.${from}&issued_on=lte.${to}`).catch(() => []),
+      // Retours et avoirs suivent la boutique choisie : sinon le résultat net
+      // mélangerait les boutiques pendant que les ventes sont filtrées.
+      db.select('customer_returns', `select=sale_id,returned_on,total_usd,customer_return_lines(qty,unit_price,articles(id,price_buy))&returned_on=gte.${from}&returned_on=lte.${to}${shopReturnFilter(shop)}`).catch(() => []),
+      db.select('credit_notes', `${shopCreditNoteSelect('select=sale_id,total_usd,issued_on', shop)}&issued_on=gte.${from}&issued_on=lte.${to}${shopCreditNoteFilter(shop)}`).catch(() => []),
       db.select('business_expenses', `select=id,amount&paid_at=gte.${from}&paid_at=lte.${to}`).catch(() => [])
     ]);
     // Coût de chaque article vendu dans chaque facture : sert à remettre le coût des articles retournés

@@ -531,4 +531,47 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     assert.match(afterSend, /3 vente\(s\)/);
     assert.deepEqual(page.errors, []);
   });
+
+  await t.test('une vente à crédit en attente figure dans les créances, versement déduit', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc', role: 'manager' })`);
+    const creditSale = await page.evaluate(`window.addPendingSale({ qty: 1, unit: 50, payment: 'credit' })`);
+    await page.evaluate(`window.fireSync()`);
+    assert.equal(await page.evaluate(`window.waitFor('50,00 $')`), true,
+      'la créance née hors ligne doit apparaître');
+    const kpiText = await page.evaluate(`document.querySelector('[data-md-kpi=outstanding]')?.textContent || ''`);
+    assert.match(kpiText, /Créances clients restantes/);
+    assert.match(kpiText, /50,00 \$/);
+
+    // Le détail explique la ligne et signale qu'elle est encore en attente d'envoi.
+    await page.evaluate(`document.querySelector('[data-md-detail=outstanding]').click()`);
+    const detail = await page.evaluate(`document.querySelector('#owner-dialog').textContent`);
+    assert.match(detail, /50,00 \$/);
+    assert.match(detail, /ATT-1/);
+    assert.match(detail, /En attente/);
+    await page.evaluate(`document.querySelector('#owner-dialog #c').click()`);
+
+    // Versement de crédit saisi hors ligne : la créance diminue, sans double comptage.
+    await page.evaluate(`window.addPendingPayment({ saleId: ${JSON.stringify(creditSale)}, amount: 20 })`);
+    await page.evaluate(`window.fireSync()`);
+    assert.equal(await page.evaluate(`window.waitFor('30,00 $')`), true,
+      'le versement en attente doit réduire la créance');
+    assert.match(await page.evaluate(`document.querySelector('[data-md-kpi=outstanding]')?.textContent || ''`), /30,00 \$/);
+
+    // Envoi terminé : la vente devient une créance du serveur, le total ne double pas.
+    await page.evaluate(`window.fixture.pendingSales = []; window.fixture.pendingPayments = [];
+      window.addSale({ qty: 1, unit: 50, payment: 'credit', paid: 20 }); window.fireSync()`);
+    assert.equal(await page.evaluate(`new Promise(resolve => {
+      const end = Date.now() + 6000;
+      const tick = () => {
+        const value = document.querySelector('[data-md-kpi=outstanding]')?.textContent || '';
+        if (!/En attente/.test(value)) return resolve(value);
+        if (Date.now() > end) return resolve('timeout');
+        setTimeout(tick, 50);
+      };
+      tick();
+    })`).then(value => value !== 'timeout'), true, 'la mention en attente doit disparaître');
+    assert.match(await page.evaluate(`document.querySelector('[data-md-kpi=outstanding]')?.textContent || ''`), /30,00 \$/,
+      'la créance du serveur remplace la vente en attente sans comptage double');
+    assert.deepEqual(page.errors, []);
+  });
 });
