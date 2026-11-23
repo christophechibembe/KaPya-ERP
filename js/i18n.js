@@ -996,47 +996,355 @@ const EN = {
   'Ouvrez cet écran une fois en ligne pour l\'enregistrer sur le téléphone.': 'Open that screen once while online to save it on the phone.',
   'Le code de verrouillage est oublié': 'The lock code is forgotten',
   'Touchez': 'Tap',
-  'sur l\'écran verrouillé, reconnectez-vous avec votre mot de passe, puis choisissez un nouveau code.': 'on the lock screen, sign in again with your password, then choose a new code.'
+  'sur l\'écran verrouillé, reconnectez-vous avec votre mot de passe, puis choisissez un nouveau code.': 'on the lock screen, sign in again with your password, then choose a new code.',
+  'Aide pour cet écran': 'Help for this screen',
+  'TVA historisée par pièce et lien retour-avoir': 'VAT recorded per document and credit-note return link',
+  'Client comptoir': 'Walk-in customer',
+  'Gérant': 'Manager',
+  'Dépôts (plusieurs boutiques)': 'Deposits (multiple stores)',
+  'Transferts entre dépôts': 'Transfers between stores',
+  'Comptabilité et TVA': 'Accounting and VAT',
+  'Sauvegarde et restauration': 'Backup and restore',
+  'Envoi par WhatsApp': 'Sending via WhatsApp',
+  'Restauration des données': 'Data restore',
+  'Exports PDF': 'PDF exports',
+  'Aucun acompte enregistré.': 'No deposit recorded.',
+  'Valeur du stock (prix d’achat)': 'Stock value (purchase price)',
+  'Vos fournisseurs et leurs coordonnées.': 'Your suppliers and their contact details.',
+  'À réapprovisionner': 'To restock',
+  'Annuler la pièce': 'Cancel the record',
+  'Acompte / crédit': 'Deposit / credit',
+  'Variation (positive = entrée, négative = sortie)': 'Change (positive = in, negative = out)',
+  'Commerce': 'Retail',
+  'Commerce général': 'General retail',
+  'Alimentation et boissons': 'Food and beverages',
+  'Services (sans stock)': 'Services (no stock)',
+  'Restauration': 'Food service',
+  'Salon de coiffure': 'Hair salon',
+  '2 000 pièces (standard)': '2,000 records (standard)',
+  '10 000 pièces (étendu)': '10,000 records (extended)',
+  '20 000 pièces (maximum)': '20,000 records (maximum)',
+  'au': 'to',
+  'Cette vente sera enregistrée comme une vente en espèces.': 'This sale will be recorded as a cash sale.',
+  'Dates, dépôt, remise, acompte. Numéro attribué automatiquement.': 'Dates, warehouse, discount, deposit. Number assigned automatically.',
+  'Enregistrer la facture': 'Save the invoice',
+  'Nom du client…': 'Customer name…',
+  'Opérateur mobile money': 'Mobile money operator',
+  'Passer au thème clair': 'Switch to light theme',
+  'Traduction anglaise complète': 'Complete English translation',
+  'Rechercher un produit ou scanner son code-barres…': 'Search for a product or scan its barcode…',
+  'Permet de facturer hors connexion sans doublon.': 'Lets you invoice offline without duplicates.',
+  'Aucune plage réservée : le serveur numérotera à l’envoi.': 'No range reserved: the server will number it when sent.',
+  'Plage épuisée : une nouvelle plage sera demandée dès que le réseau revient.': 'Range used up: a new range will be requested as soon as the network returns.',
+  'Commandes de la démonstration': 'Demo orders',
+  'Recherche générale': 'Global search',
+  'Recherche générale (Ctrl+K)': 'Global search (Ctrl+K)',
+  'Plus d’actions': 'More actions',
+  'Recharger les chiffres maintenant': 'Refresh the figures now',
+  'Changer la présentation du tableau de bord': 'Change the dashboard layout',
+  'Ventes par jour sur la période': 'Sales per day over the period',
+  'Vente': 'Sale',
+  'Achats et fournisseurs': 'Purchases and suppliers',
+  'Stock et péremption': 'Stock and expiry',
+  'Dernière vente :': 'Last sale:',
+  'Dernière vente (en attente d\'envoi) :': 'Last sale (waiting to be sent):',
+  'Ventes cash, paiements de crédit et dépôts reçus': 'Cash sales, credit payments and deposits received',
+  'Entrées moins sorties enregistrées': 'Recorded inflows minus outflows',
+  'Coût d’achat enregistré au moment de la vente': 'Purchase cost recorded at the time of sale',
+  'Le coût est figé au moment de la vente. Les coûts des ventes affichées sont enregistrés au moment de la vente. Le résultat net déduit du bénéfice brut les dépenses saisies dans Caisse sur la période.': 'The cost is locked in at the time of sale. The costs of the sales shown are recorded at the time of sale. Net income deducts the expenses entered in Cash for the period.',
+  'Aucune vente enregistrée': 'No sale recorded',
+  'Crédits clients restant à recouvrer :': 'Customer credit still to collect:',
+  'Paiement et acompte': 'Payment and deposit',
+  'Saisie de la vente': 'Sale entry',
+  'Articles du panier': 'Cart items',
+  'Actions de la vente': 'Sale actions',
+  'Ajoutez des articles pour enregistrer et imprimer': 'Add items to save and print',
+  'Choisir un client enregistré': 'Choose a saved customer',
+  'Nom du client ou laisser vide : Client comptoir': 'Customer name, or leave blank: Walk-in customer',
+  'Rechercher un article (nom, référence ou code-barres)…': 'Search for an item (name, reference or barcode)…',
+  'Quantité à ajouter': 'Quantity to add',
+  'Diminuer la quantité': 'Decrease quantity',
+  'Augmenter la quantité': 'Increase quantity',
+  'Acompte client imputé': 'Customer deposit applied',
+  'Aperçu de la facture': 'Invoice preview',
+  'Enregistrer la vente puis imprimer son reçu': 'Save the sale, then print its receipt',
+  'Ajouter une unité': 'Add a unit',
+  'Ex. ouverture de la journée': 'E.g. opening the day',
+  'Ex. salaire de octobre': 'E.g. October salary',
+  'article': 'item',
+  'Archiver (masquer de la liste, l\'historique est conservé)': 'Archive (hide from the list, history is kept)',
+  'Archiver (masquer, l\'historique est conservé)': 'Archive (hide, history is kept)',
+  'Rechercher dans ventes': 'Search in sales',
+  'Rechercher dans achats': 'Search in purchases',
+  'Rechercher clients': 'Search customers',
+  'Rechercher fournisseurs': 'Search suppliers',
+  'Rechercher une date, un numéro, un client ou un article…': 'Search by date, number, customer or item…',
+  'Rechercher un reçu ou un client…': 'Search a receipt or a customer…',
+  'Rechercher par référence ou désignation': 'Search by reference or name',
+  'Entreprise, code ou statut…': 'Company, code or status…',
+  'Filtrer par statut': 'Filter by status',
+  'Filtres du tableau de bord': 'Dashboard filters',
+  'Filtres et export': 'Filters and export',
+  'Nouveau client': 'New customer',
+  'Nouveau fournisseur': 'New supplier',
+  'Nouvel achat': 'New purchase',
+  'Compter la caisse': 'Count the cash',
+  'Clôturer la journée': 'Close the day',
+  'Clôturer cette boutique': 'Close this store',
+  'Ex. différence vérifiée, dépense non encore enregistrée…': 'E.g. difference checked, expense not yet recorded…',
+  'Comptant': 'Cash',
+  'Adresse non renseignée': 'Address not provided',
+  'Ex. Dépôt Goma': 'E.g. Goma warehouse',
+  'Coordonnées, dettes à recouvrer et rappels envoyés par WhatsApp.': 'Contact details, debts to collect and WhatsApp reminders.',
+  'Aucune dette': 'No debt',
+  'Crédits clients en retard (plus de 30 jours)': 'Overdue customer credit (more than 30 days)',
+  'Types de rapports': 'Report types',
+  'Versement à la création': 'Deposit at creation',
+  'Achats de marchandises': 'Purchases of goods',
+  'Ventes de marchandises': 'Sales of goods',
+  'Caisse': 'Cash',
+  'perte de la période': 'loss for the period',
+  'charges saisies dans Caisse': 'expenses entered in Cash',
+  'marchandises achetées sur la période': 'goods purchased during the period',
+  'ventes nettes de retours et avoirs': 'net sales after returns and credit notes',
+  'Un solde positif est un solde débiteur (actif ou charge) ; un solde négatif est créditeur (passif ou produit).': 'A positive balance is a debit balance (asset or expense); a negative balance is a credit balance (liability or income).',
+  'Rôle simulé': 'Simulated role',
+  'Profondeur de l’historique hors ligne': 'Offline history depth',
+  'Produits et stocks': 'Products and stock',
+  'Produits, clients et fournisseurs masqués des listes. Leur historique est conservé ; vous pouvez les restaurer.': 'Products, customers and suppliers hidden from lists. Their history is kept; you can restore them.',
+  'Reprise automatique possible sur ce navigateur': 'Automatic recovery possible on this browser',
+  'Nouveau code': 'New code',
+  'Nouveau code (4 à 6 chiffres)': 'New code (4 to 6 digits)',
+  'Confirmer le code': 'Confirm the code',
+  'Aucune imprimante USB sélectionnée.': 'No USB printer selected.',
+  'Boutique de ce facturier': 'Store for this cashier',
+  'Conserver jusqu’à': 'Keep up to',
+  'Aperçu du logo': 'Logo preview',
+  'Aperçu du tableau de bord KaPya ERP': 'KaPya ERP dashboard preview',
+  'En stock dans ce dépôt :': 'In stock in this warehouse:',
+  'Attention : un lot de': 'Warning: a batch of',
+  'Ce client a encore une dette de': 'This customer still owes',
+  'Dépôt bloqué : dette restante de': 'Deposit blocked: remaining debt of',
+  'Échéance prolongée jusqu’au': 'Due date extended to',
+  'Abonnement : échéance dans': 'Subscription: due in',
+  'crédit(s) en retard': 'overdue credit(s)',
+  'facture(s) à crédit': 'credit sale(s)',
+  'facture(s) fournisseur à payer': 'supplier invoice(s) to pay',
+  'facture(s) payée(s) comptant': 'invoice(s) paid in cash',
+  'article(s) vendu(s) à perte (en orange).': 'item(s) sold at a loss (in orange).',
+  'article(s) font 80 % du bénéfice (surlignés).': 'item(s) account for 80% of the profit (highlighted).',
+  'article(s) sous le seuil d’alerte :': 'item(s) below the alert threshold:',
+  'correction(s) de stock.': 'stock correction(s).',
+  'en attente d’envoi (réseau à retrouver)': 'waiting to be sent (network to restore)',
+  'enregistrée sur ce téléphone. Elle sera envoyée dès le retour du réseau.': 'saved on this phone. It will be sent as soon as the network returns.',
+  'a été retiré(e) du personnel. Son historique de paiements est conservé.': 'was removed from staff. Their payment history is kept.',
+  'a été supprimé(e) du personnel.': 'was deleted from staff.',
+  'Échec du transfert USB :': 'USB transfer failed:',
+  'Connectée :': 'Connected:',
+  'Enregistrement de l’appareil refusé par le serveur (code': 'Device registration refused by the server (code',
+  'Ce document est un proforma, il ne vaut pas facture.': 'This document is a proforma; it is not a valid invoice.',
+  'Retours et avoirs suivent la boutique choisie': 'Returns and credit notes follow the selected store',
+  '% de marge': '% margin',
+  'Le calcul du bénéfice sera disponible après installation du script SQL « couts-et-tresorerie.sql » dans Supabase.': 'Profit calculation will be available after installing the “couts-et-tresorerie.sql” script in Supabase.',
+  'Configuration SQL des coûts requise': 'Cost SQL configuration required',
+  'Valeur du stock au prix d\'achat': 'Stock value at purchase price',
+  'Ventes cash + paiements reçus': 'Cash sales + payments received',
+  'Entrée': 'Inflow',
+  'Sortie': 'Outflow',
+  'Utilisé': 'Used',
+  'Aucun acompte ne correspond à cette recherche.': 'No deposit matches this search.',
+  'À vérifier': 'To check',
+  'Synchronisation en attente': 'Pending sync',
+  'Synchronisation refusée': 'Sync refused',
+  'Aucun avoir pour l\'instant.': 'No credit note yet.',
+  'N°': 'No.',
+  'Destination': 'Destination',
+  'Chiffre d\'affaires par mois': 'Revenue by month',
+  'Note (optionnel)': 'Note (optional)'
 };
 
 export const getLanguage = () => localStorage.getItem(KEY) === 'en' ? 'en' : 'fr';
 export const setLanguage = value => localStorage.setItem(KEY, value === 'en' ? 'en' : 'fr');
 
+// Fragments de messages construits avec des nombres ou des dates : le squelette
+// remplace les nombres par « # », puis les valeurs d'origine sont réinsérées.
+const SQUELETTES = {
+  '# notification(s) : # produit(s) à réapprovisionner · # facture(s) fournisseur à payer': '# notification(s): # product(s) to restock · # supplier invoice(s) to pay',
+  '# produit(s) à réapprovisionner · # facture(s) fournisseur à payer': '# product(s) to restock · # supplier invoice(s) to pay',
+  '# · ventes cash, ventes à crédit et versements encaissés': '# · cash sales, credit sales and payments received',
+  '# $ = # FC · mis à jour le #': '# $ = # FC · updated on #',
+  '# Achats de marchandises': '# Purchases of goods',
+  '# au #': '# to #',
+  'Du # au #': 'From # to #',
+  '# Caisse': '# Cash',
+  '# Clients': '# Customers',
+  '# en attente · # refusée(s)': '# pending · # rejected',
+  '# facture(s) payée(s) comptant': '# invoice(s) paid in cash',
+  '# Fournisseurs': '# Suppliers',
+  '# pièces maximum par table de mouvement': '# items maximum per movement table',
+  '# produit(s) en stock · # unité(s)': '# product(s) in stock · # unit(s)',
+  '# requête(s) · conservée # jours': '# request(s) · kept for # days',
+  '# soldée(s)': '# settled',
+  '# Ventes de marchandises': '# Sales of goods',
+  '· # $ / mois. Échéance :': '· # $ / month. Due:',
+  'Au prix d’achat · # FC': 'At purchase price · # FC',
+  'Bénéfice brut moins # $ de dépenses': 'Gross profit less # $ in expenses',
+  'Chiffres à jour · #': 'Figures updated · #',
+  'Comptant # $ · Crédits # $ · Dépôts # $': 'Cash # $ · Credit # $ · Deposits # $',
+  'Crédits clients en retard (plus de # jours)': 'Overdue customer credit (more than # days)',
+  'Fournisseurs # $ · dépenses # $': 'Suppliers # $ · expenses # $',
+  'Fournisseurs # $ · Dépenses # $': 'Suppliers # $ · Expenses # $',
+  'Marge brute · # %': 'Gross margin · # %',
+  'Mobile money : # $ (hors caisse, à vérifier sur le téléphone)': 'Mobile money: # $ (outside the till, check on the phone)',
+  'Nouveau code (# à # chiffres)': 'New code (# to # digits)',
+  'Paiements reçus (#)': 'Payments received (#)',
+  'total # $': 'total # $',
+  'Total débit : # $ · total crédit : # $ · écart : # $.': 'Total debit: # $ · total credit: # $ · difference: # $.',
+  'Ventes à crédit (#)': 'Credit sales (#)',
+  'ventes comptant # $': 'cash sales # $',
+  'versements de crédits # $': 'credit payments # $',
+  '# facture(s) créée(s)': '# invoice(s) created',
+  '# versement(s) encaissé(s)': '# payment(s) received',
+  '# facture(s)': '# invoice(s)',
+  '# versement(s)': '# payment(s)',
+  '# opération(s)': '# operation(s)',
+  '# article(s)': '# item(s)',
+  '# ligne(s) utilisent une estimation basée sur le prix d\'achat actuel (coût non figé ou vente en attente d\'envoi).': '# line(s) use an estimate based on the current purchase price (cost not locked or sale waiting to be sent).',
+  'Résumé du #': 'Summary of #',
+  'Factures et encaissements enregistrés le #.': 'Invoices and payments recorded on #.',
+  'Taux : # $ = # FC': 'Rate: # $ = # FC',
+  'Hors ligne · données du #': 'Offline · data from #',
+  '# % payées comptant.': '#% paid in cash.',
+  '# % du CA net · dépenses déduites': '#% of net revenue · expenses deducted',
+  '# % de marge': '#% margin',
+  '# produit(s) à réapprovisionner': '# product(s) to restock',
+  '# facture(s) fournisseur à payer': '# supplier invoice(s) to pay',
+  '# j': '# d',
+  '# article(s) sous le seuil d’alerte :': '# item(s) below the alert threshold:',
+  '# article(s) vendu(s) à perte (en orange).': '# item(s) sold at a loss (in orange).',
+  '# article(s) font # % du bénéfice (surlignés).': '# item(s) account for #% of the profit (highlighted).',
+  '# correction(s) de stock.': '# stock correction(s).'
+};
+
+// Étiquettes suivies d'un nom, d'un montant ou d'une date.
+const PREFIXES = [
+  ['Dernière vente (en attente d\'envoi) : ', 'Last sale (waiting to be sent): '],
+  ['Factures et encaissements enregistrés le ', 'Invoices and payments recorded on '],
+  ['Changer la présentation du tableau de bord', 'Change the dashboard layout'],
+  ['Échéance prolongée jusqu’au ', 'Due date extended to '],
+  ['Dépôt bloqué : dette restante de ', 'Deposit blocked: remaining debt of '],
+  ['Ce client a encore une dette de ', 'This customer still owes '],
+  ['Diminuer la quantité de ', 'Decrease the quantity of '],
+  ['Augmenter la quantité de ', 'Increase the quantity of '],
+  ['En stock dans ce dépôt : ', 'In stock in this warehouse: '],
+  ['Dernière vente : ', 'Last sale: '],
+  ['Hors ligne · données du ', 'Offline · data from '],
+  ['Abonnement : échéance dans ', 'Subscription: due in '],
+  ['Chiffres à jour · ', 'Figures updated · '],
+  ['Au prix d’achat · ', 'At purchase price · '],
+  ['Période affichée : ', 'Period shown: '],
+  ['Stock actuel : ', 'Current stock: '],
+  ['Prix unitaire de ', 'Unit price of '],
+  ['Quantité de ', 'Quantity of '],
+  ['Bienvenue chez ', 'Welcome to '],
+  ['Résumé du ', 'Summary of '],
+  ['Taux : ', 'Rate: '],
+  ['Rôle : ', 'Role: '],
+  ['Archiver ', 'Archive '],
+  ['Modifier ', 'Edit '],
+  ['Vente ', 'Sale '],
+  ['Achat ', 'Purchase ']
+].sort((a, b) => b[0].length - a[0].length);
+
+const NOMBRE = /\d+(?:[ \u00a0\u202f.,:/-]\d+)*/g;
+
+function traduire(texte) {
+  const direct = EN[texte];
+  if (direct !== undefined) return direct;
+
+  const version = texte.match(/^Version ([\d.]+) · (.+) · build (\d+)$/);
+  if (version) {
+    const nom = EN[version[2]] || version[2];
+    return `Version ${version[1]} · ${nom} · build ${version[3]}`;
+  }
+
+  const bonjour = texte.match(/^Bonjour(?: (.+?))? · Bienvenue chez (.+?)( — Démonstration)?$/);
+  if (bonjour) {
+    const qui = bonjour[1] ? (EN[bonjour[1]] || bonjour[1]) : '';
+    return `Hello${qui ? ' ' + qui : ''} · Welcome to ${bonjour[2]}${bonjour[3] ? ' — Demo' : ''}`;
+  }
+
+  const plage = texte.match(/^Plage active : (\d+) numéro\(s\) restant\(s\), prochain (.+)\.$/);
+  if (plage) return `Active range: ${plage[1]} number(s) left, next ${plage[2]}.`;
+
+  const rangeau = texte.match(/^Permet de facturer hors connexion sans doublon\. (.+)$/);
+  if (rangeau) return `Lets you invoice offline without duplicates. ${traduire(rangeau[1])}`;
+
+  const piece = texte.match(/^(Vente|Achat|Paiement|Versement|Retrait|Dépense) du (\d.*)$/);
+  if (piece) return `${EN[piece[1]] || piece[1]} of ${piece[2]}`;
+
+  const dispo = texte.match(/^(.+) \(([\d\s.,\u00a0\u202f]+) dispo\)$/);
+  if (dispo) return `${dispo[1]} (${dispo[2]} available)`;
+
+  // Puce ou coche devant un libellé : on traduit le libellé seul.
+  const puce = texte.match(/^([✓·+]\s+)(.+)$/);
+  if (puce) {
+    const suite = traduire(puce[2]);
+    if (suite !== puce[2]) return puce[1] + suite;
+  }
+
+  // Libellé terminé par deux-points.
+  const deuxPoints = texte.match(/^(.+?)(\s*:)$/);
+  if (deuxPoints) {
+    const suite = traduire(deuxPoints[1]);
+    if (suite !== deuxPoints[1]) return suite + deuxPoints[2];
+  }
+
+  for (const [debut, traduction] of PREFIXES) {
+    if (texte.startsWith(debut)) return traduction + texte.slice(debut.length);
+  }
+
+  const valeurs = [];
+  const squelette = texte.replace(NOMBRE, nombre => { valeurs.push(nombre); return '#'; });
+  const modele = SQUELETTES[squelette];
+  if (modele) {
+    let index = 0;
+    return modele.replace(/#/g, () => valeurs[index++] ?? '#');
+  }
+
+  return texte;
+}
+
 function translateElement(root) {
   if (getLanguage() !== 'en' || !root) return;
   const doc = root.ownerDocument || document;
-  // Dans l'application, les cellules de tableau contiennent des données de
-  // l'entreprise : on ne les traduit pas. Les pages statiques (guide,
-  // confidentialité) ont des tableaux de texte et doivent être traduites.
-  const dansApplication = (root.nodeType === Node.ELEMENT_NODE ? root : root.parentElement)?.closest?.('#root');
   const translateText = node => {
-    if (node.parentElement?.closest('.business-brand,.business-company-details,.avatar')) return;
-    if (dansApplication && node.parentElement?.closest('td')) return;
+    if (node.parentElement?.closest('.business-brand,.business-company-details,.avatar,[data-i18n-skip]')) return;
     const value = node.nodeValue || '';
     const trimmed = value.trim();
-    const translated = EN[trimmed];
-    if (translated && translated !== trimmed) node.nodeValue = value.replace(trimmed, translated);
+    const translated = traduire(trimmed);
+    if (translated !== trimmed) node.nodeValue = value.replace(trimmed, () => translated);
   };
   if (root.nodeType === Node.TEXT_NODE) translateText(root);
   else {
     const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
     while (walker.nextNode()) translateText(walker.currentNode);
   }
-  if (root.nodeType === Node.ELEMENT_NODE) {
+  const traduireAttributs = element => {
     for (const attr of ['aria-label', 'placeholder', 'title', 'alt']) {
-      const value = root.getAttribute(attr);
-      if (value && EN[value]) root.setAttribute(attr, EN[value]);
+      const value = element.getAttribute(attr);
+      if (!value) continue;
+      const translated = traduire(value);
+      if (translated !== value) element.setAttribute(attr, translated);
     }
-    root.querySelectorAll?.('[aria-label],[placeholder],[title],[alt]').forEach(element => {
-      for (const attr of ['aria-label', 'placeholder', 'title', 'alt']) {
-        const value = element.getAttribute(attr);
-        if (value && EN[value]) element.setAttribute(attr, EN[value]);
-      }
-    });
+  };
+  if (root.nodeType === Node.ELEMENT_NODE) {
+    traduireAttributs(root);
+    root.querySelectorAll?.('[aria-label],[placeholder],[title],[alt]').forEach(traduireAttributs);
   }
 }
 
-export function watchLanguage(root = document.getElementById('root')) {
+export function watchLanguage(root = document.body) {
   document.documentElement.lang = getLanguage();
   translateElement(root);
   if (!root || root.dataset.languageWatcher) return;

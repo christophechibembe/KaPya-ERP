@@ -76,7 +76,7 @@ const navHtml = ctx => NAV_GROUPS.map(([title, keys]) => {
 
 const NEEDS_RATE = ['vente', 'ventes', 'credits', 'stocks', 'achats', 'facture'];
 const root = document.getElementById('root');
-watchLanguage(root);
+watchLanguage(document.body);
 // Version de l'app : la mise à jour du shell est gérée par le service worker.
 import { APP_VERSION, BUILD, VERSION_LABEL } from './version.js';
 import { initMonitor } from './monitor.js';
