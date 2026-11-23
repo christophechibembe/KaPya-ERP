@@ -8,7 +8,7 @@ import { parseCsv, toNumber } from '../js/csv.js';
 
 // export.js charge api.js, qui lit localStorage au démarrage : on fournit un stockage neutre.
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
-const { csvNumber } = await import('../js/export.js');
+const { csvNumber, excelSafe } = await import('../js/export.js');
 
 test('mot de passe : trop court ou trop courant est refusé', () => {
   assert.match(weakPasswordReason('court'), /au moins 8 caractères/);
@@ -84,4 +84,15 @@ test('nombres exportés : deux décimales avec virgule', () => {
   assert.equal(csvNumber('7.5'), '7,50');
   assert.equal(csvNumber(0.1 + 0.2), '0,30');
   assert.equal(csvNumber(null), '0,00');
+});
+
+test('export tableur : une cellule texte ne devient jamais une formule', () => {
+  // Débuts interprétés comme formules par Excel/LibreOffice, y compris après espace, tabulation ou retour chariot.
+  for (const value of ['=1+1', '+1+1', '-1+1', '-2+3', '@SUM(A1)', '  =1+1', '\t=1+1', '\r=1+1', '\ttexte', '\rtexte', '=HYPERLINK("http://exemple")']) {
+    assert.equal(excelSafe(value), `'${value}`, JSON.stringify(value));
+  }
+  // Un nombre négatif simple et un libellé ordinaire restent lisibles.
+  for (const [value, expected] of [['Sac', 'Sac'], ['123-45', '123-45'], [-5, '-5'], ['-5,25', '-5,25'], [0, '0'], [null, '']]) {
+    assert.equal(excelSafe(value), expected);
+  }
 });

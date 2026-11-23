@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.50.7-build147';
+const VERSION = 'kapya-erp-1.50.8-build148';
 const SHELL = [
   './',
   './404.html',
@@ -39,6 +39,7 @@ const SHELL = [
   './js/dashboard-modes.js',
   './js/dashboard-modern.js',
   './js/dashboard-insights.mjs',
+  './js/dates.js',
   './js/demo.js',
   './js/demo-mode.js',
   './js/demo-ui.js',
@@ -54,6 +55,7 @@ const SHELL = [
   './js/localdb.js',
   './js/offline.js',
   './js/offline-delete.mjs',
+  './js/offline-pending.mjs',
   './js/offline-query.mjs',
   './js/modules/abonnes.js',
   './js/modules/accueil.js',
@@ -91,6 +93,7 @@ const SHELL = [
   './js/modules/workers.js',
   './js/monitor.js',
   './js/news.js',
+  './js/notif-centre.js',
   './js/notifications.js',
   './js/onboarding.js',
   './js/own-org.js',
@@ -108,7 +111,9 @@ const SHELL = [
   './js/roles.js',
   './js/sale-math.js',
   './js/shops.js',
+  './js/thermal-usb.js',
   './js/ui.js',
+  './js/vendor/zxing.min.js',
   './js/version.js',
   './manifest-app.webmanifest',
   './manifest.webmanifest'

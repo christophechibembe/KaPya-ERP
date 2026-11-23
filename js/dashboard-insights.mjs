@@ -1,4 +1,6 @@
 // Compléments de lecture des présentations modernes, sans écriture ni préférence.
+import { creditBalance } from './sale-math.js';
+
 export const METRIC_LABELS = {
   revenue: 'Chiffre d’affaires',
   cashSales: 'Ventes cash',
@@ -89,7 +91,7 @@ export function modernDetails(model, source) {
   add('paymentsReceived', paymentRows, model.paymentsAvailable);
   add('outstanding', credits.map(sale => ({
     date: day(sale.sold_at), label: sale.number || 'Vente à crédit',
-    amount: Math.max(linesTotal(sale) - Number(sale.paid || 0), 0)
+    amount: creditBalance(linesTotal(sale), Number(sale.paid || 0), Number(sale.credit_notes_total || 0))
   })).filter(row => row.amount > 0), true, true);
   if (!model.canSeeCosts) return details;
   const expenseRows = expenses.map(expense => ({ date: day(expense.paid_at), label: expense.label || 'Dépense', amount: Number(expense.amount || 0) }));

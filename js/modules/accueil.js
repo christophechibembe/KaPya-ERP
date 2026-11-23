@@ -6,6 +6,7 @@ import { can } from '../roles.js';
 import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, nextMode as nextDashboardMode, setMode as setDashboardMode, MODE_LABELS as DASHBOARD_MODE_LABELS } from '../dashboard-modes.js';
 import { renderModernPage, renderModernContent, renderModernLoading, renderModernFailure, renderModernDetail, bindModernInteractions, paintModernComparisons, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
 import { previousPeriod, periodFigures, modernDetails } from '../dashboard-insights.mjs';
+import { creditBalance } from '../sale-math.js';
 import { pendingSaleRows, pendingSaleTotal } from '../offline-pending.mjs';
 import { loadShops, shopSelectHtml, shopSalesFilter, shopPaymentsSelect, shopPaymentsFilter, setShop, getShop, canSeeAllShops } from '../shops.js';
 
@@ -426,6 +427,8 @@ export async function render(main, ctx) {
     // pour inclure la dernière journée quel que soit le fuseau horaire de l'appareil.
     const salesPromise = db.select('sales', `${salesSelect}&sold_at=gte.${from}&sold_at=lt.${dayAfter(to)}${shopSalesFilter()}&order=sold_at.asc`);
     const creditsPromise = db.select('sales', `${salesSelect}&payment=eq.credit${shopSalesFilter()}&order=sold_at.desc`);
+    // Avoirs déjà émis : une créance doit être réduite du montant des avoirs, comme sur l'écran Crédits.
+    const creditNotesPromise = db.select('credit_notes', 'select=sale_id,total_usd').catch(() => []);
     const movesPromise = db.select('stock_moves', `select=id,qty,reason,created_at,articles(sku,name,unit)&created_at=gte.${encodeURIComponent(startInstant)}&created_at=lt.${encodeURIComponent(endInstant)}&order=created_at.desc`);
     const supplierPaymentsPromise = canSeeCosts ? db.select('purchase_payments', `select=id,amount,paid_at,purchases(number,suppliers(name))&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&order=paid_at.asc`) : Promise.resolve([]);
     const expensesPromise = canSeeCosts ? db.select('business_expenses', `select=id,label,category,amount,paid_at&paid_at=gte.${from}&paid_at=lt.${dayAfter(to)}&order=paid_at.asc`) : Promise.resolve([]);
@@ -451,7 +454,7 @@ export async function render(main, ctx) {
         ? db.select('audit_log', `select=occurred_at,actor_name,action,summary&table_name=eq.sales&occurred_at=gte.${today}&occurred_at=lt.${shiftDate(today, 1)}&order=occurred_at.desc&limit=50`).catch(() => [])
         : Promise.resolve([]);
       await blocksReady;
-      const coreResults = await Promise.allSettled([salesPromise, purchasesPromise, creditsPromise, movesPromise, articlesPromise, supplierPaymentsPromise, expensesPromise, customerPaymentsPromise, customerDepositsPromise, saleCostsPromise, supplierBalancesPromise, supplierPaymentsAllPromise, ownerDailySalesPromise, ownerDailyReceiptsPromise]);
+      const coreResults = await Promise.allSettled([salesPromise, purchasesPromise, creditsPromise, movesPromise, articlesPromise, supplierPaymentsPromise, expensesPromise, customerPaymentsPromise, customerDepositsPromise, saleCostsPromise, supplierBalancesPromise, supplierPaymentsAllPromise, ownerDailySalesPromise, ownerDailyReceiptsPromise, creditNotesPromise]);
       const [salesRows, purchaseRows, credits, moveRows, articles, supplierPayments, expenses, paymentRows, customerDeposits] = coreResults.slice(0, 9).map(result => {
         if (result.status === 'rejected') throw result.reason;
         return result.value;
@@ -470,6 +473,11 @@ export async function render(main, ctx) {
       const ownerDailyAvailable = !canSeeDailySummary || (coreResults[12].status === 'fulfilled' && coreResults[13].status === 'fulfilled');
       const ownerDailyCash = canSeeDailySummary ? await ownerDailyCashPromise.catch(() => null) : [];
       const ownerDailyCashAvailable = !canSeeDailySummary || Array.isArray(ownerDailyCash);
+      // Avoirs par vente : la somme est rattachée à chaque facture à crédit pour les créances et leur détail.
+      const creditNotes = coreResults[14].status === 'fulfilled' && Array.isArray(coreResults[14].value) ? coreResults[14].value : [];
+      const creditedBySale = new Map();
+      creditNotes.forEach(note => creditedBySale.set(note.sale_id, (creditedBySale.get(note.sale_id) || 0) + Number(note.total_usd || 0)));
+      credits.forEach(sale => { sale.credit_notes_total = creditedBySale.get(sale.id) || 0; });
       // Comparaison sur la seule date : si la base renvoie un horodatage, « 2026-11-17T09:30 » ne doit pas être exclu de la journée du 17.
       const dayOnly = value => String(value ?? '').slice(0, 10);
       const salesFromServer = salesRows.filter(sale => dayOnly(sale.sold_at) >= from && dayOnly(sale.sold_at) <= to);
@@ -522,7 +530,7 @@ export async function render(main, ctx) {
       const supplierDebt = supplierBalances.reduce((sum, balance) => sum + Math.max(Number(balance.opening_balance || 0) - (paidByPurchase.get(balance.purchase_id) || 0), 0), 0);
       const cashOut = supplierPaid + expenseTotal;
       const cashNet = received + pendTotals.receipts - cashOut;
-      const outstanding = credits.reduce((sum, sale) => sum + Math.max(sumLines(sale.sale_lines, 'unit_price') - Number(sale.paid || 0), 0), 0);
+      const outstanding = credits.reduce((sum, sale) => sum + creditBalance(sumLines(sale.sale_lines, 'unit_price'), Number(sale.paid || 0), Number(sale.credit_notes_total || 0)), 0);
       const lowStock = articles.filter(article => Number(article.stock) <= Number(article.min_stock));
       // Lots qui périment dans les 30 jours : alerte seulement, la vente n'est pas bloquée
       const expiryLimit = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);

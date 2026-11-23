@@ -16,6 +16,7 @@ const pill = p => p.pending === 'rejected' ? `<span class="pill bad" title="${es
 
 export async function render(main, c) {
   let parties = [], arts = [], warehouses = [], rows = [], remoteRows = [];
+  let creditedBySale = new Map();
   const PAGE = 100; let page = 0, hasNext = false, searching = false;
   main.innerHTML = `<div class="page-head"><div><h1>${c.title}</h1></div><div class="acts"><label class="sr" for="doc-q">Rechercher dans ${c.title.toLocaleLowerCase('fr')}</label><input id="doc-q" type="search" placeholder="Rechercher une date, un numéro, un client ou un article…" autocomplete="off"><button class="ghost" id="par" type="button">${ico('plus')}<span>${c.newParty}</span></button><button class="btn" id="new" type="button">${ico('plus')}<span>${c.newDoc}</span></button></div></div>
     <details class="card doc-filter-bar" aria-label="Filtres et export" ${window.innerWidth > 720 ? 'open' : ''}><summary class="doc-filter-sum">Filtres et export</summary><label>Du<input id="doc-from" type="date"></label><label>Au<input id="doc-to" type="date"></label><label>${c.partyLabel}<select id="doc-party"><option value="">Tous</option></select></label><label>Dépôt<select id="doc-warehouse"><option value="">Tous les dépôts</option></select></label>${c.table === 'sales' ? '<label class="pickup-filter"><input type="checkbox" id="doc-pickup"> À retirer seulement</label>' : ''}<button class="ghost" id="doc-export" type="button">Exporter vers Excel</button></details>
@@ -24,6 +25,7 @@ export async function render(main, c) {
   if (!can(c.role, c.newCap) && $('#new')) $('#new').style.display = 'none';
   if (!can(c.role, c.partyCap) && $('#par')) $('#par').style.display = 'none';
   const sumL = L => L.reduce((s, l) => s + l.qty * l[c.priceCol], 0);
+  const creditedOf = row => Number(creditedBySale.get(row.id) || 0);
 
   // Construit le document d'une vente enregistrée (pour impression ou aperçu)
   async function buildSaleDoc(saleId) {
@@ -54,7 +56,7 @@ export async function render(main, c) {
     const pickupOnly = !!main.querySelector('#doc-pickup')?.checked;
     const visible = rows.map((row, index) => ({ row, index })).filter(({ row }) => {
       const lines = row[c.linesTable] || [];
-      const total = sumL(lines), due = Math.max(total - Number(row[c.paidCol] || 0), 0);
+      const total = sumL(lines), due = Math.max(total - Number(row[c.paidCol] || 0) - creditedOf(row), 0);
       const balanceStatus = row[c.paymentCol] === 'credit' ? (due > .005 ? 'à payer' : 'soldée') : '';
       const date = String(row[c.dateCol] || '').slice(0, 10);
       const partyMatches = !partyId || row[c.partyIdCol]?.id === partyId || row[c.partyIdCol] === partyId;
@@ -77,7 +79,7 @@ export async function render(main, c) {
       const total = sumL(L);
       const pickupBadge = p.to_pickup ? ' <span class="pill warn">À retirer</span>' : '';
       const paymentCell = c.paymentCol ? `<td>${pickupBadge}<span class="pill ${p[c.paymentCol] === 'credit' ? 'warn' : 'ok'}">${p[c.paymentCol] === 'credit' ? 'Crédit' : (p.payment_method === 'mobile_money' ? 'Mobile money' : p.payment_method === 'bank' ? 'Virement' : 'Espèces')}</span></td>` : '';
-      const due = Math.max(total - Number(p[c.paidCol] || 0), 0);
+      const due = Math.max(total - Number(p[c.paidCol] || 0) - creditedOf(p), 0);
       const balanceCell = c.paidCol ? `<td class="r">${p[c.paymentCol] !== 'credit' ? '<span class="muted">—</span>' : due > .005 ? `<div class="sale-balance"><b>${usdOnly(due)}</b><span class="pill warn">À payer</span></div>` : '<span class="pill ok">Soldée</span>'}</td>` : '';
       return `<tr><td>${fr(p[c.dateCol])}</td><td>${pill(p)}</td><td>${esc(p[c.partyTable]?.name || p.customer_label || '—')}</td>${showWarehouse ? `<td>${esc(p.warehouses?.name || '—')}</td>` : ''}${paymentCell}<td class="r">${L.length}</td><td class="r">${usdOnly(total)}</td>${balanceCell}<td><div class="table-actions"><button class="lnk action-detail" type="button" data-d="${i}">Détail</button>${c.table === 'sales' && p.id && !p.pending && !p._offline_pending ? `<button class="lnk action-preview-sale" type="button" data-pv="${i}">Aperçu</button> <button class="lnk action-print-sale" type="button" data-ps="${i}">Imprimer</button>` : ''}${c.table === 'sales' && can(c.role, c.editCap) && p.id && !p.pending && !p._offline_pending ? `<details class="row-more"><summary class="lnk">Plus</summary><div class="row-more-list"><button class="lnk action-pickup" type="button" data-p="${i}">${p.to_pickup ? 'Retirer' : 'À retirer'}</button></div></details>` : ''}</div></td></tr>`;
     }).join('')}</tbody></table>${pager}`;
@@ -114,11 +116,19 @@ export async function render(main, c) {
         const q = `${base}&id=in.(${idList.slice(0, PAGE).join(',')})&limit=${PAGE}`;
         return db.select(c.table, q.replace('select=', 'select=warehouses(name),')).catch(() => db.select(c.table, q.replace('warehouse_id,', '')));
       })();
-      [parties, arts, warehouses, remoteRows] = await Promise.all([
+      // Avoirs par vente : le reste dû d'une vente à crédit doit être réduit, sans requête par facture.
+      const notesP = c.table === 'sales'
+        ? db.select('credit_notes', 'select=sale_id,total_usd').catch(() => [])
+        : Promise.resolve([]);
+      const loaded = await Promise.all([
         db.select(c.partyTable, 'select=id,name&order=name'),
         db.select('articles', 'select=id,sku,name,unit,price_buy,price_sell&order=name'),
         listeOuErreur(db.select('warehouses', 'select=id,name,is_default&active=eq.true&order=is_default.desc,name'), 'les dépôts'),
-        remoteP]);
+        remoteP,
+        notesP]);
+      [parties, arts, warehouses, remoteRows] = loaded;
+      creditedBySale = new Map();
+      (Array.isArray(loaded[4]) ? loaded[4] : []).forEach(note => creditedBySale.set(note.sale_id, (creditedBySale.get(note.sale_id) || 0) + Number(note.total_usd || 0)));
       const partySelect = $('#doc-party');
       partySelect.innerHTML = `<option value="">Tous</option>${parties.map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('')}`;
       if ($('#doc-warehouse')) $('#doc-warehouse').innerHTML = `<option value="">Tous les dépôts</option>${warehouses.map(item => `<option value="${esc(item.id)}">${esc(item.name)}</option>`).join('')}`;
@@ -222,7 +232,7 @@ export async function render(main, c) {
     const selected = rows.filter(row => {
       const date = String(row[c.dateCol] || '').slice(0, 10);
       const lines = row[c.linesTable] || [];
-      const due = Math.max(sumL(lines) - Number(row[c.paidCol] || 0), 0);
+      const due = Math.max(sumL(lines) - Number(row[c.paidCol] || 0) - creditedOf(row), 0);
       const status = row[c.paymentCol] === 'credit' ? (due > .005 ? 'à payer' : 'soldée') : '';
       return (!from || date >= from) && (!to || date <= to)
         && (!partyId || row[c.partyIdCol]?.id === partyId || row[c.partyIdCol] === partyId)
@@ -262,7 +272,7 @@ export async function render(main, c) {
     const note = p.pending === 'rejected' ? `<p class="hint bad">Refusée à la synchronisation : ${esc(p.error || '')}</p>`
       : p.pending || p._offline_pending ? '<p class="muted">Pièce enregistrée sur cet appareil, en attente de synchronisation.</p>' : '';
     const paymentInfo = c.paymentCol ? `<p>Mode de paiement : <b>${p[c.paymentCol] === 'credit' ? 'Crédit' : 'Espèces'}</b></p>` : '';
-    const paidInfo = c.paidCol && p[c.paymentCol] === 'credit' ? `<p>Déjà versé : <b>${money(Number(p[c.paidCol] || 0))}</b> · Reste dû : <b>${money(Math.max(sumL(L) - Number(p[c.paidCol] || 0), 0))}</b></p>` : '';
+    const paidInfo = c.paidCol && p[c.paymentCol] === 'credit' ? `<p>Déjà versé : <b>${money(Number(p[c.paidCol] || 0))}</b> · Reste dû : <b>${money(Math.max(sumL(L) - Number(p[c.paidCol] || 0) - creditedOf(p), 0))}</b></p>` : '';
     showDialog($('#dlg'), `${c.one} du ${fr(p[c.dateCol])}`, `<p>${c.partyLabel} : <b>${esc(p[c.partyTable]?.name || p.customer_label || '—')}</b>${p.number ? ` · N° ${esc(p.number)}` : ''}</p>${paymentInfo}${paidInfo}${note}
       <div class="tw"><table><thead><tr><th>Article</th><th class="r">Quantité</th><th class="r">${c.priceLabel}</th><th class="r">Total</th></tr></thead><tbody>${L.map(l =>
         `<tr><td>${esc(l.articles ? l.articles.sku + ' — ' + l.articles.name : '—')}</td><td class="r">${n(l.qty)} ${esc(l.articles?.unit || '')}</td><td class="r">${money(l[c.priceCol])}</td><td class="r">${money(l.qty * l[c.priceCol])}</td></tr>`).join('')}</tbody></table></div>
