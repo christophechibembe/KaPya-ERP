@@ -167,7 +167,7 @@ function kpi(model, key, note, icon, tone) {
 
 function kpiCards(model) {
   const cards = [
-    kpi(model, 'revenue', `${model.salesCount} vente(s)${fcOnly(model.revenue) ? ` · ${fcOnly(model.revenue)}` : ''}`, 'sales', 'blue'),
+    kpi(model, 'revenue', `${model.salesCount} vente(s)${model.pendingSalesCount ? ` · ${model.pendingSalesCount} en attente` : ''}${fcOnly(model.revenue) ? ` · ${fcOnly(model.revenue)}` : ''}`, 'sales', 'blue'),
     kpi(model, 'cashSales', `${model.cashCount} facture(s) payée(s) comptant`, 'cash', 'green'),
     kpi(model, 'creditSales', `${model.creditCount} facture(s) à crédit`, 'invoice', 'blue'),
     kpi(model, 'paymentsReceived', `${model.receiptsCount} encaissement(s)`, 'coins', 'green')
@@ -258,7 +258,7 @@ function activityList(items) {
   if (!items.length) return '<p class="mdp-empty">Aucune activité sur cette période.</p>';
   return `<ul class="mdp-activity-list">${items.map(item => `<li>
     <span class="mdp-act-ico t-${item.tone}">${ico(item.icon)}</span>
-    <div class="mdp-act-main"><b>${esc(item.title)}</b><span>${esc(item.subtitle)}</span></div>
+    <div class="mdp-act-main"><b>${esc(item.title)}</b><span>${esc(item.subtitle)}</span>${item.pending ? "<small class=\"mdp-act-pending\">En attente d'envoi</small>" : ''}</div>
     <b class="mdp-act-amount ${item.direction === 'out' ? 'out' : 'in'}">${item.direction === 'out' ? '−' : '+'}${usdOnly(Math.abs(item.amount))}</b>
   </li>`).join('')}</ul>`;
 }
@@ -369,7 +369,7 @@ function mobileContent(model) {
       <div class="mdm-hero-top"><span>Chiffre d’affaires</span><span class="mdm-hero-ico">${ico('sales')}</span></div>
       ${valueButton(model, 'revenue', true)}
       ${comparisonBadge(model, 'revenue')}
-      <div class="mdm-hero-foot"><span>${model.salesCount} vente(s)</span><span>${esc(model.periodLabel)}</span></div>
+      <div class="mdm-hero-foot"><span>${model.salesCount} vente(s)${model.pendingSalesCount ? ` · ${model.pendingSalesCount} en attente` : ''}</span><span>${esc(model.periodLabel)}</span></div>
     </section>` : ''}
     ${model.blocks.kpi ? `<section class="mdm-kpis" aria-label="Indicateurs clés">${mobileKpis(model)}</section>` : ''}
     ${chartCard}

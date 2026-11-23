@@ -1,9 +1,9 @@
 // API simulée pour le tableau de bord : aucune donnée réelle, aucun accès réseau.
-export const fixture = { sales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] };
+export const fixture = { sales: [], pendingSales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] };
 
 export const session = () => ({ uid: 'dash-user' });
-export const pendingFor = async () => [];
-export const pendingCount = async () => 0;
+export const pendingFor = async table => (table === 'sales' ? fixture.pendingSales.slice() : []);
+export const pendingCount = async () => fixture.pendingSales.length;
 export const pendingOps = async () => [];
 export const rejectedItems = async () => [];
 export const lastSyncTime = () => null;
@@ -19,7 +19,7 @@ export const localToday = () => {
 };
 
 export const resetDashboard = () => {
-  Object.assign(fixture, { sales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] });
+  Object.assign(fixture, { sales: [], pendingSales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] });
 };
 
 export const addSale = (options = {}) => {
@@ -36,6 +36,27 @@ export const addSale = (options = {}) => {
     sale_lines: [line]
   });
   return `s${id}`;
+};
+
+// Vente saisie hors ligne : présente dans la file d'attente, pas encore au serveur.
+export const addPendingSale = (options = {}) => {
+  const id = fixture.pendingSales.length + 1;
+  fixture.pendingSales.push({
+    seq: 100 + id,
+    fn: 'create_sale',
+    status: 'queued',
+    body: {
+      p_number: `ATT-${id}`,
+      p_id: `pend-${id}`,
+      p_date: options.soldAt ?? localToday(),
+      p_payment: options.payment ?? 'cash',
+      p_paid: options.paid ?? 0,
+      p_customer_label: options.customer ?? '',
+      p_warehouse: options.warehouseId ?? 'w1',
+      p_lines: [{ article_id: options.articleId ?? 'a1', qty: options.qty ?? 1, unit_price: options.unit ?? 10 }]
+    }
+  });
+  return `pend-${id}`;
 };
 
 export const addPayment = (options = {}) => {

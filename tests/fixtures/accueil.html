@@ -6,7 +6,7 @@
 </div></div>
 <script type="module">
   import { render } from '/js/modules/accueil.js';
-  import { fixture, resetDashboard, addSale, addExpense, addPayment } from '/js/api.js';
+  import { fixture, resetDashboard, addSale, addExpense, addPayment, addPendingSale } from '/js/api.js';
   import { setMode } from '/js/dashboard-modes.js';
   import { ico } from '/js/ui.js';
   document.querySelectorAll('#nav a').forEach(link => link.insertAdjacentHTML('afterbegin', ico('grid')));
@@ -14,6 +14,7 @@
   window.addSale = addSale;
   window.addExpense = addExpense;
   window.addPayment = addPayment;
+  window.addPendingSale = addPendingSale;
   window.text = () => document.querySelector('#owner-content')?.textContent || '';
   window.fireSync = () => document.dispatchEvent(new Event('kp:sync'));
   window.waitFor = (needle, timeout = 6000) => new Promise(resolve => {

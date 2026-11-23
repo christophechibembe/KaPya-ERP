@@ -79,6 +79,13 @@ Une annulation de vente ou d'achat retire la pièce de la copie locale immédiat
 applique le mouvement de stock inverse : le stock vendu revient, le stock acheté sort.
 Si le serveur refuse l'annulation, la pièce et le stock sont restaurés.
 
+Sur le tableau de bord, une vente en attente compte dans le chiffre d'affaires, les
+graphiques et les activités récentes, avec la mention « En attente d'envoi ». Son coût est
+estimé au prix d'achat actuel, faute d'instantané de coût hors ligne ; il est signalé comme
+estimation. Dès que la pièce est envoyée, elle est remplacée par la ligne du serveur : elle
+n'est jamais comptée deux fois. Les créances clients, elles, restent calculées sur les
+ventes confirmées par le serveur.
+
 En cas de refus serveur (stock insuffisant, donnée invalide), la modification locale est
 annulée et la pièce passe en **refusée**. Elle reste visible dans Paramètres > Mode
 hors-ligne, avec deux choix : réessayer ou retirer.

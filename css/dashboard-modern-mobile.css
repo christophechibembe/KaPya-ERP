@@ -561,3 +561,11 @@ body.kp-dashboard-page.dashboard-mode-mobile nav a.fab-m { display: none !import
 :root[data-theme="dark"] .mdm-body .mdp-mini-kpis > div { background: #1C2739; }
 :root[data-theme="dark"] .mdm-payment-body { border-top-color: var(--mdm-line); }
 
+
+/* Vente enregistrée sur l'appareil mais pas encore envoyée. */
+.mdm-card .mdp-act-pending {
+  font-size: .64rem; font-weight: 700; letter-spacing: .02em;
+  color: #B45309; background: #FEF3C7; border-radius: 999px;
+  padding: .1rem .45rem; width: fit-content; margin-top: .15rem;
+}
+:root[data-theme="dark"] .mdm-card .mdp-act-pending { color: #FCD34D; background: rgba(245, 158, 11, .18); }

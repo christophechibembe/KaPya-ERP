@@ -504,4 +504,31 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
     })`), false);
     assert.deepEqual(page.errors, []);
   });
+
+  await t.test('une vente en attente compte dans le chiffre d’affaires, puis disparaît après envoi', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    assert.match(await page.evaluate('window.text()'), /25,00 \$/);
+    await page.evaluate(`window.addPendingSale({ qty: 1, unit: 10 })`);
+    await page.evaluate(`window.fireSync()`);
+    assert.equal(await page.evaluate(`window.waitFor('35,00 $')`), true, 'la vente en attente doit compter');
+    const withPending = await page.evaluate('window.text()');
+    assert.match(withPending, /3 vente\(s\)/);
+    assert.match(withPending, /1 en attente/);
+    assert.match(withPending, /En attente d'envoi/);
+    // Envoi terminé : la pièce quitte la file et devient une vente du serveur, sans double comptage.
+    await page.evaluate(`window.fixture.pendingSales = []; window.addSale({ qty: 1, unit: 10 }); window.fireSync()`);
+    assert.equal(await page.evaluate(`new Promise(resolve => {
+      const end = Date.now() + 6000;
+      const tick = () => {
+        if (!window.text().includes('En attente')) return resolve(true);
+        if (Date.now() > end) return resolve(false);
+        setTimeout(tick, 50);
+      };
+      tick();
+    })`), true, 'la mention en attente doit disparaître');
+    const afterSend = await page.evaluate('window.text()');
+    assert.match(afterSend, /35,00 \$/, 'le montant ne doit pas doubler après l’envoi');
+    assert.match(afterSend, /3 vente\(s\)/);
+    assert.deepEqual(page.errors, []);
+  });
 });

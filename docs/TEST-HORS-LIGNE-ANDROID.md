@@ -46,6 +46,8 @@ navigateur ne fera pas le test. Me le signaler avec la marque du téléphone.
 2. [ ] Revenir sur **Vente** : la page doit rester utilisable (écran déjà chargé).
 3. [ ] Faire une vente de test (1 article, petite quantité). Elle doit être acceptée
       sans message d'erreur bloquant.
+3 bis. [ ] Ouvrir le **Tableau de bord** : la vente doit compter dans le chiffre
+       d'affaires, avec la mention « En attente d'envoi ».
 4. [ ] Aller sur **Paramètres → Mode hors-ligne**. Vérifier :
    - [ ] « Réseau » indique **Hors ligne**
    - [ ] « File d'attente » indique **1 en attente** (ou plus)
