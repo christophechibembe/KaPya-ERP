@@ -425,6 +425,7 @@ const EN = {
   'Si un compte existe pour cette adresse, un lien de réinitialisation vient d’être envoyé.': 'If an account exists for this address, a reset link has just been sent.',
   'Votre compte est créé, mais il n’est rattaché à aucune entreprise. Demandez à l’administrateur de KaPya ERP un code d’activation pour votre entreprise.': 'Your account is created, but it is not linked to any business. Ask the KaPya ERP administrator for an activation code for your business.',
   'Application verrouillée': 'Application locked', 'Déverrouiller': 'Unlock', 'Saisissez votre code pour continuer.': 'Enter your code to continue.',
+  'Recharger la page ne lève pas le verrou : le code est redemandé.': 'Reloading the page does not unlock the app: the code is required again.',
   'Ouvrir cette page': 'Open this page', 'Passer le guide': 'Skip the guide', 'Précédent': 'Previous',
   'KaPya app': 'KaPya app', 'lancer-8106.bat': 'lancer-8106.bat', ', puis ouvrez': ', then open',
   'Dans le dossier de l’application, double-cliquez sur': 'In the application folder, double-click',

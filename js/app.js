@@ -381,6 +381,23 @@ async function start() {
   syncNow().then(updateSync);
   setInterval(updateSync, 30000);
 }
+// Déconnexion demandée depuis l'écran de verrouillage. En temps normal le bouton du
+// menu existe ; s'il n'est pas encore affiché (démarrage, réseau lent), on vide la
+// copie locale et la session avant de recharger.
+const lockLogout = async () => {
+  const button = document.getElementById('out');
+  if (button) return button.click();
+  await clearOffline().catch(() => {});
+  signOut();
+  location.reload();
+};
 initMonitor();
-if (!CFG.demo) initLock({ logout: () => document.getElementById('out')?.click() });
+if (!CFG.demo) {
+  initLock({ logout: lockLogout });
+  // Un rechargement de page ne doit pas lever le verrou : sans cela, il suffirait
+  // d'appuyer sur F5 pour voir les données sans saisir le code. Le verrou revient
+  // immédiatement, avant le chargement des données, et seulement si une session
+  // existe (sinon l'écran de connexion doit rester accessible).
+  if (hasPin() && session()?.uid) lockNow();
+}
 autoClean().then(reloaded => { if (reloaded) location.reload(); else start(); });

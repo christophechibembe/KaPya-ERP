@@ -85,13 +85,15 @@ comportement de secours prévu. Mais il faut le documenter comme limite réelle.
 
 **Résultat B :** réussi / partiel / échoué — détails : `______________________`
 
-## Test C — Verrouillage au retour d'arrière-plan
+## Test C — Verrouillage au retour d'arrière-plan et au rechargement
 
 1. [ ] Le code de verrouillage étant actif, mettre l'application en arrière-plan
       (bouton Accueil) pendant au moins 5 secondes.
 2. [ ] Revenir sur Chrome : l'écran **« Application verrouillée »** doit s'afficher.
 3. [ ] Saisir le code : l'application doit revenir à l'écran précédent.
-4. [ ] Refaire le test en laissant l'application en arrière-plan moins d'une seconde :
+4. [ ] Recharger la page (tirer vers le bas, ou fermer puis rouvrir l'application) :
+      l'écran **« Application verrouillée »** doit revenir avant l'affichage des données.
+5. [ ] Refaire le test en laissant l'application en arrière-plan moins d'une seconde :
       le verrouillage ne doit **pas** s'afficher.
 
 **Résultat C :** réussi / partiel / échoué — détails : `______________________`
