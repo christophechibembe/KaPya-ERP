@@ -832,6 +832,15 @@ export async function render(main, ctx) {
   async function setupShops() {
     if (!canSeeAllShops(ctx?.role)) { setShop(''); return; }
     if (!shopsCache) shopsCache = await loadShops();
+    // Une boutique archivée, supprimée ou appartenant à une autre organisation ne
+    // doit pas rester en filtre invisible : le sélecteur afficherait « Toutes les
+    // boutiques » pendant que les chiffres sont filtrés sur un dépôt absent, et le
+    // tableau de bord afficherait zéro alors que les autres écrans montrent les
+    // ventes. On ne touche à rien si la liste n'a pas pu être lue (hors ligne).
+    if (shopsCache.length && getShop() && !shopsCache.some(shop => shop.id === getShop())) {
+      setShop('');
+      if (lastRefresh) refresh();
+    }
     const slot = main.querySelector('#owner-shop-slot');
     if (slot) {
       if (!slot.querySelector('#shop-select')) {
@@ -910,6 +919,9 @@ export async function render(main, ctx) {
   }
 
   layout();
+  // Les boutiques doivent être connues avant le calcul : un filtre de boutique
+  // invalide est ainsi purgé avant la première requête, pas après l'affichage.
+  await setupShops();
   await refresh();
 }
 
