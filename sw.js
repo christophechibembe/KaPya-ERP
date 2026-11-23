@@ -153,13 +153,14 @@ self.addEventListener('fetch', e => {
 // Reprise après coupure : le service worker rejoue la file d'attente même si l'application est fermée.
 // Il utilise le miroir de session déposé dans IndexedDB (jamais localStorage, inaccessible ici).
 // Limite honnête : le Background Sync n'existe que sur Chromium (Chrome/Edge/Android), pas sur Safari/iOS.
-const OFFLINE_DB = 'kapya-offline', OFFLINE_DB_VERSION = 2;
+const OFFLINE_DB = 'kapya-offline', OFFLINE_DB_VERSION = 3;
 function openOfflineDb() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(OFFLINE_DB, OFFLINE_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      if (!db.objectStoreNames.contains('kvmeta')) db.createObjectStore('kvmeta');
       if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true });
       if (!db.objectStoreNames.contains('sync')) db.createObjectStore('sync');
     };

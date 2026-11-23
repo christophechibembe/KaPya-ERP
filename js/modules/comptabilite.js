@@ -104,7 +104,10 @@ export async function render(main) {
         <p class="muted">Taux actuel : ${n(vat.rate)} %. Les prix étant TTC, la TVA est la part contenue dans les totaux. Chaque pièce conserve le taux en vigueur à sa date.</p>`
       : '<p class="muted">TVA désactivée. Activez-la dans Paramètres &gt; TVA pour la calculer et l’afficher ici.</p>';
 
-    $('#cp-body').innerHTML = `<p class="report-range">${fr(from)} au ${fr(to)}</p>
+    const offlineNote = (typeof navigator !== 'undefined' && !navigator.onLine)
+      ? '<p class="muted">Hors ligne : les chiffres proviennent de la copie locale et peuvent être incomplets sur cette période.</p>'
+      : '';
+    $('#cp-body').innerHTML = `<p class="report-range">${fr(from)} au ${fr(to)}</p>${offlineNote}
       <section class="kpis">
         ${kpi('Chiffre d’affaires', usd(totals.revenue), 'ventes nettes de retours et avoirs', 'sales', 't-green')}
         ${kpi('Achats', usd(totals.purchases), 'marchandises achetées sur la période', 'purchases', 't-blue')}
