@@ -170,6 +170,55 @@ test('encaissement d’une vente à crédit : toujours compté en caisse', () =>
   assert.equal(totals.receivable, 0);
 });
 
+test('TVA historisée : une vente garde le taux de sa date, pas le taux courant', () => {
+  const stored = sale({ vat_rate: 10 });
+  const lines = buildJournal({ sales: [stored], vat: { enabled: true, rate: 16 } });
+  assert.equal(account(lines, '701')[0].credit, 105.45);
+  assert.equal(account(lines, '443')[0].credit, 10.55);
+  // Une vente enregistrée TVA désactivée le reste, même si la TVA est réactivée depuis.
+  const noVat = sale({ id: 's2', number: 'F-002', vat_rate: 0 });
+  const later = buildJournal({ sales: [noVat], vat: { enabled: true, rate: 16 } });
+  assert.equal(account(later, '701')[0].credit, 116);
+  assert.equal(account(later, '443').length, 0);
+});
+
+test('TVA historisée : un achat garde le taux de sa date', () => {
+  const lines = buildJournal({
+    purchases: [purchase({ vat_rate: 20 })],
+    vat: { enabled: false, rate: 0 }
+  });
+  assert.equal(account(lines, '607')[0].debit, 96.67);
+  assert.equal(account(lines, '445')[0].debit, 19.33);
+  assert.equal(account(lines, '401')[0].credit, 116);
+});
+
+test('TVA historisée : retour et avoir reprennent le taux de la vente d’origine', () => {
+  const lines = buildJournal({
+    sales: [sale({ vat_rate: 16 })],
+    returns: [{ id: 'r1', sale_id: 's1', total_usd: 58, returned_on: '2026-11-12' }],
+    creditNotes: [{ id: 'c1', sale_id: 's1', total_usd: 58, issued_on: '2026-11-13', note: 'Correction' }],
+    vat: { enabled: false, rate: 0 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.revenue, 0);
+  assert.equal(totals.vatCollected, 0);
+  assert.ok(account(lines, '443').some(line => line.debit === 8));
+});
+
+test('retour lié à son avoir par return_id : une seule annulation, sans note « Retour »', () => {
+  const lines = buildJournal({
+    sales: [sale()],
+    returns: [{ id: 'r1', sale_id: 's1', total_usd: 116, returned_on: '2026-11-12' }],
+    creditNotes: [{ id: 'c1', sale_id: 's1', return_id: 'r1', total_usd: 116, issued_on: '2026-11-12', note: 'Avoir sur retour' }],
+    vat: { enabled: true, rate: 16 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.revenue, 0);
+  assert.equal(totals.vatCollected, 0);
+  assert.equal(totals.cash, 0);
+  assert.equal(journalTotals(lines).difference, 0);
+});
+
 test('balance : chaque compte est agrégé avec un solde signé', () => {
   const lines = buildJournal({ sales: [sale()], purchases: [purchase()], vat: { enabled: true, rate: 16 } });
   const balance = buildBalance(lines);

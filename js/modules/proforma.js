@@ -4,6 +4,7 @@ import { n, esc, usdOnly, fld, notify, getRate, articleLabel, attachCombo, unitL
 import { can } from '../roles.js';
 import { printDoc, previewDoc } from '../print.js';
 import { localDay } from '../dates.js';
+import { vatRateForDocument } from '../vat.js';
 
 const today = () => localDay();
 
@@ -81,7 +82,7 @@ export async function render(main, ctx) {
       const lines = await db.select('proforma_lines', `select=article_id,qty,unit_price&proforma_id=eq.${id}`);
       if (!pf || !lines.length) throw new Error('Proforma introuvable.');
       const paid = payment === 'cash' ? Number(pf.total_usd) : 0;
-      const sid = await db.rpc('create_sale', { p_number: takeInvoiceNumber(), p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_date: today(),
+      const sid = await db.rpc('create_sale', { p_number: takeInvoiceNumber(), p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_date: today(), p_vat_rate: vatRateForDocument(),
         p_lines: lines, p_customer: pf.customer_id, p_customer_label: pf.customer_label, p_payment: payment, p_paid: paid, p_deposit_id: null, p_advance_amount: 0 });
       await db.rpc('mark_proforma_converted', { p_id: id, p_sale: sid });
       notify(payment === 'cash' ? 'Facture créée et encaissée. Consultez-la dans Ventes.' : 'Facture créée à crédit. Consultez-la dans Crédits.', 'Proforma transformé');

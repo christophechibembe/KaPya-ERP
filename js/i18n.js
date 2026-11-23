@@ -199,7 +199,7 @@ const EN = {
   'Dépenses enregistrées (hors achats de marchandises)': 'Expenses recorded (excluding purchases of goods)',
   'Bénéfice': 'Profit', 'Bénéfice réalisé': 'Profit realised', 'Bénéfice encaissé': 'Profit collected', 'Bénéfice potentiel du stock': 'Potential profit on stock',
   'Élément': 'Line', 'Montant USD': 'Amount USD', 'Valeur USD': 'Value USD', 'Total USD': 'Total USD', 'Reste dû USD': 'Outstanding USD', 'Versé USD': 'Paid USD',
-  'Marge %': 'Margin %', 'Marge unitaire': 'Unit margin', 'Coût': 'Cost', 'Coût unitaire': 'Unit cost', 'Prix de vente': 'Sale price',
+  'Marge %': 'Margin %', 'Marge unitaire': 'Unit margin', 'Coût': 'Cost', 'Coût unitaire': 'Unit cost', 'Coût unitaire TTC': 'Unit cost incl. VAT', 'Prix de vente': 'Sale price',
   'Quantité vendue': 'Quantity sold', 'Quantité sortie': 'Quantity issued', 'Vendu': 'Sold', 'À perte': 'At a loss', 'Articles à perte': 'Items sold at a loss',
   'Ventes (USD)': 'Sales (USD)', 'Ventes par boutique': 'Sales per store', 'Chiffre d’affaires par mois': 'Revenue per month',
   'Bénéfice brut par mois (six derniers mois)': 'Gross profit per month (last six months)', 'Total vendu sur 6 mois': 'Total sold over 6 months',

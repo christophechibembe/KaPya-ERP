@@ -234,7 +234,9 @@ create table public.credit_notes (
   total_usd numeric(14,2) not null,
   note text not null,
   created_by uuid,
-  created_at timestamp with time zone not null
+  created_at timestamp with time zone not null,
+  return_id uuid,
+  vat_rate numeric(5,2)
 );
 
 create table public.customer_deposit_counters (
@@ -273,7 +275,8 @@ create table public.customer_returns (
   total_usd numeric(14,2) not null,
   note text not null,
   created_by uuid,
-  created_at timestamp with time zone not null
+  created_at timestamp with time zone not null,
+  vat_rate numeric(5,2)
 );
 
 create table public.customer_setup (
@@ -496,7 +499,8 @@ create table public.purchases (
   created_at timestamp with time zone,
   usd_cdf numeric(14,2),
   payment_balance_opening numeric(14,2),
-  warehouse_id uuid
+  warehouse_id uuid,
+  vat_rate numeric(5,2)
 );
 
 create table public.push_subscriptions (
@@ -588,7 +592,8 @@ create table public.sales (
   payment_method text not null,
   payment_reference text,
   payment_operator text,
-  to_pickup boolean not null
+  to_pickup boolean not null,
+  vat_rate numeric(5,2)
 );
 
 create table public.sales_prospects (
@@ -1514,8 +1519,8 @@ begin
   end loop;
   if v_total <= 0 then raise exception 'Le montant de l’avoir doit être supérieur à zéro.'; end if;
   v_num := public.next_document_number('avoir', 'AV');
-  insert into public.credit_notes (id, org_id, number, sale_id, customer_id, total_usd, note, created_by)
-  values (v_id, v_org, v_num, p_sale, v_sale.customer_id, v_total, trim(coalesce(p_note, '')), auth.uid());
+  insert into public.credit_notes (id, org_id, number, sale_id, customer_id, total_usd, note, created_by, vat_rate)
+  values (v_id, v_org, v_num, p_sale, v_sale.customer_id, v_total, trim(coalesce(p_note, '')), auth.uid(), v_sale.vat_rate);
   insert into public.credit_note_lines (org_id, credit_note_id, article_id, qty, unit_price)
   select v_org, v_id, (x->>'article_id')::uuid, (x->>'qty')::numeric,
     (select max(sl.unit_price) from public.sale_lines sl where sl.sale_id = p_sale and sl.article_id = (x->>'article_id')::uuid)
@@ -1591,6 +1596,7 @@ AS $function$
 declare
   v_org uuid := public.my_org(); v_role text := public.my_role(); v_id uuid; v_num text; v_sale record;
   v_total numeric(14,2) := 0; l jsonb; v_qty numeric; v_sold numeric; v_price numeric; v_before numeric;
+  v_note_id uuid;
 begin
   if auth.uid() is null or v_org is null then raise exception 'Connexion requise.'; end if;
   if coalesce(v_role not in ('admin','manager','facturier'), true) then raise exception 'Vous ne pouvez pas enregistrer de retour.'; end if;
@@ -1613,14 +1619,16 @@ begin
     v_total := v_total + round(v_qty * v_price, 2);
   end loop;
   v_num := public.next_document_number('retour_client', 'RET');
-  insert into public.customer_returns (id, org_id, number, sale_id, warehouse_id, total_usd, note, created_by)
-  values (v_id, v_org, v_num, p_sale, v_sale.warehouse_id, v_total, trim(coalesce(p_note,'')), auth.uid());
+  insert into public.customer_returns (id, org_id, number, sale_id, warehouse_id, total_usd, note, created_by, vat_rate)
+  values (v_id, v_org, v_num, p_sale, v_sale.warehouse_id, v_total, trim(coalesce(p_note,'')), auth.uid(), v_sale.vat_rate);
   insert into public.customer_return_lines (org_id, return_id, article_id, qty, unit_price)
   select v_org, v_id, (x->>'article_id')::uuid, (x->>'qty')::numeric, (select max(sl.unit_price) from public.sale_lines sl where sl.sale_id = p_sale and sl.article_id = (x->>'article_id')::uuid) from jsonb_array_elements(p_lines) x;
   insert into public.stock_moves (org_id, article_id, qty, reason, ref_id, warehouse_id)
   select v_org, (x->>'article_id')::uuid, (x->>'qty')::numeric, 'client_return', v_id, v_sale.warehouse_id from jsonb_array_elements(p_lines) x;
   if p_credit and v_role in ('admin','manager') then
-    perform public.create_credit_note(p_sale, p_lines, 'Retour ' || v_num || '. ' || trim(coalesce(p_note,'')));
+    v_note_id := public.create_credit_note(p_sale, p_lines, 'Retour ' || v_num || '. ' || trim(coalesce(p_note,'')));
+    -- Lien explicite retour → avoir : le journal n'annulera ce retour qu'une fois.
+    update public.credit_notes set return_id = v_id where id = v_note_id;
   end if;
   return v_id;
 end;
@@ -1707,8 +1715,8 @@ end;
 $function$
 ;
 
--- fonction create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_warehouse uuid)
-CREATE OR REPLACE FUNCTION public.create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid DEFAULT NULL::uuid, p_usd_cdf numeric DEFAULT NULL::numeric, p_warehouse uuid DEFAULT NULL::uuid)
+-- fonction create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_warehouse uuid, p_vat_rate numeric)
+CREATE OR REPLACE FUNCTION public.create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid DEFAULT NULL::uuid, p_usd_cdf numeric DEFAULT NULL::numeric, p_warehouse uuid DEFAULT NULL::uuid, p_vat_rate numeric DEFAULT NULL::numeric)
  RETURNS uuid
  LANGUAGE plpgsql
  SET search_path TO 'public'
@@ -1722,6 +1730,7 @@ begin
   if p_id is not null and exists (select 1 from public.purchases t where t.id = p_id) then return p_id; end if;
   if auth.uid() is null then raise exception 'Connexion requise.'; end if;
   if public.my_role() not in ('admin','manager') then raise exception 'Vous n’avez pas le droit d’enregistrer un achat.'; end if;
+  if p_vat_rate is not null and (p_vat_rate < 0 or p_vat_rate > 100) then raise exception 'Taux de TVA invalide (entre 0 et 100).'; end if;
   if p_id is not null and exists (select 1 from public.purchases where id = p_id and org_id = public.my_org()) then return p_id; end if;
   if p_supplier is null or not exists (select 1 from public.suppliers where id = p_supplier and org_id = public.my_org()) then
     raise exception 'Fournisseur introuvable dans votre entreprise.';
@@ -1736,8 +1745,8 @@ begin
     raise exception 'Dépôt introuvable ou inactif.';
   end if;
   v_wh := coalesce(p_warehouse, public.default_warehouse());
-  insert into public.purchases(id, supplier_id, number, bought_at, usd_cdf, warehouse_id)
-  values (v_id, p_supplier, coalesce(nullif(trim(coalesce(p_number, '')), ''), public.next_document_number('purchase', 'ACH')), coalesce(p_date, current_date), coalesce(p_usd_cdf, (select usd_cdf from public.settings limit 1)), v_wh);
+  insert into public.purchases(id, supplier_id, number, bought_at, usd_cdf, warehouse_id, vat_rate)
+  values (v_id, p_supplier, coalesce(nullif(trim(coalesce(p_number, '')), ''), public.next_document_number('purchase', 'ACH')), coalesce(p_date, current_date), coalesce(p_usd_cdf, (select usd_cdf from public.settings limit 1)), v_wh, coalesce(p_vat_rate, public.current_vat_rate()));
   insert into public.purchase_lines(purchase_id, article_id, qty, unit_cost)
   select v_id, (l->>'article_id')::uuid, (l->>'qty')::numeric, (l->>'unit_cost')::numeric
   from jsonb_array_elements(p_lines) l
@@ -1774,8 +1783,8 @@ begin
 end; $function$
 ;
 
--- fonction create_sale(p_customer uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_customer_label text, p_payment text, p_paid numeric, p_deposit_id uuid, p_advance_amount numeric, p_warehouse uuid)
-CREATE OR REPLACE FUNCTION public.create_sale(p_customer uuid, p_number text, p_date date, p_lines jsonb, p_id uuid DEFAULT NULL::uuid, p_usd_cdf numeric DEFAULT NULL::numeric, p_customer_label text DEFAULT NULL::text, p_payment text DEFAULT 'cash'::text, p_paid numeric DEFAULT NULL::numeric, p_deposit_id uuid DEFAULT NULL::uuid, p_advance_amount numeric DEFAULT 0, p_warehouse uuid DEFAULT NULL::uuid)
+-- fonction create_sale(p_customer uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_customer_label text, p_payment text, p_paid numeric, p_deposit_id uuid, p_advance_amount numeric, p_warehouse uuid, p_vat_rate numeric)
+CREATE OR REPLACE FUNCTION public.create_sale(p_customer uuid, p_number text, p_date date, p_lines jsonb, p_id uuid DEFAULT NULL::uuid, p_usd_cdf numeric DEFAULT NULL::numeric, p_customer_label text DEFAULT NULL::text, p_payment text DEFAULT 'cash'::text, p_paid numeric DEFAULT NULL::numeric, p_deposit_id uuid DEFAULT NULL::uuid, p_advance_amount numeric DEFAULT 0, p_warehouse uuid DEFAULT NULL::uuid, p_vat_rate numeric DEFAULT NULL::numeric)
  RETURNS uuid
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1801,6 +1810,7 @@ begin
   if exists (select 1 from jsonb_array_elements(p_lines) l where coalesce((l->>'discount_pct')::numeric,0) < 0 or coalesce((l->>'discount_pct')::numeric,0) > 100) then raise exception 'La remise doit être comprise entre 0 et 100 %%.'; end if;
   if public.my_role() = 'facturier' and exists (select 1 from jsonb_array_elements(p_lines) l where coalesce((l->>'discount_pct')::numeric,0) > 10) then raise exception 'Un facturier ne peut pas accorder plus de 10 %% de remise. Demandez au gérant.'; end if;
   if coalesce(p_payment,'cash') not in ('cash','credit') then raise exception 'Mode de paiement invalide.'; end if;
+  if p_vat_rate is not null and (p_vat_rate < 0 or p_vat_rate > 100) then raise exception 'Taux de TVA invalide (entre 0 et 100).'; end if;
   if p_payment = 'credit' and p_customer is null then raise exception 'Choisissez un client dans la liste pour une facture à crédit.'; end if;
   if v_advance < 0 then raise exception 'Le montant de l’acompte utilisé est invalide.'; end if;
   if v_advance > 0 and (p_customer is null or p_deposit_id is null) then
@@ -1845,10 +1855,10 @@ begin
     if v_advance > v_deposit.remaining then raise exception 'Le montant imputé dépasse le solde de l’acompte (%).', v_deposit.remaining; end if;
   end if;
   sid := coalesce(p_id, gen_random_uuid());
-  insert into sales(id, customer_id, customer_label, number, sold_at, usd_cdf, payment, paid, warehouse_id)
+  insert into sales(id, customer_id, customer_label, number, sold_at, usd_cdf, payment, paid, warehouse_id, vat_rate)
     values (sid, p_customer, nullif(trim(coalesce(p_customer_label,'')), ''),
       coalesce(p_number, public.next_invoice_number()), coalesce(p_date, current_date),
-      coalesce(p_usd_cdf, (select s.usd_cdf from public.settings s where s.org_id = public.my_org())), coalesce(p_payment,'cash'), v_initial + v_advance, v_wh);
+      coalesce(p_usd_cdf, (select s.usd_cdf from public.settings s where s.org_id = public.my_org())), coalesce(p_payment,'cash'), v_initial + v_advance, v_wh, coalesce(p_vat_rate, public.current_vat_rate()));
   insert into sale_lines(sale_id, article_id, qty, unit_price, discount_pct)
     select sid, (l->>'article_id')::uuid, (l->>'qty')::numeric, (l->>'unit_price')::numeric, coalesce((l->>'discount_pct')::numeric,0) from jsonb_array_elements(p_lines) l
     join public.articles a on a.id=(l->>'article_id')::uuid and a.org_id=public.my_org();
@@ -4280,6 +4290,20 @@ end;
 $function$
 ;
 
+-- fonction current_vat_rate()
+-- Taux à figer sur une pièce au moment de sa création : 0 si la TVA est désactivée.
+CREATE OR REPLACE FUNCTION public.current_vat_rate()
+ RETURNS numeric
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select case when coalesce(o.vat_enabled, false) then coalesce(o.vat_rate, 0) else 0 end
+  from public.organizations o
+  where o.id = public.my_org()
+$function$
+;
+
 -- fonction settle_reseller_commission(p_id uuid, p_reference text)
 CREATE OR REPLACE FUNCTION public.settle_reseller_commission(p_id uuid, p_reference text)
  RETURNS void
@@ -5588,6 +5612,8 @@ alter table public.company_codes add constraint company_codes_org_id_fkey FOREIG
 alter table public.credit_note_lines add constraint credit_note_lines_article_id_fkey FOREIGN KEY (article_id) REFERENCES articles(id);
 
 alter table public.credit_note_lines add constraint credit_note_lines_credit_note_id_fkey FOREIGN KEY (credit_note_id) REFERENCES credit_notes(id) ON DELETE CASCADE;
+
+alter table public.credit_notes add constraint credit_notes_return_id_fkey FOREIGN KEY (return_id) REFERENCES customer_returns(id);
 
 alter table public.credit_notes add constraint credit_notes_sale_id_fkey FOREIGN KEY (sale_id) REFERENCES sales(id);
 
@@ -7040,11 +7066,11 @@ grant execute on function public.create_inventory(p_warehouse uuid) to authentic
 
 grant execute on function public.create_proforma(p_customer uuid, p_customer_label text, p_lines jsonb, p_note text, p_valid_until date, p_warehouse uuid) to authenticated;
 
-grant execute on function public.create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_warehouse uuid) to authenticated;
+grant execute on function public.create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_warehouse uuid, p_vat_rate numeric) to authenticated;
 
 grant execute on function public.create_purchase_order(p_supplier uuid, p_warehouse uuid, p_lines jsonb, p_note text, p_expected date) to authenticated;
 
-grant execute on function public.create_sale(p_customer uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_customer_label text, p_payment text, p_paid numeric, p_deposit_id uuid, p_advance_amount numeric, p_warehouse uuid) to authenticated;
+grant execute on function public.create_sale(p_customer uuid, p_number text, p_date date, p_lines jsonb, p_id uuid, p_usd_cdf numeric, p_customer_label text, p_payment text, p_paid numeric, p_deposit_id uuid, p_advance_amount numeric, p_warehouse uuid, p_vat_rate numeric) to authenticated;
 
 grant execute on function public.create_stock_lot(p_warehouse uuid, p_article uuid, p_lot text, p_expiry date, p_qty numeric, p_note text) to authenticated;
 
@@ -7057,6 +7083,8 @@ grant execute on function public.create_warehouse_transfer(p_from uuid, p_to uui
 grant execute on function public.create_worker(p_name text, p_role text, p_kind text, p_usual numeric) to authenticated;
 
 grant execute on function public.credit_sales_all() to authenticated;
+
+grant execute on function public.current_vat_rate() to authenticated;
 
 grant execute on function public.customer_debts() to authenticated;
 

@@ -13,6 +13,7 @@ import { printHtml } from '../print.js';
 import { companyLogo } from '../print.js';
 import { localDay } from '../dates.js';
 import { loadCart, saveCart, recentCustomers, rememberCustomer } from '../cart-store.js';
+import { vatRateForDocument } from '../vat.js';
 
 const PAY_MODES = [['cash', 'Espèces'], ['mobile_money', 'Mobile money'], ['bank', 'Virement'], ['credit', 'Acompte / crédit']];
 const PAY_METHODS = [['cash', 'Espèces'], ['mobile_money', 'Mobile money'], ['bank', 'Virement']];
@@ -569,7 +570,7 @@ export async function render(main, ctx) {
           return;
         }
       }
-      const sid = await db.rpc('create_sale', { p_number: takeInvoiceNumber(), p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null,
+      const sid = await db.rpc('create_sale', { p_number: takeInvoiceNumber(), p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_vat_rate: vatRateForDocument(),
         p_date: localDay(),
         p_lines: snapshot.map(l => ({ article_id: l.article_id, qty: l.qty, unit_price: net(l), discount_pct: discountsOn ? (l.discount || 0) : 0 })),
         p_customer: customer, p_customer_label: cname, p_payment: isCredit ? 'credit' : 'cash', p_paid: advance,

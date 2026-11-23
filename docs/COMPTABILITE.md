@@ -26,6 +26,9 @@ Les lectures sont **paginées** pour couvrir toute la période, sans troncature 
 
 La TVA reste réglable par le gérant dans **Paramètres > TVA** : case « Facturer la TVA »
 et taux de 0 à 100 %. Les prix sont **TTC** ; la TVA est la part contenue dans le total.
+Chaque vente, achat, retour ou avoir **fige le taux en vigueur à sa date** : un changement
+de taux ne recalcule donc pas les périodes passées. Les pièces antérieures à cette
+évolution n'ont pas de taux enregistré et utilisent le taux courant (comportement d'avant).
 
 ## Plan de comptes simplifié
 
@@ -50,7 +53,9 @@ et taux de 0 à 100 %. Les prix sont **TTC** ; la TVA est la part contenue dans 
 - **Dépense** : débit 658, crédit 571.
 - **Retour ou avoir** : débit 701 et 443 ; crédit 571 (caisse) si la vente d'origine était
   comptant, 411 (créance client) si elle était à crédit. Un retour accompagné de son avoir
-  automatique n'est comptabilisé qu'une seule fois (l'avoir porte l'écriture).
+  automatique n'est comptabilisé qu'une seule fois : l'avoir porte l'écriture et le lien
+  `credit_notes.return_id` désigne le retour. Les pièces antérieures au lien utilisent
+  le repli par note « Retour … ».
 
 La TVA d'un montant TTC se calcule ainsi : `TVA = total − total / (1 + taux / 100)`.
 Chaque opération produit des lignes équilibrées ; le journal affiche le total des débits,
@@ -67,7 +72,17 @@ certifié ni une déclaration fiscale officielle.
 - Les immobilisations, amortissements et provisions ne sont pas gérés.
 - Pas de clôture ni de verrouillage de période.
 - Les prix sont traités comme TTC ; un mélange HT/TTC n'est pas géré.
-- Le taux de TVA est unique pour l'entreprise.
+- Le taux de TVA est unique pour l'entreprise à un instant donné, mais il est historisé
+  pièce par pièce : un changement de taux ne modifie pas les écritures passées.
+  Les pièces créées avant l'historisation utilisent le taux courant.
+
+## Mise à jour de la base
+
+La migration `supabase/migrations/20261123000000_avoir_retour_et_tva_historisee.sql`
+doit être appliquée **avant** de publier la version 1.50.12. Elle ajoute les colonnes
+`vat_rate` (ventes, achats, retours, avoirs), `credit_notes.return_id`, et le paramètre
+`p_vat_rate` des fonctions `create_sale` et `create_purchase`. Sans elle, la création de
+pièces échoue (paramètre inconnu) et l'écran comptable ne peut pas lire les nouvelles colonnes.
 
 ## Vérifications
 

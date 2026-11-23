@@ -7,6 +7,7 @@ import { searchArticles } from '../localdb.js';
 import { printDoc } from '../print.js';
 import { cget, ckeys } from '../cache.js';
 import { planAllows } from '../plans.js';
+import { vatRateForDocument } from '../vat.js';
 const today = () => new Date().toLocaleDateString('sv-SE');
 const label = articleLabel;
 
@@ -341,7 +342,7 @@ export async function render(main, ctx, params) {
       orig = {}; lines.forEach(l => orig[l.article_id] = l.qty);
       return { ...base, number: editing.number, edited: true };
     }
-    const sid = await db.rpc('create_sale', { p_number: takeInvoiceNumber(), p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, ...payload, ...(warehouseChoice() ? { p_warehouse: warehouseChoice() } : {}) });
+    const sid = await db.rpc('create_sale', { p_number: takeInvoiceNumber(), p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_vat_rate: vatRateForDocument(), ...payload, ...(warehouseChoice() ? { p_warehouse: warehouseChoice() } : {}) });
     // Mode mobile money ou virement : la référence est notée sur la vente (sans changer le montant).
     if (!credit && ['mobile_money', 'bank'].includes($('#pay').value)) {
       const op = $('#pay').value === 'mobile_money' ? $('#pay-op').value : null;
