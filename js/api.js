@@ -476,7 +476,16 @@ async function authed(path, o = {}) {
       throw Object.assign(new Error('Hors ligne : cette information n’a pas encore été chargée. Reconnectez-vous une fois pour la mettre à jour.'), { offline: true, status: 0 });
     }
   }
-  try { return await raw(path, { ...o, token: S.access }); }
+  try {
+    const result = await raw(path, { ...o, token: S.access });
+    // Écriture en ligne réussie : on vide le cache d'affichage du tableau de bord et
+    // on prévient les écrans ouverts. Sans cela, une vente faite en ligne reste
+    // invisible jusqu'au rechargement manuel : la prochaine occasion automatique
+    // n'est que l'intervalle d'une minute du tableau de bord.
+    clearDash();
+    emit();
+    return result;
+  }
   catch (e) {
     if (!isNet(e)) throw e;
     const fn = (path.match(/rpc\/(\w+)$/) || [])[1];
