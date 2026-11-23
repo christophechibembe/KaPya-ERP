@@ -42,6 +42,9 @@ export function buildJournal({
   const lines = [];
   const vatOn = !!vat.enabled;
   const rate = Number(vat.rate) || 0;
+  // Mode de paiement de chaque vente : sert à choisir le compte des retours/avoirs
+  // et à éviter de compter deux fois un acompte imputé sur une vente comptant.
+  const saleMode = new Map(sales.map(sale => [sale.id, sale.payment]));
 
   for (const sale of sales) {
     const total = r2(sumLines(sale.sale_lines, 'unit_price'));
@@ -58,6 +61,9 @@ export function buildJournal({
   for (const payment of salePayments) {
     const value = r2(payment.amount);
     if (value <= 0) continue;
+    // Une vente comptant est déjà encaissée en totalité dans l'écriture de vente.
+    // Son seul paiement possible est un acompte imputé : le compter ici ferait double emploi.
+    if (payment.sale_id && saleMode.get(payment.sale_id) === 'cash') continue;
     const piece = payment.sales?.number || '';
     const label = `Encaissement ${piece}`.trim();
     lines.push(entry(payment.paid_at, piece, label, '571', value, 0));
@@ -92,15 +98,34 @@ export function buildJournal({
     lines.push(entry(expense.paid_at, '', label, '571', 0, value));
   }
 
-  // Retour ou avoir : on annule la vente correspondante (produit et TVA) et la créance client.
-  for (const movement of [...returns.map(r => ({ ...r, kind: 'Retour' })), ...creditNotes.map(n => ({ ...n, kind: 'Avoir' }))]) {
-    const total = r2(movement.total ?? movement.total_usd);
+  // Retour ou avoir : on annule la vente correspondante (produit et TVA).
+  // Le compte crédité dépend du mode de paiement de la vente d'origine :
+  // caisse (571) pour une vente comptant, créance client (411) pour une vente à crédit.
+  const movementDate = movement => movement.date || movement.returned_on || movement.issued_on || '';
+  const movementTotal = movement => r2(movement.total ?? movement.total_usd);
+  const movementKey = movement => `${movement.sale_id || ''}|${movementTotal(movement)}|${movementDate(movement)}`;
+  // Un retour accompagné de son avoir automatique (create_customer_return avec p_credit=true)
+  // ne doit être annulé qu'une fois : l'avoir porte déjà l'écriture, on ignore le retour.
+  // L'avoir automatique est reconnu à sa note « Retour … » et au triplet (facture, montant, date).
+  const autoNoteKeys = new Set(
+    creditNotes.filter(note => String(note.note || '').startsWith('Retour')).map(movementKey)
+  );
+  const movements = [];
+  for (const ret of returns) {
+    if (ret.sale_id && autoNoteKeys.has(movementKey(ret))) continue;
+    movements.push({ ...ret, kind: 'Retour' });
+  }
+  for (const note of creditNotes) movements.push({ ...note, kind: 'Avoir' });
+  for (const movement of movements) {
+    const total = movementTotal(movement);
     if (total <= 0) continue;
     const { ht, vat: tax } = splitVat(total, rate, vatOn);
+    const date = movementDate(movement);
     const label = movement.kind;
-    lines.push(entry(movement.date || movement.returned_on || movement.issued_on, '', label, '701', ht, 0));
-    if (tax > 0) lines.push(entry(movement.date || movement.returned_on || movement.issued_on, '', label, '443', tax, 0));
-    lines.push(entry(movement.date || movement.returned_on || movement.issued_on, '', label, '411', 0, total));
+    const creditAccount = movement.sale_id && saleMode.get(movement.sale_id) === 'cash' ? '571' : '411';
+    lines.push(entry(date, '', label, '701', ht, 0));
+    if (tax > 0) lines.push(entry(date, '', label, '443', tax, 0));
+    lines.push(entry(date, '', label, creditAccount, 0, total));
   }
 
   return lines.sort((a, b) => a.date.localeCompare(b.date) || a.piece.localeCompare(b.piece) || a.account.localeCompare(b.account));

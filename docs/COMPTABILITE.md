@@ -16,6 +16,7 @@ opérations déjà saisies dans KaPya ERP.
 
 L'écran est **en lecture seule** : il ne crée, ne modifie et ne supprime aucune donnée.
 Deux exports Excel sont disponibles : le journal et la balance.
+Les lectures sont **paginées** pour couvrir toute la période, sans troncature silencieuse.
 
 ## Accès et formule
 
@@ -47,7 +48,9 @@ et taux de 0 à 100 %. Les prix sont **TTC** ; la TVA est la part contenue dans 
 - **Achat** : débit 607 (HT) et 445 (TVA), crédit 401.
 - **Règlement fournisseur** : débit 401, crédit 571.
 - **Dépense** : débit 658, crédit 571.
-- **Retour ou avoir** : débit 701 et 443, crédit 411.
+- **Retour ou avoir** : débit 701 et 443 ; crédit 571 (caisse) si la vente d'origine était
+  comptant, 411 (créance client) si elle était à crédit. Un retour accompagné de son avoir
+  automatique n'est comptabilisé qu'une seule fois (l'avoir porte l'écriture).
 
 La TVA d'un montant TTC se calcule ainsi : `TVA = total − total / (1 + taux / 100)`.
 Chaque opération produit des lignes équilibrées ; le journal affiche le total des débits,

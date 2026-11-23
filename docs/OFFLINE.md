@@ -130,7 +130,8 @@ La carte **Mode hors-ligne** affiche :
 - un bouton **Synchroniser maintenant** ;
 - un bouton **Voir les pièces refusées** ;
 - un bouton **Vider les données hors ligne** (avec confirmation, car les pièces non
-  envoyées sont perdues et le miroir de session du service worker est effacé).
+  envoyées sont perdues, le miroir de session du service worker est effacé et le
+  catalogue articles local est vidé).
 
 ## Limites assumées
 

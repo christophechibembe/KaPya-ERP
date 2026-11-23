@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.50.9-build149';
+const VERSION = 'kapya-erp-1.50.10-build150';
 const SHELL = [
   './',
   './404.html',
@@ -225,7 +225,8 @@ async function replayOfflineQueue() {
     try { session = await refreshMirroredSession(config, session); }
     catch (error) { await notifyClients({ type: 'kp-sync' }); throw error; } // le navigateur réessaiera
   }
-  const items = (await idbGetAll('outbox')).filter(item => item.status !== 'rejected' && item.status !== 'sent');
+  // Ne jamais rejouer les pièces d'un autre compte (changement d'utilisateur sur l'appareil).
+  const items = (await idbGetAll('outbox')).filter(item => item.status !== 'rejected' && item.status !== 'sent' && (!item.uid || item.uid === session.uid));
   let interrupted = false;
   for (const item of items) {
     try {

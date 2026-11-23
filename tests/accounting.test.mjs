@@ -94,6 +94,82 @@ test('retours et avoirs : le chiffre d’affaires et la TVA sont annulés', () =
   assert.equal(journalTotals(lines).difference, 0);
 });
 
+test('retour avec avoir automatique : une seule annulation (vente comptant)', () => {
+  const lines = buildJournal({
+    sales: [sale()],
+    returns: [{ sale_id: 's1', total_usd: 116, returned_on: '2026-11-12' }],
+    creditNotes: [{ sale_id: 's1', total_usd: 116, issued_on: '2026-11-12', note: 'Retour RET-0001. ' }],
+    vat: { enabled: true, rate: 16 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.revenue, 0);
+  assert.equal(totals.vatCollected, 0);
+  assert.equal(totals.cash, 0);
+  assert.equal(totals.receivable, 0);
+  assert.equal(journalTotals(lines).difference, 0);
+});
+
+test('retour avec avoir automatique : une seule annulation (vente à crédit)', () => {
+  const lines = buildJournal({
+    sales: [sale({ payment: 'credit' })],
+    returns: [{ sale_id: 's1', total_usd: 116, returned_on: '2026-11-12' }],
+    creditNotes: [{ sale_id: 's1', total_usd: 116, issued_on: '2026-11-12', note: 'Retour RET-0001. ' }],
+    vat: { enabled: true, rate: 16 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.revenue, 0);
+  assert.equal(totals.receivable, 0);
+  assert.equal(totals.cash, 0);
+  assert.equal(journalTotals(lines).difference, 0);
+});
+
+test('retour sans avoir sur vente comptant : la caisse est créditée, pas la créance', () => {
+  const lines = buildJournal({
+    sales: [sale()],
+    returns: [{ sale_id: 's1', total_usd: 116, returned_on: '2026-11-12' }],
+    vat: { enabled: false, rate: 0 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.revenue, 0);
+  assert.equal(totals.cash, 0);
+  assert.equal(totals.receivable, 0);
+  assert.ok(account(lines, '571').some(line => line.credit === 116));
+});
+
+test('retour et avoir manuel distincts : les deux annulations sont comptées', () => {
+  const lines = buildJournal({
+    sales: [sale()],
+    returns: [{ sale_id: 's1', total_usd: 58, returned_on: '2026-11-12' }],
+    creditNotes: [{ sale_id: 's1', total_usd: 58, issued_on: '2026-11-13', note: 'Correction de prix' }],
+    vat: { enabled: true, rate: 16 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.revenue, 0);
+  assert.equal(journalTotals(lines).difference, 0);
+});
+
+test('acompte imputé sur une vente comptant : pas de double encaissement', () => {
+  const lines = buildJournal({
+    sales: [sale()],
+    salePayments: [{ sale_id: 's1', amount: 50, paid_at: '2026-11-10', kind: 'advance', sales: { number: 'F-001' } }],
+    vat: { enabled: false, rate: 0 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.cash, 116);
+  assert.equal(totals.revenue, 116);
+});
+
+test('encaissement d’une vente à crédit : toujours compté en caisse', () => {
+  const lines = buildJournal({
+    sales: [sale({ payment: 'credit' })],
+    salePayments: [{ sale_id: 's1', amount: 116, paid_at: '2026-11-20', kind: 'payment', sales: { number: 'F-001' } }],
+    vat: { enabled: false, rate: 0 }
+  });
+  const totals = summarize(lines);
+  assert.equal(totals.cash, 116);
+  assert.equal(totals.receivable, 0);
+});
+
 test('balance : chaque compte est agrégé avec un solde signé', () => {
   const lines = buildJournal({ sales: [sale()], purchases: [purchase()], vat: { enabled: true, rate: 16 } });
   const balance = buildBalance(lines);

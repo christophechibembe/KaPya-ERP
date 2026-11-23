@@ -47,6 +47,11 @@ export async function replaceArticles(rows) {
   await upsertArticles(rows);
 }
 
+// Vide le catalogue local (déconnexion, changement d'utilisateur, « vider les données hors ligne »).
+export async function clearArticles() {
+  await tx('readwrite', s => s.clear());
+}
+
 // Recherche : référence, code-barres, ou tout ou partie du nom (sans accents ni majuscules)
 export async function searchArticles(q, limit = 40, withBarcode = true) {
   const needle = norm(q);

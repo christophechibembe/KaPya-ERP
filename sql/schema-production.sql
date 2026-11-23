@@ -2958,7 +2958,7 @@ CREATE OR REPLACE FUNCTION public.plan_allows(p_feature text)
 AS $function$
   select case (select o.plan from public.organizations o where o.id = public.my_org())
     when 'premium' then true
-    when 'standard' then p_feature in ('depots','transferts','alertes','exports','sauvegarde','whatsapp')
+    when 'standard' then p_feature in ('depots','transferts','alertes','exports','comptabilite','sauvegarde','whatsapp')
     else false
   end
 $function$
