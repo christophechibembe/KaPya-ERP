@@ -1,10 +1,10 @@
 // API simulée pour le tableau de bord : aucune donnée réelle, aucun accès réseau.
-export const fixture = { sales: [], pendingSales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] };
+export const fixture = { sales: [], pendingSales: [], pendingPayments: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] };
 
 export const session = () => ({ uid: 'dash-user' });
 export const pendingFor = async table => (table === 'sales' ? fixture.pendingSales.slice() : []);
 export const pendingCount = async () => fixture.pendingSales.length;
-export const pendingOps = async () => [];
+export const pendingOps = async fn => (fn === 'record_credit_payment' ? fixture.pendingPayments.slice() : []);
 export const rejectedItems = async () => [];
 export const lastSyncTime = () => null;
 export const retryRejected = async () => {};
@@ -19,7 +19,7 @@ export const localToday = () => {
 };
 
 export const resetDashboard = () => {
-  Object.assign(fixture, { sales: [], pendingSales: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] });
+  Object.assign(fixture, { sales: [], pendingSales: [], pendingPayments: [], expenses: [], payments: [], deposits: [], moves: [], blocks: null, calls: [], failTables: [], failBefore: null, holdBefore: null, pendingReads: [] });
 };
 
 export const addSale = (options = {}) => {
@@ -57,6 +57,23 @@ export const addPendingSale = (options = {}) => {
     }
   });
   return `pend-${id}`;
+};
+
+// Versement de crédit saisi hors ligne : présent dans la file, pas encore au serveur.
+export const addPendingPayment = (options = {}) => {
+  const id = fixture.pendingPayments.length + 1;
+  fixture.pendingPayments.push({
+    seq: 200 + id,
+    fn: 'record_credit_payment',
+    status: 'queued',
+    body: {
+      p_id: `pay-${id}`,
+      p_sale_id: options.saleId,
+      p_amount: options.amount ?? 5,
+      p_paid_at: options.paidAt ?? localToday()
+    }
+  });
+  return `pay-${id}`;
 };
 
 export const addPayment = (options = {}) => {

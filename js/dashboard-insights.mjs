@@ -71,7 +71,7 @@ export function periodFigures({ sales, payments, deposits, expenses, supplierPay
 
 // Détails issus exclusivement des lignes déjà lues pour le tableau de bord.
 export function modernDetails(model, source) {
-  const { sales, credits, payments, deposits, supplierPayments, expenses, articles, costs, pending } = source;
+  const { sales, credits, payments, deposits, supplierPayments, expenses, articles, costs, pending, pendingCredits = [] } = source;
   const creditById = new Map(credits.map(sale => [sale.id, sale]));
   const salesRows = rows => rows.map(sale => ({
     date: day(sale.sold_at),
@@ -89,10 +89,17 @@ export function modernDetails(model, source) {
   add('cashSales', salesRows(sales.filter(sale => sale.payment !== 'credit')));
   add('creditSales', salesRows(sales.filter(sale => sale.payment === 'credit')));
   add('paymentsReceived', paymentRows, model.paymentsAvailable);
-  add('outstanding', credits.map(sale => ({
-    date: day(sale.sold_at), label: sale.number || 'Vente à crédit',
-    amount: creditBalance(linesTotal(sale), Number(sale.paid || 0), Number(sale.credit_notes_total || 0))
-  })).filter(row => row.amount > 0), true, true);
+  // Créances du serveur + créances nées hors ligne : le total est déjà la somme des deux.
+  add('outstanding', [
+    ...credits.map(sale => ({
+      date: day(sale.sold_at), label: sale.number || 'Vente à crédit',
+      amount: creditBalance(linesTotal(sale), Number(sale.paid || 0), Number(sale.credit_notes_total || 0))
+    })),
+    ...pendingCredits.map(sale => ({
+      date: day(sale.sold_at), label: `${sale.number || 'Vente à crédit'} · En attente d’envoi`,
+      amount: Number(sale.balance || 0)
+    }))
+  ].filter(row => row.amount > 0), true, true);
   if (!model.canSeeCosts) return details;
   const expenseRows = expenses.map(expense => ({ date: day(expense.paid_at), label: expense.label || 'Dépense', amount: Number(expense.amount || 0) }));
   const supplierRows = supplierPayments.map(payment => ({ date: day(payment.paid_at), label: payment.purchases?.number || 'Fournisseur', amount: Number(payment.amount || 0) }));

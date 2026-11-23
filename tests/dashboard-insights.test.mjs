@@ -103,3 +103,30 @@ test('créances : les avoirs réduisent le solde, le détail et son total', () =
   assert.deepEqual(details.outstanding.rows.map(row => row.amount), [50]);
   assert.equal(details.outstanding.rows.reduce((sum, row) => sum + row.amount, 0), details.outstanding.total);
 });
+
+test('créances : les ventes à crédit en attente s’ajoutent au total et à leur détail', () => {
+  const credits = [
+    { id: 'a', number: 'CREDIT-A', sold_at: '2026-11-21', paid: 30, credit_notes_total: 20, sale_lines: [{ qty: 1, unit_price: 100 }] }
+  ];
+  const pendingCredits = [
+    { id: 'p1', number: 'ATT-1', sold_at: '2026-11-22', total: 60, paid: 10, balance: 50 },
+    { id: 'p2', number: 'ATT-2', sold_at: '2026-11-23', total: 40, paid: 0, balance: 40 }
+  ];
+  // 50 du serveur + 90 nés hors ligne.
+  const model = { outstanding: 140, canSeeCosts: false, paymentsAvailable: true, saleCostsAvailable: true };
+  const details = modernDetails(model, {
+    sales: [], credits, payments: [], deposits: [], supplierPayments: [], expenses: [],
+    articles: [], costs: new Map(), pending: { cash: 0, receipts: 0 }, pendingCredits
+  });
+  assert.deepEqual(details.outstanding.rows.map(row => row.amount), [50, 50, 40]);
+  assert.ok(details.outstanding.rows.some(row => /ATT-1/.test(row.label) && /En attente/.test(row.label)));
+  assert.equal(details.outstanding.rows.reduce((sum, row) => sum + row.amount, 0), details.outstanding.total);
+});
+
+test('créances : un détail sans créance en attente reste cohérent', () => {
+  const details = modernDetails({ outstanding: 0, canSeeCosts: false, paymentsAvailable: true, saleCostsAvailable: true }, {
+    sales: [], credits: [], payments: [], deposits: [], supplierPayments: [], expenses: [],
+    articles: [], costs: new Map(), pending: { cash: 0, receipts: 0 }
+  });
+  assert.deepEqual(details.outstanding.rows, []);
+});
