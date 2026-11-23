@@ -914,6 +914,7 @@ const EN = {
   'TVA collectée sur les ventes': 'VAT collected on sales',
   'TVA désactivée. Activez-la dans Paramètres > TVA pour la calculer et l’afficher ici.': 'VAT is disabled. Enable it in Settings > VAT to calculate and display it here.',
   'TVA récupérable sur les achats': 'VAT recoverable on purchases',
+  'Hors ligne : les chiffres proviennent de la copie locale et peuvent être incomplets sur cette période.': 'Offline: figures come from the local copy and may be incomplete for this period.',
   'Voir ma formule': 'View my plan',
   'En ligne': 'Online',
   'jamais': 'never',
