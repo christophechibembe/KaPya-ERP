@@ -38,9 +38,13 @@ export function localSelect(path, canonicalRows) {
     } else if (key === 'limit') limit = Number(value);
     else if (key === 'offset') return undefined;
     else {
+      if (key.includes('.')) return undefined; // filtre sur une relation : non simulé
+      // is.null / is.true / is.false (et leur négation) : l'application injecte
+      // archived_at=is.null sur les fiches, il faut donc savoir le simuler.
+      const isMatch = value.match(/^(not\.)?is\.(null|true|false)$/);
+      if (isMatch) { filters.push({ c: key, op: 'is', v: isMatch[2], neg: !!isMatch[1] }); continue; }
       const match = value.match(/^(eq|neq|gt|gte|lt|lte|in)\.(.*)$/);
       if (!match) return undefined;
-      if (key.includes('.')) return undefined; // filtre sur une relation : non simulé
       filters.push({ c: key, op: match[1], v: match[2] });
     }
   }
@@ -48,6 +52,12 @@ export function localSelect(path, canonicalRows) {
 
   const match = (row, filter) => {
     const actual = row[filter.c];
+    if (filter.op === 'is') {
+      const result = filter.v === 'null' ? (actual === null || actual === undefined)
+        : filter.v === 'true' ? actual === true
+        : actual === false;
+      return filter.neg ? !result : result;
+    }
     if (filter.op === 'in') {
       const set = filter.v.replace(/^\(|\)$/g, '').split(',').map(item => item.trim());
       return set.includes(String(actual));

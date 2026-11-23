@@ -3,6 +3,7 @@ import { localStore as localStorage } from './storage.js';
 import { mountDemoBar } from './demo-ui.js';
 import { db, session, signOut, profile, syncNow, pendingCount, rejectedItems, dropRejected, clearOffline, lastSyncTime, queueStats, syncMeta, restoreMirroredSession } from './api.js';
 import { clearCache } from './cache.js';
+import { clearArticles } from './localdb.js';
 import { syncDecision, SYNC_CHECK_MS } from './offline.js';
 import { renderAuth, renderOrg, renderMfa, recoveryFromLink } from './auth.js';
 import { mfaStatus } from './api.js';
@@ -319,7 +320,15 @@ async function start() {
   loadVat();
   // Changement d'utilisateur sur cet appareil : on vide le cache (jamais les pièces en attente)
   const last = localStorage.getItem('kp.uid'), uid = session().uid;
-  if (last && last !== uid) { await clearCache().catch(() => {}); localStorage.removeItem('kp.numRange'); }
+  if (last && last !== uid) {
+    await clearCache().catch(() => {});
+    await clearArticles().catch(() => {});
+    localStorage.removeItem('kp.numRange');
+    // Force un nouveau préchargement pour ce compte (sinon la copie locale reste vide
+    // jusqu'à la fin de la temporisation de l'utilisateur précédent).
+    localStorage.removeItem('kp.lastPrefetch');
+    localStorage.removeItem('kp.historyDepthSynced');
+  }
   localStorage.setItem('kp.uid', uid);
   // Démarrage immédiat : on utilise le profil mémorisé pour ce compte, sans attendre le réseau.
   // Le profil est vérifié en arrière-plan ; s'il a changé (rôle, boutique), l'application se recharge.

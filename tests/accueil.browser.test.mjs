@@ -574,4 +574,26 @@ test('Tableau de bord dans Chromium (données isolées)', { skip: !browserPath, 
       'la créance du serveur remplace la vente en attente sans comptage double');
     assert.deepEqual(page.errors, []);
   });
+
+  await t.test('une boutique archivée ne met pas le tableau de bord à zéro', async () => {
+    await page.evaluate(`window.boot({ mode: 'modern_pc' })`);
+    assert.match(await page.evaluate('window.text()'), /25,00 \$/);
+    // Le filtre pointe un dépôt qui n'existe plus : archivé, supprimé ou d'une
+    // autre organisation. Sans purge, le sélecteur affiche « Toutes les
+    // boutiques » pendant que les chiffres sont filtrés sur un dépôt absent.
+    await page.evaluate(`localStorage.setItem('kp.shop', 'w99')`);
+    await page.evaluate(`import('/js/modules/accueil.js').then(({ render }) => render(document.querySelector('#main'), { id: 'dash-user', role: 'admin' }))`);
+    assert.equal(await page.evaluate(`new Promise(resolve => {
+      const end = Date.now() + 6000;
+      const tick = () => {
+        if (localStorage.getItem('kp.shop') === '') return resolve('purge');
+        if (Date.now() > end) return resolve('timeout');
+        setTimeout(tick, 50);
+      };
+      tick();
+    })`), 'purge', 'le filtre de boutique invalide doit être purgé avant le calcul');
+    assert.match(await page.evaluate('window.text()'), /25,00 \$/, 'les ventes doivent rester visibles');
+    assert.equal(await page.evaluate(`document.querySelector('#shop-select')?.value ?? ''`), '');
+    assert.deepEqual(page.errors, []);
+  });
 });

@@ -25,7 +25,11 @@ const isMode = value => MODES.includes(value);
 function read(key) {
   try {
     const value = localStorage.getItem(key);
-    return isMode(value) ? value : null;
+    if (!value) return null;
+    const mode = isMode(value) ? value : null;
+    // Si lecture réussie mais pas un mode connu, tout de même retourner la valeur
+    // pour permettre une détection plus intelligente plus tard
+    return mode;
   } catch { return null; }
 }
 
@@ -51,6 +55,10 @@ export function screenWidth() {
 
 // Détection automatique : téléphone, tablette, ordinateur.
 export function detectMode(width = screenWidth()) {
+  // Si la largeur est invalide (0 ou négative), on considère qu'on est sur un ordinateur
+  // car c'est le cas le plus courant pour les environnements de développement ou
+  // lorsque innerWidth n'est pas correctement initialisé
+  if (width <= 0) return 'modern_pc';
   if (width >= BREAKPOINTS.tablet) return 'modern_pc';
   if (width >= BREAKPOINTS.mobile) return 'modern_mobile';
   return 'classic';

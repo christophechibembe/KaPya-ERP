@@ -80,9 +80,20 @@ test('copie locale : égalité, limites et projection complète', () => {
 
 test('copie locale : une requête non simulable renvoie undefined', () => {
   assert.equal(localSelect('/rest/v1/sale_payments?select=id&sales.number=eq.F-1', payments), undefined);
-  assert.equal(localSelect('/rest/v1/sale_payments?select=id&paid_at=is.null', payments), undefined);
+  assert.equal(localSelect('/rest/v1/sale_payments?select=id&paid_at=like.*2026*', payments), undefined);
   assert.equal(localSelect('/rest/v1/sale_payments?select=id&offset=2', payments), undefined);
   assert.equal(localSelect('/rest/v1/sale_payments?select=id&order=sales.number.asc', payments), undefined);
+});
+
+test('copie locale : is.null et not.is.null (filtre archived_at injecté par l’application)', () => {
+  const rows = [
+    { id: 'a1', name: 'Actif', archived_at: null },
+    { id: 'a2', name: 'Sans champ' },
+    { id: 'a3', name: 'Archivé', archived_at: '2026-11-01' }
+  ];
+  assert.deepEqual(localSelect('/rest/v1/articles?select=id&archived_at=is.null', rows).map(r => r.id), ['a1', 'a2']);
+  assert.deepEqual(localSelect('/rest/v1/articles?select=id&archived_at=not.is.null', rows).map(r => r.id), ['a3']);
+  assert.deepEqual(localSelect('/rest/v1/articles?select=id,name&id=eq.a1&archived_at=is.null', rows), [{ id: 'a1', name: 'Actif' }]);
 });
 
 test('profondeur d’historique : valeurs bornées et valeur par défaut', () => {

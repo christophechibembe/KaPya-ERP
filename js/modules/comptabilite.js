@@ -13,6 +13,23 @@ const monthStart = () => { const now = new Date(); return iso(new Date(now.getFu
 const fr = value => String(value || '').slice(0, 10).split('-').reverse().join('/');
 const usd = value => `${n(Number(value) || 0)} $`;
 const MAX_ROWS = 300;
+const PAGE_SIZE = 1000;
+
+// Charge toutes les lignes d'une requête, page par page, pour ne pas être tronqué
+// silencieusement par la limite de lignes de PostgREST. Hors ligne : une seule requête
+// sur la copie locale (pas d'offset, que le repli local ne simule pas).
+async function fetchAll(table, baseQuery) {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) return db.select(table, baseQuery);
+  const out = [];
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const query = `${baseQuery}&limit=${PAGE_SIZE}${offset ? `&offset=${offset}` : ''}`;
+    const rows = await db.select(table, query);
+    if (!Array.isArray(rows)) break;
+    out.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+  }
+  return out;
+}
 
 export async function render(main) {
   main.dataset.page = 'comptabilite';
@@ -53,13 +70,13 @@ export async function render(main) {
     $('#cp-msg').textContent = 'Chargement…';
     const vat = await loadVat().catch(() => getVat());
     const [sales, salePayments, purchases, purchasePayments, expenses, returns, creditNotes] = await Promise.all([
-      db.select('sales', `select=id,number,sold_at,payment,customer_label,sale_lines(qty,unit_price)&sold_at=gte.${from}&sold_at=lte.${to}&order=sold_at.asc`),
-      db.select('sale_payments', `select=id,amount,paid_at,kind,sales(number)&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc`).catch(() => []),
-      db.select('purchases', `select=id,number,bought_at,purchase_lines(qty,unit_cost)&bought_at=gte.${from}&bought_at=lte.${to}&order=bought_at.asc`),
-      db.select('purchase_payments', `select=id,amount,paid_at,purchases(number)&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc`).catch(() => []),
-      db.select('business_expenses', `select=id,label,category,amount,paid_at&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc`).catch(() => []),
-      db.select('customer_returns', `select=id,returned_on,total_usd&returned_on=gte.${from}&returned_on=lte.${to}&order=returned_on.asc`).catch(() => []),
-      db.select('credit_notes', `select=id,issued_on,total_usd&issued_on=gte.${from}&issued_on=lte.${to}&order=issued_on.asc`).catch(() => [])
+      fetchAll('sales', `select=id,number,sold_at,payment,customer_label,sale_lines(qty,unit_price)&sold_at=gte.${from}&sold_at=lte.${to}&order=sold_at.asc,id.asc`),
+      fetchAll('sale_payments', `select=id,sale_id,amount,paid_at,kind,sales(number)&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc,id.asc`).catch(() => []),
+      fetchAll('purchases', `select=id,number,bought_at,purchase_lines(qty,unit_cost)&bought_at=gte.${from}&bought_at=lte.${to}&order=bought_at.asc,id.asc`),
+      fetchAll('purchase_payments', `select=id,amount,paid_at,purchases(number)&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc,id.asc`).catch(() => []),
+      fetchAll('business_expenses', `select=id,label,category,amount,paid_at&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc,id.asc`).catch(() => []),
+      fetchAll('customer_returns', `select=id,sale_id,returned_on,total_usd&returned_on=gte.${from}&returned_on=lte.${to}&order=returned_on.asc,id.asc`).catch(() => []),
+      fetchAll('credit_notes', `select=id,sale_id,issued_on,total_usd,note&issued_on=gte.${from}&issued_on=lte.${to}&order=issued_on.asc,id.asc`).catch(() => [])
     ]);
 
     const journal = buildJournal({ sales, salePayments, purchases, purchasePayments, expenses, returns, creditNotes, vat });

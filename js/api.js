@@ -11,7 +11,7 @@ import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxP
 import { localSelect } from './offline-query.mjs';
 import { normalizeHistoryDepth } from './offline.js';
 import { documentLines, stockDelta } from './offline-delete.mjs';
-import { replaceArticles } from './localdb.js';
+import { replaceArticles, clearArticles } from './localdb.js';
 // Colonnes des produits, sans le stock total (le total passe par article_total_stock, réservé au gérant et au responsable)
 export const ART_COLS = 'id,sku,name,unit,price_buy,price_sell,min_stock,barcode,unit_weight,track_expiry,archived_at,updated_at,version';
 import { applyCachedRecordUpdate, restoreCachedRecord, setCachedRecordPending } from './modules/offline-record-updates.mjs';
@@ -440,7 +440,7 @@ async function enqueue(path, body, fn, options = {}) {
     }
   }
   const rollback = await captureQueuedRollback(fn, body).catch(() => null);
-  await outboxAdd({ path, body, fn, method: options.method || 'POST', prefer: options.prefer, rollback, created: Date.now(), status: 'pending' });
+  await outboxAdd({ path, body, fn, method: options.method || 'POST', prefer: options.prefer, rollback, created: Date.now(), status: 'pending', uid: S?.uid });
   await applyLocalStock(fn, body).catch(() => {});
   await applyLocalQueuedChange(fn, body).catch(() => {});
   requestBackgroundSync();
@@ -685,6 +685,11 @@ export async function selectArticlesWithTotal(qs) {
   const m = new Map((Array.isArray(tot) ? tot : []).map(t => [t.article_id, Number(t.total) || 0]));
   return rows.map(r => ({ ...r, stock: m.get(r.id) ?? 0 }));
 }
+// Une pièce de la file appartient au compte qui l'a créée. Après un changement
+// d'utilisateur, on ne rejoue jamais les pièces d'un autre compte : elles restent
+// en attente jusqu'au retour de ce compte (les pièces sans uid sont d'anciennes pièces).
+const mine = it => !it.uid || it.uid === S?.uid;
+
 export async function syncNow() {
   if (CFG.demo || syncing || !S || !navigator.onLine) return;
   syncing = true;
@@ -697,6 +702,7 @@ export async function syncNow() {
     // « sent » : le serveur les a reçues, on termine le travail local (badges, cache) puis on les retire.
     // « rejected » par le service worker : la copie locale n'a pas encore été remise en état, on le fait ici.
     for (const it of await outboxAll()) {
+      if (!mine(it)) continue;
       if (it.status === 'sent') {
         await markQueuedChangeSynced(it).catch(() => {});
         await outboxDel(it.seq);
@@ -708,7 +714,7 @@ export async function syncNow() {
       }
     }
     for (const it of await outboxAll()) {
-      if (it.status === 'rejected') continue;
+      if (it.status === 'rejected' || !mine(it)) continue;
       try {
         const result = await raw(it.path, { method: it.method || 'POST', body: it.method === 'DELETE' ? undefined : it.body, token: S.access, prefer: it.prefer });
         // Mise à jour protégée par la version : aucune ligne modifiée = la fiche a changé ailleurs.
@@ -749,24 +755,24 @@ export async function syncNow() {
   } catch (e) { if (isNet(e) || e?.status === 401) networkStop = true; /* hors ligne : on réessaiera */ }
   finally { syncing = false; markSyncResult(networkStop); emit(); }
 }
-export const pendingFor = async table => (await outboxAll()).filter(it => it.fn === FN[table] && it.status !== 'sent');
+export const pendingFor = async table => (await outboxAll()).filter(it => mine(it) && it.fn === FN[table] && it.status !== 'sent');
 export const lastSyncTime = () => Number(localStorage.getItem('kp.lastSync')) || 0;
-export const pendingCount = async () => (await outboxAll()).length;
+export const pendingCount = async () => (await outboxAll()).filter(mine).length;
 // Diagnostic complet pour Paramètres > Mode hors-ligne.
 export async function offlineStatus() {
   const [queue, cache] = await Promise.all([queueStats(), cacheStats().catch(() => ({ count: 0, oldest: 0, newest: 0 }))]);
   return { online: navigator.onLine, ...queue, ...cache, cacheDays: CACHE_TTL_DAYS, historyDepth: historyDepth(), lastSync: lastSyncTime(), ...syncMeta() };
 }
 export const queueStats = async () => {
-  const all = await outboxAll();
+  const all = (await outboxAll()).filter(mine);
   const rejected = all.filter(it => it.status === 'rejected').length;
   const sent = all.filter(it => it.status === 'sent').length;
   const reconcile = all.filter(it => it.status === 'rejected' && it.swRollback).length;
   return { total: all.length, pending: all.length - rejected - sent, rejected, sent, reconcile };
 };
 // Opérations en attente d'un type donné (paiements de crédit, etc.)
-export const pendingOps = async fn => (await outboxAll()).filter(it => it.fn === fn && it.status !== 'rejected');
-export const rejectedItems = async () => (await outboxAll()).filter(it => it.status === 'rejected');
+export const pendingOps = async fn => (await outboxAll()).filter(it => mine(it) && it.fn === fn && it.status !== 'rejected');
+export const rejectedItems = async () => (await outboxAll()).filter(it => mine(it) && it.status === 'rejected');
 // Opérations refusées : réessayer (remise en attente puis envoi) ou abandonner (retirer de la file)
 export async function retryRejected(seq) {
   const it = (await outboxAll()).find(x => x.seq === seq);
@@ -790,7 +796,14 @@ export async function discardRejected(seq) {
   emit();
 }
 export async function dropRejected() { for (const it of await rejectedItems()) await outboxDel(it.seq); emit(); }
-export const clearOffline = () => clearAll();
+// « Vider les données hors ligne » : copie de lecture, file d'attente, miroir de session,
+// catalogue articles local, et temporisations de préchargement (pour repartir proprement).
+export const clearOffline = async () => {
+  await clearAll();
+  await clearArticles().catch(() => {});
+  localStorage.removeItem('kp.lastPrefetch');
+  localStorage.removeItem('kp.historyDepthSynced');
+};
 
 export const session = () => CFG.demo ? { uid: 'demo' } : S;
 export const signOut = () => { clearDash(); if (!CFG.demo) save(null); };
