@@ -45,11 +45,27 @@ export function buildJournal({
   // Mode de paiement de chaque vente : sert à choisir le compte des retours/avoirs
   // et à éviter de compter deux fois un acompte imputé sur une vente comptant.
   const saleMode = new Map(sales.map(sale => [sale.id, sale.payment]));
+  // Taux de TVA figé sur chaque pièce au moment de sa création (C5). Les pièces
+  // antérieures n'ont pas de taux : on retombe alors sur le réglage courant, comme avant.
+  const storedRate = document => {
+    if (!document || document.vat_rate == null || document.vat_rate === '') return null;
+    const value = Number(document.vat_rate);
+    return Number.isFinite(value) ? value : null;
+  };
+  const saleRate = new Map(sales.map(sale => [sale.id, storedRate(sale)]));
+  const vatFor = document => {
+    const own = storedRate(document);
+    if (own != null) return { rate: own, enabled: own > 0 };
+    const inherited = document?.sale_id ? saleRate.get(document.sale_id) : null;
+    if (inherited != null) return { rate: inherited, enabled: inherited > 0 };
+    return { rate, enabled: vatOn };
+  };
 
   for (const sale of sales) {
     const total = r2(sumLines(sale.sale_lines, 'unit_price'));
     if (total <= 0) continue;
-    const { ht, vat: tax } = splitVat(total, rate, vatOn);
+    const saleVat = vatFor(sale);
+    const { ht, vat: tax } = splitVat(total, saleVat.rate, saleVat.enabled);
     const piece = sale.number || '';
     const label = `Vente ${piece}`.trim();
     // Vente comptant : l'argent entre en caisse. Vente à crédit : la créance client est ouverte.
@@ -73,7 +89,8 @@ export function buildJournal({
   for (const purchase of purchases) {
     const total = r2(sumLines(purchase.purchase_lines, 'unit_cost'));
     if (total <= 0) continue;
-    const { ht, vat: tax } = splitVat(total, rate, vatOn);
+    const purchaseVat = vatFor(purchase);
+    const { ht, vat: tax } = splitVat(total, purchaseVat.rate, purchaseVat.enabled);
     const piece = purchase.number || '';
     const label = `Achat ${piece}`.trim();
     lines.push(entry(purchase.bought_at, piece, label, '607', ht, 0));
@@ -106,12 +123,17 @@ export function buildJournal({
   const movementKey = movement => `${movement.sale_id || ''}|${movementTotal(movement)}|${movementDate(movement)}`;
   // Un retour accompagné de son avoir automatique (create_customer_return avec p_credit=true)
   // ne doit être annulé qu'une fois : l'avoir porte déjà l'écriture, on ignore le retour.
-  // L'avoir automatique est reconnu à sa note « Retour … » et au triplet (facture, montant, date).
+  // Le lien est explicite (credit_notes.return_id) pour les pièces récentes ; pour les
+  // pièces antérieures, on retombe sur la note « Retour … » et le triplet (facture, montant, date).
+  const linkedReturnIds = new Set(creditNotes.map(note => note.return_id).filter(Boolean));
   const autoNoteKeys = new Set(
-    creditNotes.filter(note => String(note.note || '').startsWith('Retour')).map(movementKey)
+    creditNotes
+      .filter(note => !note.return_id && String(note.note || '').startsWith('Retour'))
+      .map(movementKey)
   );
   const movements = [];
   for (const ret of returns) {
+    if (ret.id && linkedReturnIds.has(ret.id)) continue;
     if (ret.sale_id && autoNoteKeys.has(movementKey(ret))) continue;
     movements.push({ ...ret, kind: 'Retour' });
   }
@@ -119,7 +141,8 @@ export function buildJournal({
   for (const movement of movements) {
     const total = movementTotal(movement);
     if (total <= 0) continue;
-    const { ht, vat: tax } = splitVat(total, rate, vatOn);
+    const movementVat = vatFor(movement);
+    const { ht, vat: tax } = splitVat(total, movementVat.rate, movementVat.enabled);
     const date = movementDate(movement);
     const label = movement.kind;
     const creditAccount = movement.sale_id && saleMode.get(movement.sale_id) === 'cash' ? '571' : '411';

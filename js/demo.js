@@ -136,7 +136,7 @@ export function createDemoDatabase({ storage = localStore, now = () => new Date(
       find('suppliers', a.p_supplier);
       const total = sum(lines, l => l.qty * l.unit_cost);
       for (const l of lines) move(l.article_id, l.qty, wh, 'purchase', sid);
-      rows('purchases').unshift({ id: sid, org_id: 'demo', supplier_id: a.p_supplier, warehouse_id: wh, number: number('purchase', 'ACH'), bought_at: a.p_date || today(), purchase_lines: lines });
+      rows('purchases').unshift({ id: sid, org_id: 'demo', supplier_id: a.p_supplier, warehouse_id: wh, number: number('purchase', 'ACH'), bought_at: a.p_date || today(), vat_rate: a.p_vat_rate ?? null, purchase_lines: lines });
       rows('purchase_payment_balances').push({ id: id('balance'), purchase_id: sid, opening_balance: total });
       return sid;
     }
@@ -156,7 +156,7 @@ export function createDemoDatabase({ storage = localStore, now = () => new Date(
     for (const l of lines) move(l.article_id, -l.qty, wh, 'sale', sid);
     rows('sales').unshift({ id: sid, org_id: 'demo', customer_id: a.p_customer || null, customer_label: a.p_customer_label || null,
       number: number('invoice', 'FAC'), sold_at: a.p_date || today(), created_at: now().toISOString(), warehouse_id: wh,
-      payment, payment_method: 'cash', paid: round(paid + advance), usd_cdf: a.p_usd_cdf || 2300, sale_lines: lines });
+      payment, payment_method: 'cash', paid: round(paid + advance), usd_cdf: a.p_usd_cdf || 2300, vat_rate: a.p_vat_rate ?? null, sale_lines: lines });
     if (payment === 'credit' && paid > 0) rows('sale_payments').push({ id: id('payment'), sale_id: sid, amount: paid, paid_at: a.p_date || today(), kind: 'initial', method: 'cash' });
     return sid;
   }
@@ -236,7 +236,7 @@ export function createDemoDatabase({ storage = localStore, now = () => new Date(
       const total = sum(input, l => l.qty * l.unit_price);
       if (total <= 0) throw new Error('Le montant de l’avoir doit être positif.');
       const cid = a.p_id || id('credit');
-      rows('credit_notes').unshift({ id: cid, sale_id: sale.id, number: number('avoir', 'AV'), issued_on: today(), total_usd: total, note: a.p_note || '', credit_note_lines: input });
+      rows('credit_notes').unshift({ id: cid, sale_id: sale.id, number: number('avoir', 'AV'), issued_on: today(), total_usd: total, note: a.p_note || '', vat_rate: sale.vat_rate ?? null, credit_note_lines: input });
       return cid;
     }
     if (fn === 'create_warehouse_transfer') {

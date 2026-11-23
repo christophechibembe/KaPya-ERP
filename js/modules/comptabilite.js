@@ -70,13 +70,13 @@ export async function render(main) {
     $('#cp-msg').textContent = 'Chargement…';
     const vat = await loadVat().catch(() => getVat());
     const [sales, salePayments, purchases, purchasePayments, expenses, returns, creditNotes] = await Promise.all([
-      fetchAll('sales', `select=id,number,sold_at,payment,customer_label,sale_lines(qty,unit_price)&sold_at=gte.${from}&sold_at=lte.${to}&order=sold_at.asc,id.asc`),
+      fetchAll('sales', `select=id,number,sold_at,payment,customer_label,vat_rate,sale_lines(qty,unit_price)&sold_at=gte.${from}&sold_at=lte.${to}&order=sold_at.asc,id.asc`),
       fetchAll('sale_payments', `select=id,sale_id,amount,paid_at,kind,sales(number)&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc,id.asc`).catch(() => []),
-      fetchAll('purchases', `select=id,number,bought_at,purchase_lines(qty,unit_cost)&bought_at=gte.${from}&bought_at=lte.${to}&order=bought_at.asc,id.asc`),
+      fetchAll('purchases', `select=id,number,bought_at,vat_rate,purchase_lines(qty,unit_cost)&bought_at=gte.${from}&bought_at=lte.${to}&order=bought_at.asc,id.asc`),
       fetchAll('purchase_payments', `select=id,amount,paid_at,purchases(number)&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc,id.asc`).catch(() => []),
       fetchAll('business_expenses', `select=id,label,category,amount,paid_at&paid_at=gte.${from}&paid_at=lte.${to}&order=paid_at.asc,id.asc`).catch(() => []),
-      fetchAll('customer_returns', `select=id,sale_id,returned_on,total_usd&returned_on=gte.${from}&returned_on=lte.${to}&order=returned_on.asc,id.asc`).catch(() => []),
-      fetchAll('credit_notes', `select=id,sale_id,issued_on,total_usd,note&issued_on=gte.${from}&issued_on=lte.${to}&order=issued_on.asc,id.asc`).catch(() => [])
+      fetchAll('customer_returns', `select=id,sale_id,returned_on,total_usd,vat_rate&returned_on=gte.${from}&returned_on=lte.${to}&order=returned_on.asc,id.asc`).catch(() => []),
+      fetchAll('credit_notes', `select=id,sale_id,issued_on,total_usd,note,return_id,vat_rate&issued_on=gte.${from}&issued_on=lte.${to}&order=issued_on.asc,id.asc`).catch(() => [])
     ]);
 
     const journal = buildJournal({ sales, salePayments, purchases, purchasePayments, expenses, returns, creditNotes, vat });
@@ -101,7 +101,7 @@ export async function render(main) {
           <tr><td>TVA récupérable sur les achats</td><td class="r">− ${usd(totals.vatDeductible)}</td></tr>
           <tr><td><b>TVA à payer</b></td><td class="r"><b>${usd(totals.vatDue)}</b></td></tr>
         </tbody></table></div>
-        <p class="muted">Taux appliqué : ${n(vat.rate)} %. Les prix étant TTC, la TVA est la part contenue dans les totaux.</p>`
+        <p class="muted">Taux actuel : ${n(vat.rate)} %. Les prix étant TTC, la TVA est la part contenue dans les totaux. Chaque pièce conserve le taux en vigueur à sa date.</p>`
       : '<p class="muted">TVA désactivée. Activez-la dans Paramètres &gt; TVA pour la calculer et l’afficher ici.</p>';
 
     $('#cp-body').innerHTML = `<p class="report-range">${fr(from)} au ${fr(to)}</p>

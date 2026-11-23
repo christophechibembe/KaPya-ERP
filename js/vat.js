@@ -9,6 +9,13 @@ export const getVat = () => {
   try { return JSON.parse(localStorage.getItem(K)) || SANS_TVA; } catch { return SANS_TVA; }
 };
 
+// Taux à figer sur une pièce créée maintenant : 0 si la TVA est désactivée.
+// Les anciennes pièces sans taux gardent le comportement d'avant (réglage courant).
+export const vatRateForDocument = () => {
+  const v = getVat();
+  return v.enabled ? Number(v.rate) || 0 : 0;
+};
+
 // Lit le réglage de l'entreprise et le garde sur l'appareil (les reçus se font aussi hors connexion).
 export async function loadVat() {
   try {

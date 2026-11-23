@@ -8,6 +8,7 @@ import { printDoc, previewDoc } from '../print.js';
 import { cget } from '../cache.js';
 import { LOCAL_SALES_KEY } from '../api.js';
 import { ownOrgRows } from '../own-org.js';
+import { vatRateForDocument } from '../vat.js';
 const today = () => new Date().toLocaleDateString('sv-SE');
 const fr = d => fmtDate(d);
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('fr');
@@ -190,9 +191,10 @@ export async function render(main, c) {
           for (const [id, q] of Object.entries(need)) { const a = arts.find(x => x.id === id); const dispo = whStock[id] ?? 0; if (q > dispo) throw new Error(`Stock insuffisant pour ${a.name} : ${n(dispo)} ${a.unit} disponible(s).`); }
         }
         // p_id : identifiant unique (une pièce envoyée deux fois n'est enregistrée qu'une fois) ; p_usd_cdf : taux du moment de la saisie
+        // p_vat_rate : taux de TVA figé sur la pièce, même si la vente est saisie hors ligne puis envoyée plus tard.
         return db.rpc(c.rpc, { [c.rpcParty]: v.party, p_number: null, p_date: v.date,
           p_lines: A.map((a, i) => ({ article_id: a, qty: +Q[i], [c.priceCol]: +P[i] })),
-          p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, ...(fd.get('wh') ? { p_warehouse: fd.get('wh') } : {}) });
+          p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_vat_rate: vatRateForDocument(), ...(fd.get('wh') ? { p_warehouse: fd.get('wh') } : {}) });
       }, load,
       f => {
         const box = f.querySelector('#lines');
