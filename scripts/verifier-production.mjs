@@ -82,6 +82,17 @@ if (!browserPath) {
     const page = await openBrowser({ after: fn => cleanup.push(fn) });
     await page.viewport(1440, 900);
     await page.goto(base);
+    // L'écran de connexion est rendu après le chargement des modules : attendre le
+    // formulaire évite un faux échec sur une connexion lente.
+    await page.evaluate(`new Promise((resolve, reject) => {
+      const deadline = Date.now() + 15000;
+      const check = () => {
+        if (document.querySelector('form')) resolve();
+        else if (Date.now() > deadline) reject(new Error('Formulaire de connexion absent après 15 s'));
+        else setTimeout(check, 50);
+      };
+      check();
+    })`);
     const state = await page.evaluate(`(() => ({
       title: document.title,
       loginForm: !!document.querySelector('form'),

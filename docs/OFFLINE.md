@@ -140,6 +140,8 @@ La carte **Mode hors-ligne** affiche :
   partagé. Le verrouillage en arrière-plan est activé par défaut avec un code.
 - Le code de verrouillage protège l'écran, pas le disque : activez aussi le chiffrement de
   l'appareil (Android, iOS, Windows) pour protéger les fichiers IndexedDB en cas de vol.
+  Un rechargement de la page ne lève pas le verrou : le code est redemandé avant l'affichage
+  des données.
 - La synchronisation de deux appareils sur la même fiche reste protégée par la version,
   mais elle n'est pas un travail collaboratif en temps réel.
 

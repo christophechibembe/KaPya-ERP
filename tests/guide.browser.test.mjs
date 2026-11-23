@@ -40,6 +40,8 @@ test('Guide en anglais dans Chromium', { skip: !browserPath, timeout: 90000 }, a
     'les cellules de tableau doivent être traduites');
   assert.match(text, /The company-wide closing is refused until every active store has closed/,
     'les paragraphes longs doivent être traduits');
+  assert.match(text, /Install on Android/, 'le guide Android doit être traduit');
+  assert.match(text, /Offline sales are not sent/, 'le tableau de dépannage Android doit être traduit');
 
   assert.equal(await page.evaluate(`document.querySelector('figure img').alt`),
     'The version number and name are shown at the bottom of the menu.',
