@@ -72,7 +72,7 @@ export function openDialog(d, title, body, onOk, done, setup, cls = '') {
     catch (x) { const er = f.querySelector('.err'); er.textContent = /duplicate/.test(x.message) ? 'Cette référence existe déjà.' : x.message; er.scrollIntoView({ block: 'nearest' }); ok.disabled = false; }
   };
   if (setup) setup(f);
-  d.showModal(); f.querySelector('input,select').focus();
+  d.showModal(); f.querySelector('input,select')?.focus();
 }
 
 // Boîte de dialogue en lecture seule.

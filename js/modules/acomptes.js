@@ -71,20 +71,25 @@ export async function render(main, ctx, params) {
   // delete_customer_deposit (opération sensible, en ligne uniquement : la file hors
   // ligne ne gère pas la suppression). Le serveur refuse un acompte déjà utilisé ou
   // rattaché à une facture ; l'erreur s'affiche dans la fenêtre de confirmation.
+  // Sur une connexion faible, la requête peut prendre plusieurs secondes : le bouton
+  // change de libellé pendant ce temps, puis revient à « Supprimer » si elle échoue.
   function confirmDelete(row) {
     let dialog = document.getElementById('deposit-del-dlg');
     if (!dialog) { dialog = document.createElement('dialog'); dialog.id = 'deposit-del-dlg'; document.body.append(dialog); }
     const body = `<p>Supprimer l’acompte <b>${esc(row.receipt_number)}</b> · <b>${money(row.amount)}</b> déposés par ${esc(row.customers?.name || '—')} ?</p><p class="muted">Le reçu sera annulé et l’opération journalisée. Un acompte déjà utilisé ou déjà rattaché à une facture ne peut pas être supprimé.</p>`;
+    let bouton = null;
     openDialog(dialog, 'Supprimer l’acompte', body, async () => {
       if (!navigator.onLine) throw new Error('Connexion requise pour cette action.');
-      await db.rpc('delete_customer_deposit', { p_id: row.id });
+      if (bouton) bouton.textContent = 'Suppression en cours…';
+      try { await db.rpc('delete_customer_deposit', { p_id: row.id }); }
+      finally { if (bouton) bouton.textContent = 'Supprimer'; }
     }, async () => {
       notify('Acompte supprimé.', 'Acomptes');
       await load();
     }, form => {
-      const ok = form.querySelector('.row .btn');
-      ok.textContent = 'Supprimer';
-      ok.classList.add('danger');
+      bouton = form.querySelector('.row .btn');
+      bouton.textContent = 'Supprimer';
+      bouton.classList.add('danger');
     });
   }
 
