@@ -19,6 +19,8 @@ des noms (ordre alphabétique = ordre chronologique).
 | `20261119000000` | Réparation des compteurs de documents et unicité des numéros | appliquée en production le 19 novembre 2026 ; corrige `create_warehouse_transfer` ; rejouée le 19 novembre 2026 sur le projet de test restauré (compteurs et `TRF-00011` conformes) |
 | `20261120000000` | Identifiant client dans la liste des crédits (rappels sans mélange des homonymes) | validée sur PostgreSQL isolé restauré (66 tables, 30 crédits identiques hors champ ajouté), appliquée avec `--psql --confirmer` le 20 novembre 2026 ; 30 identifiants sur 30 vérifiés, exécution anonyme toujours interdite |
 | `20261122000000` | Comptabilité incluse dans les formules Standard et Premium | appliquée en production le 22 novembre 2026 ; met à jour `plan_allows` avec la fonction `comptabilite` |
+| `20261123000000` | Avoirs, retours et TVA historisée (`credit_notes.return_id`, `sales.vat_rate`) | appliquée en production (colonnes vérifiées le 26 novembre 2026) |
+| `20261126000000` | Suppression d'un acompte client (`delete_customer_deposit`) | appliquée en production le 26 novembre 2026 après sauvegarde ; droits vérifiés (anon refusé, `authenticated` autorisé, session exigée) |
 
 Application contrôlée : `node scripts/appliquer-migration.mjs supabase/migrations/<fichier>.sql --confirmer`
 (jeton Supabase dans `%USERPROFILE%\.kapya\supabase-token.txt`). Sans jeton `sbp_`, ou avec

@@ -1,7 +1,7 @@
 import { db, pendingFor, newId } from '../api.js';
 import { ownOrgRows } from '../own-org.js';
 import { can } from '../roles.js';
-import { esc, money, usdOnly, fld, openDialog, showDialog, ico } from '../ui.js';
+import { esc, money, usdOnly, fld, openDialog, showDialog, notify, ico } from '../ui.js';
 import { printDepositReceipt } from '../print.js';
 import { cget } from '../cache.js';
 
@@ -12,6 +12,7 @@ const DEBT_QUERY = 'select=id,payment,paid,customer_id,sale_lines(qty,unit_price
 
 export async function render(main, ctx, params) {
   const writable = can(ctx?.role, 'credits.write');
+  const deletable = can(ctx?.role, 'ventes.cancel');
   let rows = [], customers = [], org = {};
   main.innerHTML = `<div class="page-head"><div><h1>Acomptes clients</h1><p class="sub">Enregistrez un dépôt avant la facture, imprimez son reçu, puis utilisez le solde sur une facture ultérieure.</p></div><div class="acts"><label class="sr" for="deposit-q">Rechercher un acompte ou un client</label><input id="deposit-q" type="search" placeholder="Rechercher un reçu ou un client…" autocomplete="off">${writable ? `<button class="btn" id="new-deposit" type="button">${ico('plus')}<span>Enregistrer un dépôt</span></button>` : ''}</div></div>
     <div class="card tw" id="deposit-table" aria-live="polite">Chargement…</div><dialog id="deposit-dlg"></dialog>`;
@@ -23,7 +24,10 @@ export async function render(main, ctx, params) {
       row.receipt_number, row.received_at, row.customers?.name, row.customers?.phone, row.amount, row.remaining,
       Number(row.remaining) > 0.005 ? 'disponible' : 'utilisé'
     ].join(' ')).includes(query));
-    $('#deposit-table').innerHTML = visible.length ? `<table class="deposit-list"><thead><tr><th>Reçu</th><th>Date</th><th>Client</th><th class="r">Déposé</th><th class="r">Disponible</th><th>État</th><th></th></tr></thead><tbody>${visible.map(({ row: r, index: i }) => `<tr><td>${esc(r.receipt_number)}</td><td>${fr(r.received_at)}</td><td>${esc(r.customers?.name || '—')}</td><td class="r">${usdOnly(r.amount)}</td><td class="r"><b>${usdOnly(r.remaining)}</b></td><td>${r._offline_pending ? '<span class="pill warn">À synchroniser</span>' : Number(r.remaining) > 0.005 ? 'Disponible' : 'Utilisé'}</td><td><div class="table-actions"><button class="lnk action-detail" type="button" data-receipt="${i}">Voir le reçu</button></div></td></tr>`).join('')}</tbody></table>` : `<p class="empty">${rows.length ? 'Aucun acompte ne correspond à cette recherche.' : 'Aucun acompte enregistré.'}</p>`;
+    // Un acompte n'est supprimable que s'il n'a encore servi à rien (jamais utilisé et
+    // jamais rattaché à une facture) et s'il n'attend pas une synchronisation hors ligne.
+    const intact = r => Number(r.amount) > 0 && Number(r.remaining) >= Number(r.amount) - 0.005;
+    $('#deposit-table').innerHTML = visible.length ? `<table class="deposit-list"><thead><tr><th>Reçu</th><th>Date</th><th>Client</th><th class="r">Déposé</th><th class="r">Disponible</th><th>État</th><th></th></tr></thead><tbody>${visible.map(({ row: r, index: i }) => `<tr><td>${esc(r.receipt_number)}</td><td>${fr(r.received_at)}</td><td>${esc(r.customers?.name || '—')}</td><td class="r">${usdOnly(r.amount)}</td><td class="r"><b>${usdOnly(r.remaining)}</b></td><td>${r._offline_pending ? '<span class="pill warn">À synchroniser</span>' : Number(r.remaining) > 0.005 ? 'Disponible' : 'Utilisé'}</td><td><div class="table-actions"><button class="lnk action-detail" type="button" data-receipt="${i}">Voir le reçu</button>${deletable && !r._offline_pending && intact(r) ? `<button class="lnk danger" type="button" data-del="${i}">Supprimer</button>` : ''}</div></td></tr>`).join('')}</tbody></table>` : `<p class="empty">${rows.length ? 'Aucun acompte ne correspond à cette recherche.' : 'Aucun acompte enregistré.'}</p>`;
   }
 
   async function load() {
@@ -61,6 +65,27 @@ export async function render(main, ctx, params) {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'btn action-primary'; button.textContent = 'Imprimer le reçu';
     button.onclick = () => printDepositReceipt({ org: org.name || 'KaPya ERP', info: org, number: row.receipt_number, date: row.received_at, client: row.customers?.name || '—', amount: Number(row.amount), remaining: Number(row.remaining), pending: !!row._offline_pending }, '85');
     $('#deposit-dlg .row').insertBefore(button, $('#deposit-dlg .row').firstChild);
+  }
+
+  // Suppression d'un acompte : confirmée ici, puis exécutée par la fonction serveur
+  // delete_customer_deposit (opération sensible, en ligne uniquement : la file hors
+  // ligne ne gère pas la suppression). Le serveur refuse un acompte déjà utilisé ou
+  // rattaché à une facture ; l'erreur s'affiche dans la fenêtre de confirmation.
+  function confirmDelete(row) {
+    let dialog = document.getElementById('deposit-del-dlg');
+    if (!dialog) { dialog = document.createElement('dialog'); dialog.id = 'deposit-del-dlg'; document.body.append(dialog); }
+    const body = `<p>Supprimer l’acompte <b>${esc(row.receipt_number)}</b> · <b>${money(row.amount)}</b> déposés par ${esc(row.customers?.name || '—')} ?</p><p class="muted">Le reçu sera annulé et l’opération journalisée. Un acompte déjà utilisé ou déjà rattaché à une facture ne peut pas être supprimé.</p>`;
+    openDialog(dialog, 'Supprimer l’acompte', body, async () => {
+      if (!navigator.onLine) throw new Error('Connexion requise pour cette action.');
+      await db.rpc('delete_customer_deposit', { p_id: row.id });
+    }, async () => {
+      notify('Acompte supprimé.', 'Acomptes');
+      await load();
+    }, form => {
+      const ok = form.querySelector('.row .btn');
+      ok.textContent = 'Supprimer';
+      ok.classList.add('danger');
+    });
   }
 
   if (writable) $('#new-deposit').onclick = () => {
@@ -103,6 +128,11 @@ export async function render(main, ctx, params) {
   };
   if (writable && params?.get('nouveau') === '1') $('#new-deposit').click();
   $('#deposit-q').addEventListener('input', drawDeposits);
-  $('#deposit-table').onclick = event => { const button = event.target.closest('[data-receipt]'); if (button) receipt(rows[Number(button.dataset.receipt)]); };
+  $('#deposit-table').onclick = event => {
+    const del = event.target.closest('[data-del]');
+    if (del) return confirmDelete(rows[Number(del.dataset.del)]);
+    const button = event.target.closest('[data-receipt]');
+    if (button) receipt(rows[Number(button.dataset.receipt)]);
+  };
   await load();
 }

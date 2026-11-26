@@ -88,6 +88,9 @@ const EN = {
   'Vente enregistrée en espèces : le mode n’a pas pu être noté. Corrigez-le dans Ventes.': 'Sale recorded in cash: the payment method could not be saved. Fix it in Sales.',
   'Acompte enregistré en espèces : son mode n’a pas pu être noté. Corrigez-le dans Ventes.': 'Deposit recorded in cash: its payment method could not be saved. Fix it in Sales.',
   'Vente enregistrée, mais la marque « à retirer » n’a pas pu être notée.': 'Sale saved, but the “to collect” flag could not be saved.',
+  'Supprimer l’acompte': 'Delete deposit',
+  'Acompte supprimé.': 'Deposit deleted.',
+  'Le reçu sera annulé et l’opération journalisée. Un acompte déjà utilisé ou déjà rattaché à une facture ne peut pas être supprimé.': 'The receipt will be cancelled and the action logged. A deposit that has already been used or linked to an invoice cannot be deleted.',
   // Tableau de bord : caisse du jour, indicateurs, personnalisation.
   'Vue de la performance et des mouvements de votre activité.': 'A view of your business performance and movements.',
   'Activité du jour': 'Today’s activity', 'Résumé de caisse du jour': 'Today’s cash summary', 'Opérations de la journée': 'Today’s operations',
