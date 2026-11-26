@@ -19,6 +19,7 @@ métier sont enregistrées dans une file d'attente puis envoyées au retour de l
 | Reprise avec délai progressif après échec | oui |
 | Diagnostic et file refusée dans Paramètres | oui |
 | Supprimer une vente ou un achat hors ligne | oui, annulation mise en file et stock corrigé |
+| Supprimer un acompte hors ligne | non : message explicite, le réseau reste requis (opération sensible) |
 | Inventaire physique et changement de rôle hors ligne | non : message explicite, le réseau reste requis |
 | Créer une invitation hors ligne | oui : le code devient actif à la synchronisation |
 | Synchronisation application fermée | oui sur Chromium (Background Sync) ; ailleurs, la file repart à la réouverture |
@@ -135,7 +136,8 @@ La carte **Mode hors-ligne** affiche :
 
 ## Limites assumées
 
-- L'inventaire physique et les changements de rôle demandent le réseau. Ces opérations
+- L'inventaire physique, les changements de rôle et la suppression d'un acompte demandent
+  le réseau. Ces opérations
   sont sensibles : un message explicite s'affiche hors ligne plutôt qu'une file qui
   modifierait les droits ou le stock sans contrôle.
 - Une invitation créée hors ligne n'est active qu'après la synchronisation : ne transmettez

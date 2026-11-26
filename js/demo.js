@@ -269,6 +269,13 @@ export function createDemoDatabase({ storage = localStore, now = () => new Date(
       rows('purchase_payments').push({ id: pid, purchase_id: purchase.id, amount: n, paid_at: a.p_paid_at || today() });
       return pid;
     }
+    if (fn === 'delete_customer_deposit') {
+      const deposit = find('customer_deposits', a.p_id);
+      if (rows('sale_payments').some(p => p.customer_deposit_id === deposit.id)) throw new Error('Cet acompte est utilisé par une facture : il ne peut pas être supprimé.');
+      if (Number(deposit.remaining) < Number(deposit.amount)) throw new Error('Cet acompte a déjà été utilisé : il ne peut pas être supprimé.');
+      data.tables.customer_deposits = rows('customer_deposits').filter(d => d.id !== deposit.id);
+      return null;
+    }
     if (fn === 'initialize_purchase_balance') {
       const p = find('purchases', a.p_purchase_id), opening_balance = amount(a.p_remaining, true);
       if (rows('purchase_payment_balances').some(b => b.purchase_id === p.id) || opening_balance > sum(p.purchase_lines, l => l.qty * l.unit_cost)) throw new Error('Solde initial invalide ou déjà renseigné.');

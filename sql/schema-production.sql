@@ -1586,6 +1586,40 @@ begin
 end $function$
 ;
 
+-- fonction delete_customer_deposit(p_id uuid)
+-- Suppression d'un acompte jamais utilisé (26 novembre 2026). Mêmes garde-fous que
+-- create_customer_deposit ; voir supabase/migrations/20261126000000_supprimer_acompte.sql.
+CREATE OR REPLACE FUNCTION public.delete_customer_deposit(p_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_row public.customer_deposits%rowtype;
+  v_role text := public.my_role();
+begin
+  if auth.uid() is null then raise exception 'Connexion requise pour cette action.'; end if;
+  if coalesce(v_role not in ('admin','manager','facturier'), true) then
+    raise exception 'Vous n’avez pas le droit de supprimer un acompte.';
+  end if;
+  if p_id is null then raise exception 'Identifiant de l’acompte manquant.'; end if;
+
+  select * into v_row from public.customer_deposits where id = p_id and org_id = public.my_org();
+  if not found then raise exception 'Acompte introuvable.'; end if;
+
+  if exists (select 1 from public.sale_payments where customer_deposit_id = p_id) then
+    raise exception 'Cet acompte est utilisé par une facture : il ne peut pas être supprimé.';
+  end if;
+  if coalesce(v_row.remaining, 0) < coalesce(v_row.amount, 0) then
+    raise exception 'Cet acompte a déjà été utilisé : il ne peut pas être supprimé.';
+  end if;
+
+  delete from public.customer_deposits where id = p_id and org_id = public.my_org();
+end;
+$function$
+;
+
 -- fonction create_customer_return(p_sale uuid, p_lines jsonb, p_note text, p_credit boolean, p_id uuid)
 CREATE OR REPLACE FUNCTION public.create_customer_return(p_sale uuid, p_lines jsonb, p_note text DEFAULT ''::text, p_credit boolean DEFAULT false, p_id uuid DEFAULT NULL::uuid)
  RETURNS uuid
@@ -7095,6 +7129,8 @@ grant execute on function public.decide_commercial_document(p_id uuid, p_status 
 grant execute on function public.default_warehouse() to authenticated;
 
 grant execute on function public.delete_company(p_org uuid, p_confirm text) to authenticated;
+
+grant execute on function public.delete_customer_deposit(p_id uuid) to authenticated;
 
 grant execute on function public.delete_worker(p_worker uuid) to authenticated;
 
