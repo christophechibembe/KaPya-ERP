@@ -56,6 +56,7 @@ test('l’écran des acomptes propose la suppression avec confirmation', () => {
   assert.match(ecran, /can\(ctx\?\.role, 'ventes\.cancel'\)/, 'droits alignés sur la base');
   assert.match(ecran, /!r\._offline_pending/, 'un acompte en attente de synchronisation ne se supprime pas');
   assert.match(ecran, /Connexion requise pour cette action\./, 'hors ligne, message explicite plutôt qu’une file');
+  assert.match(ecran, /Suppression en cours…/, 'retour visuel pendant une requête lente');
 });
 
 test('la file hors ligne ne connaît pas la suppression d’acompte', () => {
