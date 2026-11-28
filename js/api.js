@@ -540,9 +540,29 @@ const realDb = {
 };
 export const db = CFG.demo ? demoDb : realDb;
 
-// Envoi des pièces en attente, puis rafraîchissement du cache. Ne fait rien hors ligne.
+// Envoi des pièces en attente, puis rafraîchissement du cache. Ne fait rien hors ligne
+// sauf appel forcé (bouton « Synchroniser maintenant » ou reprise quand le navigateur
+// annonce hors ligne à tort). Verrou partagé entre onglets : une seule synchronisation
+// à la fois, avec expiration pour ne jamais bloquer si un onglet a été fermé en cours.
 let syncing = false;
 const SYNC_ATTEMPTS_KEY = 'kp.syncAttempts', SYNC_ATTEMPT_AT_KEY = 'kp.syncAttemptAt';
+const SYNC_LOCK_KEY = 'kp.sync.lock', SYNC_LOCK_TTL = 90 * 1000;
+export const syncLockExpired = (value, now = Date.now()) => {
+  const held = Number(value || 0);
+  return !held || !Number.isFinite(held) || now - held >= SYNC_LOCK_TTL;
+};
+function takeSyncLock(now = Date.now()) {
+  try {
+    if (!syncLockExpired(localStorage.getItem(SYNC_LOCK_KEY), now)) return false;
+    localStorage.setItem(SYNC_LOCK_KEY, String(now));
+    return true;
+  } catch { return true; } // stockage indisponible : on ne bloque jamais la reprise
+}
+function releaseSyncLock(token) {
+  try {
+    if (Number(localStorage.getItem(SYNC_LOCK_KEY) || 0) === token) localStorage.removeItem(SYNC_LOCK_KEY);
+  } catch { /* stockage indisponible */ }
+}
 const markSyncStart = () => localStorage.setItem(SYNC_ATTEMPT_AT_KEY, String(Date.now()));
 const markSyncResult = failed => {
   if (failed) localStorage.setItem(SYNC_ATTEMPTS_KEY, String((Number(localStorage.getItem(SYNC_ATTEMPTS_KEY)) || 0) + 1));
@@ -708,9 +728,11 @@ function maybeSweepCache() {
   sweepCache().catch(() => {});
 }
 
-export async function syncNow() {
-  if (CFG.demo || syncing || !S || !navigator.onLine) return;
+export async function syncNow({ force = false } = {}) {
+  if (CFG.demo || syncing || !S || (!navigator.onLine && !force)) return 'skipped';
+  if (!takeSyncLock()) return 'locked';
   syncing = true;
+  const lockToken = Number(localStorage.getItem(SYNC_LOCK_KEY) || 0);
   let networkStop = false;
   markSyncStart();
   try {
@@ -772,7 +794,8 @@ export async function syncNow() {
       }
     }
   } catch (e) { if (isNet(e) || e?.status === 401) networkStop = true; /* hors ligne : on réessaiera */ }
-  finally { syncing = false; markSyncResult(networkStop); emit(); }
+  finally { syncing = false; releaseSyncLock(lockToken); markSyncResult(networkStop); emit(); }
+  return 'done';
 }
 export const pendingFor = async table => (await outboxAll()).filter(it => mine(it) && it.fn === FN[table] && it.status !== 'sent');
 export const lastSyncTime = () => Number(localStorage.getItem('kp.lastSync')) || 0;
@@ -804,7 +827,8 @@ export async function retryRejected(seq) {
   await applyLocalStock(rest.fn, rest.body).catch(() => {});
   await applyLocalQueuedChange(rest.fn, rest.body).catch(() => {});
   emit();
-  await syncNow();
+  requestBackgroundSync();
+  await syncNow({ force: true });
 }
 export async function discardRejected(seq) {
   const it = (await outboxAll()).find(x => x.seq === seq);
