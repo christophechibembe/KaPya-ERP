@@ -22,6 +22,7 @@ des noms (ordre alphabétique = ordre chronologique).
 | `20261123000000` | Avoirs, retours et TVA historisée (`credit_notes.return_id`, `sales.vat_rate`) | appliquée en production (colonnes vérifiées le 26 novembre 2026) |
 | `20261126000000` | Suppression d'un acompte client (`delete_customer_deposit`) | appliquée en production le 26 novembre 2026 après sauvegarde ; droits vérifiés (anon refusé, `authenticated` autorisé, session exigée) |
 | `20261128000000` | Entrées de stock par un facturier autorisé (`can_receive_stock`, `create_purchase` en `SECURITY DEFINER`) | appliquée en production le 28 novembre 2026 après sauvegarde ; colonne, fonction, droits et politiques vérifiés |
+| `20261128000001` | Ajustement de stock par le facturier autorisé (`stock_moves_i` bornée à son dépôt) | appliquée en production le 28 novembre 2026 après sauvegarde |
 
 Application contrôlée : `node scripts/appliquer-migration.mjs supabase/migrations/<fichier>.sql --confirmer`
 (jeton Supabase dans `%USERPROFILE%\.kapya\supabase-token.txt`). Sans jeton `sbp_`, ou avec

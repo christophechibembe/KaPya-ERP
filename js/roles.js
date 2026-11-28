@@ -13,6 +13,7 @@ const MATRIX = {
   'achats.cancel': ['admin', 'manager'],
   'stock.view': ALL,
   'stock.write': ['admin', 'manager'],
+  'stock.adjust': ['admin', 'manager', 'facturier'],
   'clients.view': ALL,
   'clients.write': ['admin', 'manager', 'facturier'],
   'fournisseurs.view': ['admin', 'manager', 'comptable', 'user'],
