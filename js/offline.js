@@ -21,12 +21,13 @@ export function retryDelay(attempts = 0, { base = BACKOFF_BASE_MS, max = BACKOFF
 }
 
 // Décide s'il faut lancer une synchronisation maintenant.
-// - hors ligne : jamais ;
+// - hors ligne : jamais, sauf reprise forcée (le drapeau du navigateur peut mentir
+//   sur un réseau captif ou sur iOS : on tente alors malgré tout, avec backoff).
 // - pièces en attente : après le délai de reprise (backoff) ;
 // - rien en attente : rafraîchissement périodique de la copie locale.
 // Les pièces refusées ne sont pas réessayées seules : l'utilisateur choisit dans Paramètres.
-export function syncDecision({ online = true, pending = 0, lastAttempt = 0, attempts = 0, lastSync = 0, now = Date.now(), interval = SYNC_INTERVAL_MS } = {}) {
-  if (!online) return { run: false, reason: 'offline' };
+export function syncDecision({ online = true, forced = false, pending = 0, lastAttempt = 0, attempts = 0, lastSync = 0, now = Date.now(), interval = SYNC_INTERVAL_MS } = {}) {
+  if (!online && !forced) return { run: false, reason: 'offline' };
   const waiting = entier(pending);
   if (waiting > 0) {
     const delay = retryDelay(attempts);

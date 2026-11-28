@@ -101,11 +101,17 @@ La synchronisation est tentée :
 - au retour du réseau (`online`) ;
 - au retour sur l'onglet (`visibilitychange`) ;
 - toutes les minutes, si la décision de reprise l'autorise ;
-- après une nouvelle pièce mise en file (Background Sync quand le navigateur le permet).
+- après une nouvelle pièce mise en file (Background Sync quand le navigateur le permet) ;
+- manuellement avec « Synchroniser maintenant », même si le navigateur annonce à tort
+  qu'il est hors ligne (réseau captif, iOS) — le bouton « Réessayer » d'une pièce
+  refusée agit de même.
 
 Sans pièce en attente, la file est vérifiée au plus toutes les 5 minutes ; le préchargement
 des données se fait au plus toutes les 20 minutes. Après un échec réseau, le délai double :
-15 s, 30 s, 1 min, 2 min, 5 min, puis 15 min maximum.
+15 s, 30 s, 1 min, 2 min, 5 min, puis 15 min maximum. Quand une pièce attend et que le
+navigateur annonce « hors ligne », une tentative est tout de même faite à ce rythme : le
+drapeau du navigateur n'est pas une vérité absolue. Un seul onglet synchronise à la fois
+(verrou partagé qui expire après 90 secondes si l'onglet a été fermé) : pas d'envoi en double.
 
 Le service worker rejoue la file avec un miroir de session et de configuration conservé
 dans IndexedDB (jamais `localStorage`, inaccessible au service worker). Il renouvelle le

@@ -943,6 +943,7 @@ const EN = {
   'Nouvelle tentative effectuée.': 'Retry completed.',
   'Synchronisation en cours…': 'Syncing…',
   'Synchronisation terminée.': 'Sync completed.',
+  'Synchronisation déjà en cours dans un autre onglet.': 'Sync already running in another tab.',
   'Synchronisation impossible : ': 'Sync failed: ',
   'Synchronisation impossible :': 'Sync failed:',
   'Réessai impossible : ': 'Retry failed: ',

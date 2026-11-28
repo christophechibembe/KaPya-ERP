@@ -257,11 +257,15 @@ async function autoSync() {
   if (CFG.demo) return;
   const queue = await queueStats().catch(() => ({ pending: 0, rejected: 0 }));
   const meta = syncMeta();
-  const decision = syncDecision({ online: navigator.onLine,
-    pending: queue.pending + (queue.sent || 0) + (queue.reconcile || 0),
+  const waiting = queue.pending + (queue.sent || 0) + (queue.reconcile || 0);
+  // Le drapeau du navigateur peut être faux alors que le réseau répond (réseau captif,
+  // iOS) : tenter quand même si une pièce attend, avec le backoff habituel.
+  const forced = waiting > 0 && !navigator.onLine;
+  const decision = syncDecision({ online: navigator.onLine, forced,
+    pending: waiting,
     lastAttempt: meta.lastAttempt, attempts: meta.attempts, lastSync: lastSyncTime() });
   if (!decision.run) return;
-  await syncNow();
+  await syncNow({ force: forced });
   updateSync();
 }
 function startAutoSync() {

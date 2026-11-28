@@ -303,7 +303,11 @@ async function bindOffline(main) {
   syncButton.onclick = async () => {
     syncButton.disabled = true;
     state.innerHTML = '<p class="muted">Synchronisation en cours…</p>';
-    try { await syncNow(); notify('Synchronisation terminée.', 'Mode hors-ligne'); }
+    try {
+      const result = await syncNow({ force: true });
+      if (result === 'locked') notify('Synchronisation déjà en cours dans un autre onglet.', 'Mode hors-ligne');
+      else notify('Synchronisation terminée.', 'Mode hors-ligne');
+    }
     catch (error) { notify('Synchronisation impossible : ' + error.message, 'Mode hors-ligne'); }
     finally { syncButton.disabled = false; refresh(); }
   };

@@ -30,6 +30,14 @@ test('décision : jamais hors ligne, immédiate sans attente, puis backoff', () 
   assert.equal(ready.run, true);
 });
 
+test('décision : reprise forcée même si le navigateur annonce hors ligne', () => {
+  assert.deepEqual(syncDecision({ online: false, forced: false, pending: 1 }), { run: false, reason: 'offline' });
+  assert.deepEqual(syncDecision({ online: false, forced: true, pending: 1, lastAttempt: 0 }), { run: true, reason: 'pending', delay: 15000 });
+  assert.equal(syncDecision({ online: false, forced: true, lastSync: 0 }).reason, 'periodic');
+  // Le backoff reste appliqué : une reprise forcée n'écrase pas l'historique des échecs.
+  assert.equal(syncDecision({ online: false, forced: true, pending: 1, lastAttempt: 1000, attempts: 2, now: 2000 }).reason, 'backoff');
+});
+
 test('décision : rafraîchissement périodique seulement quand la file est vide', () => {
   const now = 10_000_000;
   assert.equal(syncDecision({ online: true, lastSync: 0, now }).reason, 'periodic');
