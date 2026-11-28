@@ -1,6 +1,6 @@
 // KaPya ERP — service worker : mise en cache de l'application (hors-ligne pour l'interface).
 // Les données (Supabase) ne sont JAMAIS mises en cache : elles passent toujours par le réseau.
-const VERSION = 'kapya-erp-1.50.19-build159';
+const VERSION = 'kapya-erp-1.50.20-build160';
 const SHELL = [
   './',
   './404.html',
@@ -242,6 +242,7 @@ async function replayOfflineQueue() {
       if (result.ok) await idbPut('outbox', { ...item, status: 'sent', sentAt: Date.now() });
       else if (result.status === 401) { interrupted = true; break; } // session à renouveler : on n'abandonne pas la pièce
       else await idbPut('outbox', { ...item, status: 'rejected', error: result.message,
+        statusCode: result.status, retries: Number(item.retries || 0) + 1,
         swRollback: true, rejectedAt: Date.now() });
     } catch { interrupted = true; break; } // toujours hors ligne : nouvelle tentative du navigateur
   }
@@ -256,11 +257,21 @@ self.addEventListener('sync', event => {
   }));
 });
 
-// Notifications push (téléphone, ordinateur)
+// Notifications push (téléphone, ordinateur). Sur iOS, où le Background Sync
+// n'existe pas, une notification réveille aussi le service worker : c'est
+// l'occasion de rejouer la file sans ouvrir l'application. Un message « sync »
+// seul (sans titre) déclenche la reprise sans afficher de notification.
 self.addEventListener('push', e => {
   let d = { title: 'KaPya ERP', body: '', link: '/' };
   try { d = { ...d, ...e.data.json() }; } catch {}
-  e.waitUntil(self.registration.showNotification(d.title, { body: d.body, icon: 'assets/logo-k.png', badge: 'assets/logo-k.png', data: { link: d.link } }));
+  const taches = [];
+  if (!d.sync) taches.push(self.registration.showNotification(d.title, { body: d.body, icon: 'assets/logo-k.png', badge: 'assets/logo-k.png', data: { link: d.link } }));
+  taches.push((async () => {
+    const items = await idbGetAll('outbox');
+    if (!items.some(item => item.status !== 'rejected' && item.status !== 'sent')) return;
+    await replayOfflineQueue();
+  })().catch(() => {}));
+  e.waitUntil(Promise.all(taches));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();

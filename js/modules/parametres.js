@@ -320,8 +320,9 @@ async function bindOffline(main) {
           <span><button class="ghost" type="button" data-retry="${item.seq}">Réessayer</button>
           <button class="ghost" type="button" data-discard="${item.seq}">Retirer</button></span></div>`).join('')
       : '<p class="muted">Aucune pièce refusée.</p>';
+    const note = '<p class="muted">Les refus temporaires (serveur indisponible, limite de débit) sont réessayés automatiquement, au plus 3 fois. Les refus métier restent à votre choix.</p>';
     const d = dlg();
-    showDialog(d, 'Pièces refusées', body);
+    showDialog(d, 'Pièces refusées', body + note);
     d.querySelectorAll('[data-retry]').forEach(button => button.addEventListener('click', async () => {
       button.disabled = true;
       try { await retryRejected(Number(button.dataset.retry)); notify('Nouvelle tentative effectuée.', 'Mode hors-ligne'); d.close(); refresh(); }

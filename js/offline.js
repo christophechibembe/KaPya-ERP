@@ -39,6 +39,19 @@ export function syncDecision({ online = true, forced = false, pending = 0, lastA
   return { run: false, reason: 'idle' };
 }
 
+// Reprise automatique des refus temporaires du serveur : pas des refus métier
+// (stock insuffisant, donnée invalide), qui restent au choix de l'utilisateur.
+export const RETRYABLE_STATUSES = new Set([408, 409, 423, 429, 500, 502, 503, 504]);
+export const MAX_AUTO_RETRIES = 3;
+export function shouldAutoRetry(item, now = Date.now()) {
+  if (!item || item.status !== 'rejected' || item.swRollback) return false;
+  if (!RETRYABLE_STATUSES.has(Number(item.statusCode || 0))) return false;
+  const attempts = Math.max(0, Math.floor(Number(item.retries) || 0));
+  if (attempts >= MAX_AUTO_RETRIES) return false;
+  const waited = now - Math.max(0, Number(item.rejectedAt) || 0);
+  return waited >= retryDelay(attempts + 1);
+}
+
 // Profondeur de l'historique conservé sur l'appareil (copie locale hors ligne).
 // Les valeurs sont volontairement bornées : « tout » n'est pas raisonnable sur un téléphone.
 export const HISTORY_DEPTHS = [2000, 10000, 20000];

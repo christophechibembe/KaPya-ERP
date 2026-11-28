@@ -9,7 +9,7 @@ import { CFG } from './config.js';
 import { demoDb } from './demo.js';
 import { cget, cset, ckeys, cacheStats, outboxAdd, outboxAll, outboxDel, outboxPut, clearAll, CACHE_TTL_DAYS, mirrorSet, mirrorGet, mirrorDel, sweepCache } from './cache.js';
 import { localSelect } from './offline-query.mjs';
-import { normalizeHistoryDepth } from './offline.js';
+import { normalizeHistoryDepth, shouldAutoRetry } from './offline.js';
 import { documentLines, stockDelta } from './offline-delete.mjs';
 import { replaceArticles, clearArticles } from './localdb.js';
 // Colonnes des produits, sans le stock total (le total passe par article_total_stock, réservé au gérant et au responsable)
@@ -563,6 +563,17 @@ function releaseSyncLock(token) {
     if (Number(localStorage.getItem(SYNC_LOCK_KEY) || 0) === token) localStorage.removeItem(SYNC_LOCK_KEY);
   } catch { /* stockage indisponible */ }
 }
+// Remet une pièce refusée en attente : son effet local avait été annulé, on le
+// réapplique avant de tenter l'envoi (comme pour un « Réessayer » manuel).
+async function prepareRejectedRetry(it, { reset = false } = {}) {
+  const { status, error, statusCode, swRollback, rolledBack, rejectedAt, retries, ...rest } = it;
+  if (!reset) rest.retries = (Number(retries) || 0) + 1;
+  rest.rollback = await captureQueuedRollback(rest.fn, rest.body).catch(() => rest.rollback);
+  await outboxPut(rest);
+  await applyLocalStock(rest.fn, rest.body).catch(() => {});
+  await applyLocalQueuedChange(rest.fn, rest.body).catch(() => {});
+  emit();
+}
 const markSyncStart = () => localStorage.setItem(SYNC_ATTEMPT_AT_KEY, String(Date.now()));
 const markSyncResult = failed => {
   if (failed) localStorage.setItem(SYNC_ATTEMPTS_KEY, String((Number(localStorage.getItem(SYNC_ATTEMPTS_KEY)) || 0) + 1));
@@ -736,6 +747,12 @@ export async function syncNow({ force = false } = {}) {
   let networkStop = false;
   markSyncStart();
   try {
+    // Refus temporaires du serveur (indisponibilité, limite de débit, conflit) : on
+    // les remet en file automatiquement, avec délai progressif et au plus 3 essais.
+    // Les refus métier restent dans la fenêtre « Pièces refusées » au choix de l'utilisateur.
+    for (const it of await outboxAll()) {
+      if (mine(it) && shouldAutoRetry(it)) await prepareRejectedRetry(it);
+    }
     await ensureToken();
     await ensureInvoiceRange().catch(() => {});
     maybeSweepCache();
@@ -764,7 +781,8 @@ export async function syncNow({ force = false } = {}) {
       }
       catch (e) {
         if (replayOutcome(e) === 'stop') { networkStop = true; break; }  // toujours hors ligne, ou session à renouveler
-        const rejected = { ...it, status: 'rejected', error: e.message };
+        const rejected = { ...it, status: 'rejected', statusCode: e.status, error: e.message,
+          rejectedAt: Date.now(), retries: Number(it.retries || 0) + 1 };
         await outboxPut(rejected); // refusée par le serveur (stock, données)
         try { document.dispatchEvent(new CustomEvent('kp:rejected', { detail: { message: e.message } })); } catch {}
         await rollbackQueuedChange(rejected).then(() => reapplyLaterQueuedChanges(rejected)).catch(() => {});
@@ -819,14 +837,7 @@ export const rejectedItems = async () => (await outboxAll()).filter(it => mine(i
 export async function retryRejected(seq) {
   const it = (await outboxAll()).find(x => x.seq === seq);
   if (!it) return;
-  const { status, error, swRollback, rolledBack, ...rest } = it;
-  // Une pièce refusée a été annulée dans la copie locale. Avant de réessayer, on réapplique
-  // son effet (stock, fiche, suppression) pour que l'écran reste juste si le serveur l'accepte.
-  rest.rollback = await captureQueuedRollback(rest.fn, rest.body).catch(() => rest.rollback);
-  await outboxPut(rest);
-  await applyLocalStock(rest.fn, rest.body).catch(() => {});
-  await applyLocalQueuedChange(rest.fn, rest.body).catch(() => {});
-  emit();
+  await prepareRejectedRetry(it, { reset: true });
   requestBackgroundSync();
   await syncNow({ force: true });
 }
