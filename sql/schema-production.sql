@@ -728,7 +728,8 @@ create table public.user_warehouses (
   org_id uuid not null,
   warehouse_id uuid not null,
   updated_at timestamp with time zone not null,
-  can_transfer_all boolean not null
+  can_transfer_all boolean not null,
+  can_receive_stock boolean not null
 );
 
 create table public.warehouse_stock (
@@ -1753,17 +1754,24 @@ $function$
 CREATE OR REPLACE FUNCTION public.create_purchase(p_supplier uuid, p_number text, p_date date, p_lines jsonb, p_id uuid DEFAULT NULL::uuid, p_usd_cdf numeric DEFAULT NULL::numeric, p_warehouse uuid DEFAULT NULL::uuid, p_vat_rate numeric DEFAULT NULL::numeric)
  RETURNS uuid
  LANGUAGE plpgsql
- SET search_path TO 'public'
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
 declare
   v_id uuid := coalesce(p_id, gen_random_uuid());
   v_line record;
   v_wh uuid;
+  v_role text := public.my_role();
 begin
   -- idempotence hors ligne : une opération déjà reçue (même identifiant) n'est pas recréée.
   if p_id is not null and exists (select 1 from public.purchases t where t.id = p_id) then return p_id; end if;
   if auth.uid() is null then raise exception 'Connexion requise.'; end if;
-  if public.my_role() not in ('admin','manager') then raise exception 'Vous n’avez pas le droit d’enregistrer un achat.'; end if;
+  if v_role = 'facturier' then
+    if p_warehouse is null or p_warehouse is distinct from public.my_shop() then raise exception 'Vous ne pouvez enregistrer une entrée de stock que dans votre dépôt.'; end if;
+    if not coalesce((select uw.can_receive_stock from public.user_warehouses uw where uw.user_id = auth.uid() and uw.warehouse_id = p_warehouse), false) then
+      raise exception 'Votre gérant ne vous a pas autorisé à enregistrer les entrées de stock. Demandez-lui de cocher l’option dans Paramètres.';
+    end if;
+  elsif coalesce(v_role not in ('admin','manager'), true) then raise exception 'Vous n’avez pas le droit d’enregistrer un achat.'; end if;
   if p_vat_rate is not null and (p_vat_rate < 0 or p_vat_rate > 100) then raise exception 'Taux de TVA invalide (entre 0 et 100).'; end if;
   if p_id is not null and exists (select 1 from public.purchases where id = p_id and org_id = public.my_org()) then return p_id; end if;
   if p_supplier is null or not exists (select 1 from public.suppliers where id = p_supplier and org_id = public.my_org()) then
@@ -5201,6 +5209,8 @@ alter table public.user_warehouses alter column updated_at set default now();
 
 alter table public.user_warehouses alter column can_transfer_all set default false;
 
+alter table public.user_warehouses alter column can_receive_stock set default false;
+
 alter table public.warehouse_stock alter column qty set default 0;
 
 alter table public.warehouse_stock alter column updated_at set default now();
@@ -6491,7 +6501,7 @@ create policy purchase_lines_r on public.purchase_lines
   as permissive
   for select
   to authenticated
-  using (((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text, 'comptable'::text, 'user'::text]))));
+  using (((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text, 'comptable'::text, 'user'::text]))) OR ((org_id = my_org()) AND (my_role() = 'facturier'::text) AND (EXISTS ( SELECT 1 FROM public.purchases p WHERE p.id = purchase_id AND p.warehouse_id = my_shop()))));
 
 create policy purchase_lines_u on public.purchase_lines
   as permissive
@@ -6541,7 +6551,7 @@ create policy purchases_r on public.purchases
   as permissive
   for select
   to authenticated
-  using (((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text, 'comptable'::text, 'user'::text]))));
+  using (((org_id = my_org()) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text, 'comptable'::text, 'user'::text]))) OR ((org_id = my_org()) AND (my_role() = 'facturier'::text) AND (warehouse_id = my_shop())));
 
 create policy purchases_u on public.purchases
   as permissive

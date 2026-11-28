@@ -1,5 +1,5 @@
 // Écran générique « pièces » (ventes, achats) : liste, détail, saisie multi-lignes, fonctionne hors ligne.
-import { db, pendingFor, newId } from '../api.js';
+import { db, session, pendingFor, newId } from '../api.js';
 import { esc, n, fld, openDialog, showDialog, money, usdOnly, ico, getRate, notify, fmtDate } from '../ui.js';
 import { listeOuErreur } from '../ui.js';
 import { downloadCsv, csvNumber } from '../export.js';
@@ -18,12 +18,21 @@ const pill = p => p.pending === 'rejected' ? `<span class="pill bad" title="${es
 export async function render(main, c) {
   let parties = [], arts = [], warehouses = [], rows = [], remoteRows = [];
   let creditedBySale = new Map();
+  // Un facturier ne crée des achats que si le gérant a coché l'option pour son dépôt.
+  // La base applique la même règle (create_purchase) : ceci ne fait que masquer le bouton.
+  let mayCreate = can(c.role, c.newCap);
+  let onlyWarehouse = null;
+  if (c.rpc === 'create_purchase' && c.role === 'facturier') {
+    const assign = (await db.select('user_warehouses', `select=warehouse_id,can_receive_stock&user_id=eq.${session()?.uid}`).catch(() => []))[0];
+    onlyWarehouse = assign?.can_receive_stock ? assign.warehouse_id : null;
+    mayCreate = !!onlyWarehouse;
+  }
   const PAGE = 100; let page = 0, hasNext = false, searching = false;
   main.innerHTML = `<div class="page-head"><div><h1>${c.title}</h1></div><div class="acts"><label class="sr" for="doc-q">Rechercher dans ${c.title.toLocaleLowerCase('fr')}</label><input id="doc-q" type="search" placeholder="Rechercher une date, un numéro, un client ou un article…" autocomplete="off"><button class="ghost" id="par" type="button">${ico('plus')}<span>${c.newParty}</span></button><button class="btn" id="new" type="button">${ico('plus')}<span>${c.newDoc}</span></button></div></div>
     <details class="card doc-filter-bar" aria-label="Filtres et export" ${window.innerWidth > 720 ? 'open' : ''}><summary class="doc-filter-sum">Filtres et export</summary><label>Du<input id="doc-from" type="date"></label><label>Au<input id="doc-to" type="date"></label><label>${c.partyLabel}<select id="doc-party"><option value="">Tous</option></select></label><label>Dépôt<select id="doc-warehouse"><option value="">Tous les dépôts</option></select></label>${c.table === 'sales' ? '<label class="pickup-filter"><input type="checkbox" id="doc-pickup"> À retirer seulement</label>' : ''}<button class="ghost" id="doc-export" type="button">Exporter vers Excel</button></details>
     <div class="card tw" id="tbl" aria-live="polite">Chargement…</div><dialog id="dlg"></dialog>`;
   const $ = s => main.querySelector(s) || document.getElementById('top-search')?.querySelector(s);
-  if (!can(c.role, c.newCap) && $('#new')) $('#new').style.display = 'none';
+  if (!mayCreate && $('#new')) $('#new').style.display = 'none';
   if (!can(c.role, c.partyCap) && $('#par')) $('#par').style.display = 'none';
   const sumL = L => L.reduce((s, l) => s + l.qty * l[c.priceCol], 0);
   const creditedOf = row => Number(creditedBySale.get(row.id) || 0);
@@ -162,8 +171,11 @@ export async function render(main, c) {
     v => db.insert(c.partyTable, { name: v.name.trim(), phone: v.phone.trim() || null }), load);
 
   // Dépôts disponibles pour les achats et ventes (vide si la fonctionnalité n'est pas installée).
-  const loadWarehouses = async () => (c.rpc === 'create_purchase' || c.rpc === 'create_sale')
-    ? listeOuErreur(db.select('warehouses', 'select=id,name,is_default&active=eq.true&order=is_default.desc,name'), 'les dépôts') : [];
+  const loadWarehouses = async () => {
+    const list = (c.rpc === 'create_purchase' || c.rpc === 'create_sale')
+      ? listeOuErreur(db.select('warehouses', 'select=id,name,is_default&active=eq.true&order=is_default.desc,name'), 'les dépôts') : [];
+    return onlyWarehouse ? list.filter(w => w.id === onlyWarehouse) : list;
+  };
   if ($('#new')) $('#new').onclick = async () => {
     if (c.newHref) { location.hash = c.newHref; return; }
     const warehouses = await loadWarehouses();
@@ -194,7 +206,7 @@ export async function render(main, c) {
         // p_vat_rate : taux de TVA figé sur la pièce, même si la vente est saisie hors ligne puis envoyée plus tard.
         return db.rpc(c.rpc, { [c.rpcParty]: v.party, p_number: null, p_date: v.date,
           p_lines: A.map((a, i) => ({ article_id: a, qty: +Q[i], [c.priceCol]: +P[i] })),
-          p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_vat_rate: vatRateForDocument(), ...(fd.get('wh') ? { p_warehouse: fd.get('wh') } : {}) });
+          p_id: newId(), p_usd_cdf: getRate()?.usd_cdf ?? null, p_vat_rate: vatRateForDocument(), ...((fd.get('wh') || onlyWarehouse) ? { p_warehouse: fd.get('wh') || onlyWarehouse } : {}) });
       }, load,
       f => {
         const box = f.querySelector('#lines');

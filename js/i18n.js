@@ -330,6 +330,7 @@ const EN = {
   'Le bouton d’installation apparaît si votre navigateur le permet (Chrome sur Android).': 'The install button appears if your browser allows it (Chrome on Android).',
   'Sur iPhone : touchez Partager, puis « Sur l’écran d’accueil ».': 'On iPhone: tap Share, then “Add to Home Screen”.',
   'Peut transférer depuis tous les dépôts': 'Can transfer from all warehouses',
+  'Peut enregistrer les entrées de stock dans son dépôt': 'Can record stock receipts in their warehouse',
   'À propos du développeur': 'About the developer', 'Christophe Cibembe': 'Christophe Cibembe', 'Il conçoit et développe': 'He designs and develops',
   'Il est responsable de': 'He is responsible for', ', ingénieur en informatique.': ', computer engineer.',
   ', l’entreprise qui édite KaPya ERP.': ', the company that publishes KaPya ERP.',

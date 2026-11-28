@@ -4,6 +4,7 @@ import { esc, n, money, usdOnly, fcOnly, ico, openDialog, showDialog, fld, fmtDa
 import { listeOuErreur } from '../ui.js';
 import { can } from '../roles.js';
 import { resolveMode as resolveDashboardMode, applyMode as applyDashboardMode, nextMode as nextDashboardMode, setMode as setDashboardMode, MODE_LABELS as DASHBOARD_MODE_LABELS } from '../dashboard-modes.js';
+import { staffShell, staffContent } from '../dashboard-staff.js';
 import { renderModernPage, renderModernContent, renderModernLoading, renderModernFailure, renderModernDetail, bindModernInteractions, paintModernComparisons, PERIOD_LABELS as MODERN_PERIOD_LABELS } from '../dashboard-modern.js';
 import { previousPeriod, periodFigures, modernDetails } from '../dashboard-insights.mjs';
 import { creditBalance } from '../sale-math.js';
@@ -162,7 +163,13 @@ export async function render(main, ctx) {
     const who = firstName ? esc(firstName) : (ctx?.role === 'admin' ? 'patron' : '');
     const greetParts = [who ? `Bonjour ${who}` : '', greetOrg?.name ? `Bienvenue chez ${esc(greetOrg.name)}` : ''].filter(Boolean);
     const greet = greetParts.length ? `<p class="greet">${greetParts.join(' · ')}</p>` : '';
-    main.innerHTML = `<div class="page-head owner-head"><div><h1>Activité du jour</h1>${greet}<p class="sub">Ventes cash, ventes à crédit et paiements de crédits reçus.</p></div><label class="owner-filters"><span>Date</span><input type="date" id="staff-day" value="${today}"></label></div><div id="staff-day-content" aria-live="polite"><div class="card empty">Chargement…</div></div>`;
+    main.innerHTML = staffShell(activeMode, { today, greet, modeLabel: DASHBOARD_MODE_LABELS[activeMode] });
+    main.querySelector('#owner-mode')?.addEventListener('click', async () => {
+      // Même écran, même journée : on change uniquement la présentation.
+      const applied = setDashboardMode(nextDashboardMode(), ctx?.id);
+      await render(main, ctx);
+      notify(`Présentation : ${DASHBOARD_MODE_LABELS[applied]}.`);
+    });
     const dayInput = main.querySelector('#staff-day');
     const content = main.querySelector('#staff-day-content');
     const loadDay = async () => {
@@ -184,7 +191,16 @@ export async function render(main, ctx) {
           ...receipts.map(receipt => ({ date: receipt.paid_at, type: receipt.kind === 'initial' ? 'Versement initial' : 'Paiement de crédit', reference: receipt.sales?.number || '—', customer: receipt.sales?.customers?.name || receipt.sales?.customer_label || 'Client', amount: Number(receipt.amount || 0) }))
         ].sort((a, b) => String(b.date).localeCompare(String(a.date)));
         const operationRows = operations.map(item => `<tr><td>${fr(item.date)}</td><td><span class="staff-activity-type">${esc(item.type)}</span></td><td><b>${esc(item.reference || '—')}</b><span class="staff-activity-client">${esc(item.customer)}</span></td><td class="r"><b>${usdOnly(item.amount)}</b></td></tr>`).join('');
-        content.innerHTML = `<div class="owner-period-label">Résumé du ${fr(day)}</div><section class="kpis owner-kpis">${metric('Ventes cash', usdOnly(cashTotal), `${cashSales.length} facture(s) payée(s) comptant`, 'cash', 't-green')}${metric('Ventes à crédit', usdOnly(creditTotal), `${sales.length} facture(s) créée(s)`, 'sales', 't-blue')}${metric('Paiements de crédits reçus', usdOnly(receiptTotal), `${receipts.length} versement(s) encaissé(s)`, 'coins', 't-purple')}${metric('Total encaissé', usdOnly(cashTotal + receiptTotal), 'Ventes cash + paiements reçus', 'wallet', 't-orange')}</section><section class="card staff-activity"><div class="sec-head"><div><h2>Opérations de la journée</h2><p class="muted">Factures et encaissements enregistrés le ${fr(day)}.</p></div><span class="staff-activity-count">${operations.length} opération(s)</span></div>${operations.length ? `<div class="tw"><table><thead><tr><th>Date</th><th>Opération</th><th>Référence / client</th><th class="r">Montant</th></tr></thead><tbody>${operationRows}</tbody></table></div>` : '<p class="staff-activity-empty">Aucune vente ni aucun encaissement enregistré pour cette journée.</p>'}</section>`;
+        const rowsHtml = operations.length
+          ? `<div class="tw"><table><thead><tr><th>Date</th><th>Opération</th><th>Référence / client</th><th class="r">Montant</th></tr></thead><tbody>${operationRows}</tbody></table></div>`
+          : '<p class="staff-activity-empty">Aucune vente ni aucun encaissement enregistré pour cette journée.</p>';
+        const modernHtml = staffContent(activeMode, {
+          dayLabel: fr(day), cash: usdOnly(cashTotal), credit: usdOnly(creditTotal),
+          receipt: usdOnly(receiptTotal), collected: usdOnly(cashTotal + receiptTotal),
+          counts: { cash: cashSales.length, credit: sales.length, receipt: receipts.length, all: operations.length },
+          rowsHtml
+        });
+        content.innerHTML = modernHtml || `<div class="owner-period-label">Résumé du ${fr(day)}</div><section class="kpis owner-kpis">${metric('Ventes cash', usdOnly(cashTotal), `${cashSales.length} facture(s) payée(s) comptant`, 'cash', 't-green')}${metric('Ventes à crédit', usdOnly(creditTotal), `${sales.length} facture(s) créée(s)`, 'sales', 't-blue')}${metric('Paiements de crédits reçus', usdOnly(receiptTotal), `${receipts.length} versement(s) encaissé(s)`, 'coins', 't-purple')}${metric('Total encaissé', usdOnly(cashTotal + receiptTotal), 'Ventes cash + paiements reçus', 'wallet', 't-orange')}</section><section class="card staff-activity"><div class="sec-head"><div><h2>Opérations de la journée</h2><p class="muted">Factures et encaissements enregistrés le ${fr(day)}.</p></div><span class="staff-activity-count">${operations.length} opération(s)</span></div>${rowsHtml}</section>`;
       } catch (error) {
         content.innerHTML = `<div class="card"><p class="err">Impossible de charger le résumé : ${esc(error.message)}</p></div>`;
       }
