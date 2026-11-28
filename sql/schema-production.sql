@@ -6694,7 +6694,7 @@ create policy stock_moves_i on public.stock_moves
   as permissive
   for insert
   to authenticated
-  with check (((org_id = my_org()) AND (reason = 'adjustment'::text) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text]))));
+  with check (((org_id = my_org()) AND (reason = 'adjustment'::text) AND (my_role() = ANY (ARRAY['admin'::text, 'manager'::text]))) OR ((org_id = my_org()) AND (reason = 'adjustment'::text) AND (my_role() = 'facturier'::text) AND (warehouse_id = my_shop()) AND (EXISTS ( SELECT 1 FROM public.user_warehouses uw WHERE uw.user_id = auth.uid() AND uw.warehouse_id = stock_moves.warehouse_id AND uw.can_receive_stock))));
 
 create policy stock_moves_r on public.stock_moves
   as permissive

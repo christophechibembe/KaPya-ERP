@@ -1,4 +1,4 @@
-import { db, selectArticlesWithTotal, ART_COLS } from '../api.js';
+import { db, session, selectArticlesWithTotal, ART_COLS } from '../api.js';
 import { esc, n, fld, openDialog, money, usdOnly, fcOnly, ico, notify } from '../ui.js';
 import { can } from '../roles.js';
 import { parseCsv } from '../csv.js';
@@ -42,7 +42,17 @@ const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300
 // Champs moins utilisés : repliés pour garder la fiche courte.
 const foldFld = html => `<details class="fold"><summary>Plus d’options (code-barres, prix d’achat, seuil d’alerte)</summary>${html}</details>`;
 export async function render(main, ctx) {
-  const canAdj = can(ctx.role, 'stock.write');
+  const canManage = can(ctx.role, 'stock.write');
+  let mayAdjust = can(ctx.role, 'stock.adjust');
+  let stockWarehouse = null;
+  if (ctx?.role === 'facturier') {
+    // Même autorisation que pour les achats : le gérant a coché l'option pour ce dépôt.
+    // Sans elle, aucun bouton d'ajustement n'apparaît ; la base refuse aussi l'écriture.
+    const assign = (await db.select('user_warehouses', `select=warehouse_id,can_receive_stock&user_id=eq.${session()?.uid}`).catch(() => []))[0];
+    mayAdjust = !!assign?.can_receive_stock;
+    stockWarehouse = assign?.warehouse_id || null;
+  }
+  const canAdj = canManage || mayAdjust;
   const pre = sessionStorage.getItem('kp.q') || ''; sessionStorage.removeItem('kp.q');
   let rows = [], q = normalize(pre.trim());
   main.innerHTML = `<div class="head"><h1>Produits &amp; Stocks</h1><button class="btn" id="new" type="button">${ico('plus')}<span>Nouvel article</span></button>${['admin', 'manager'].includes(ctx?.role) ? '<label class="ghost csv-pick">Importer un fichier CSV<input type="file" id="csv-articles" accept=".csv,text/csv" hidden></label>' : ''}</div>
@@ -51,7 +61,7 @@ export async function render(main, ctx) {
     <input id="q" type="search" value="${esc(pre)}" placeholder="Rechercher par référence ou désignation">
     <div class="card tw" id="tbl" aria-live="polite">Chargement…</div><dialog id="dlg"></dialog>`;
   const $ = s => main.querySelector(s);
-  if (!canAdj) $('#new').style.display = 'none';
+  if (!canManage) $('#new').style.display = 'none';
 
   async function load() {
     customUnits = await db.select('unit_options', 'select=label&order=label').then(r => r.map(x => x.label)).catch(() => []);
@@ -65,7 +75,7 @@ export async function render(main, ctx) {
       .filter(([l]) => !l.startsWith('Valeur') || can(ctx.role, 'achats.view'))
       .map(([l, v, sub, icon, tone]) => `<div class="card kpi ${tone}"><div class="kh"><span class="kbub">${ico(icon)}</span><span>${l}</span></div><b>${v}</b>${sub ? `<span>${sub}</span>` : ''}</div>`).join('');
     $('#tbl').innerHTML = f.length ? `<table class="product-list"><thead><tr><th>Référence</th><th>Désignation</th><th class="r">Stock</th><th class="r">Seuil</th><th>État</th>${canAdj ? '<th><span class="sr">Actions</span></th>' : ''}</tr></thead><tbody>${
-      f.map(a => { const [t, c] = state(a); return `<tr><td>${esc(a.sku)}</td><td>${esc(a.name)}${a._offline_pending ? ' <span class="pill warn">À synchroniser</span>' : ''}</td><td class="r">${n(a.stock)} ${esc(a.unit)}${a.unit_weight ? `<br><small class="muted">${n(a.stock * a.unit_weight)} kg</small>` : ''}</td><td class="r">${n(a.min_stock)}</td><td><span class="pill ${c}">${t}</span></td>${canAdj ? `<td><div class="table-actions"><button class="lnk action-primary" type="button" data-adj="${a.id}">Ajuster</button><button class="lnk action-detail" type="button" data-edit="${a.id}">Modifier</button><button class="lnk" type="button" data-archive="${a.id}" title="Archiver (masquer, l'historique est conservé)">Archiver</button></div></td>` : ''}</tr>`; }).join('')}</tbody></table>`
+      f.map(a => { const [t, c] = state(a); return `<tr><td>${esc(a.sku)}</td><td>${esc(a.name)}${a._offline_pending ? ' <span class="pill warn">À synchroniser</span>' : ''}</td><td class="r">${n(a.stock)} ${esc(a.unit)}${a.unit_weight ? `<br><small class="muted">${n(a.stock * a.unit_weight)} kg</small>` : ''}</td><td class="r">${n(a.min_stock)}</td><td><span class="pill ${c}">${t}</span></td>${canAdj ? `<td><div class="table-actions"><button class="lnk action-primary" type="button" data-adj="${a.id}">Ajuster</button>${canManage ? `<button class="lnk action-detail" type="button" data-edit="${a.id}">Modifier</button><button class="lnk" type="button" data-archive="${a.id}" title="Archiver (masquer, l'historique est conservé)">Archiver</button>` : ''}</div></td>` : ''}</tr>`; }).join('')}</tbody></table>`
       : rows.length ? 'Aucun article ne correspond à la recherche.' : 'Aucun article. Ajoutez votre premier article pour suivre son stock.';
   }
   const open = (t, b, o, setup) => openDialog($('#dlg'), t, b, o, load, setup);
@@ -115,7 +125,7 @@ export async function render(main, ctx) {
     const id = e.target.dataset.adj; if (!id) return;
     const a = rows.find(r => r.id === id);
     open(`Ajuster : ${esc(a.name)}`, `<p>Stock actuel : ${n(a.stock)} ${esc(a.unit)}</p>` + fld('qty', 'Variation (positive = entrée, négative = sortie)', 'number', 'step="any" required'),
-      v => { if (!+v.qty) throw new Error('Saisissez une variation différente de zéro.'); return db.insert('stock_moves', { article_id: id, qty: +v.qty, reason: 'adjustment' }); });
+      v => { if (!+v.qty) throw new Error('Saisissez une variation différente de zéro.'); return db.insert('stock_moves', { article_id: id, qty: +v.qty, reason: 'adjustment', ...(stockWarehouse ? { warehouse_id: stockWarehouse } : {}) }); });
   };
   load();
 }

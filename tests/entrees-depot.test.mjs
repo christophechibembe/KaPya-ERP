@@ -14,6 +14,8 @@ const achats = await readFile(path.join(root, 'js/modules/achats.js'), 'utf8');
 const parametres = await readFile(path.join(root, 'js/modules/parametres.js'), 'utf8');
 const demo = await readFile(path.join(root, 'js/demo.js'), 'utf8');
 const i18n = await readFile(path.join(root, 'js/i18n.js'), 'utf8');
+const stockMigration = await readFile(path.join(root, 'supabase/migrations/20261128000001_ajuster_stock_facturier.sql'), 'utf8');
+const stocks = await readFile(path.join(root, 'js/modules/stocks.js'), 'utf8');
 
 test('la migration ajoute l’autorisation par dépôt', () => {
   assert.match(migration, /alter table public\.user_warehouses add column if not exists can_receive_stock boolean not null default false/i);
@@ -77,4 +79,24 @@ test('le gérant coche l’autorisation dans Paramètres sans perdre celle des t
 test('la démo et les traductions suivent', () => {
   assert.match(demo, /can_receive_stock: false/);
   assert.match(i18n, /'Peut enregistrer les entrées de stock dans son dépôt':/);
+});
+
+test('« Ajuster » est autorisé au facturier uniquement dans son dépôt', () => {
+  assert.match(stockMigration, /drop policy if exists stock_moves_i on public\.stock_moves/i);
+  assert.match(stockMigration, /reason = 'adjustment'/i);
+  assert.match(stockMigration, /my_role\(\) = 'facturier'/i);
+  assert.match(stockMigration, /warehouse_id = my_shop\(\)/i);
+  assert.match(stockMigration, /uw\.can_receive_stock/i);
+  assert.match(schema, /create policy stock_moves_i[\s\S]*?my_role\(\) = 'facturier'::text[\s\S]*?uw\.can_receive_stock/i);
+});
+
+test('l’écran Produits & Stocks n’offre au facturier que « Ajuster »', () => {
+  assert.match(roles, /'stock\.adjust': \['admin', 'manager', 'facturier'\]/);
+  assert.match(roles, /'stock\.write': \['admin', 'manager'\]/, 'créer/modifier/archiver un article reste interdit');
+  assert.match(stocks, /can\(ctx\.role, 'stock\.adjust'\)/);
+  assert.match(stocks, /select=warehouse_id,can_receive_stock&user_id=eq\.\$\{session\(\)\?\.uid\}/);
+  assert.match(stocks, /if \(!canManage\) \$\('#new'\)\.style\.display = 'none'/, 'pas de « Nouvel article » pour le facturier');
+  assert.match(stocks, /data-adj=/);
+  assert.match(stocks, /warehouse_id: stockWarehouse/, 'le mouvement est bien imputé à son dépôt');
+  assert.match(stocks, /\$\{canManage \? `<button class="lnk action-detail"/, 'Modifier et Archiver sont conditionnés au droit de gestion');
 });
