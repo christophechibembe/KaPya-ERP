@@ -939,6 +939,7 @@ const EN = {
   'Voir les pièces refusées': 'View rejected records',
   'Vider les données hors ligne': 'Clear offline data',
   'Aucune pièce refusée.': 'No rejected records.',
+  'Les refus temporaires (serveur indisponible, limite de débit) sont réessayés automatiquement, au plus 3 fois. Les refus métier restent à votre choix.': 'Temporary failures (server unavailable, rate limit) are retried automatically, up to 3 times. Business rejections remain your choice.',
   'Données hors ligne vidées.': 'Offline data cleared.',
   'Nouvelle tentative effectuée.': 'Retry completed.',
   'Synchronisation en cours…': 'Syncing…',

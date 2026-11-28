@@ -22,7 +22,7 @@ métier sont enregistrées dans une file d'attente puis envoyées au retour de l
 | Supprimer un acompte hors ligne | non : message explicite, le réseau reste requis (opération sensible) |
 | Inventaire physique et changement de rôle hors ligne | non : message explicite, le réseau reste requis |
 | Créer une invitation hors ligne | oui : le code devient actif à la synchronisation |
-| Synchronisation application fermée | oui sur Chromium (Background Sync) ; ailleurs, la file repart à la réouverture |
+| Synchronisation application fermée | oui sur Chromium (Background Sync) ; sur iOS, à la réception d'une notification push (si activée), sinon à la réouverture |
 | Historique local réglable | oui : 2 000, 10 000 ou 20 000 pièces |
 
 ## Lectures hors ligne
@@ -89,7 +89,9 @@ ventes confirmées par le serveur.
 
 En cas de refus serveur (stock insuffisant, donnée invalide), la modification locale est
 annulée et la pièce passe en **refusée**. Elle reste visible dans Paramètres > Mode
-hors-ligne, avec deux choix : réessayer ou retirer.
+hors-ligne, avec deux choix : réessayer ou retirer. Les refus **temporaires** (serveur
+indisponible, limite de débit, conflit de verrou) sont réessayés automatiquement au plus
+trois fois, avec délai progressif ; les refus métier restent au choix de l'utilisateur.
 
 En cas de conflit de version sur une fiche modifiée sur un autre appareil, la mise à jour
 est refusée plutôt qu'écrasée : l'utilisateur recharge la fiche, vérifie, puis réenregistre.
@@ -118,10 +120,12 @@ dans IndexedDB (jamais `localStorage`, inaccessible au service worker). Il renou
 jeton si besoin, envoie les pièces et marque leur résultat ; à la réouverture, l'application
 termine le travail local et reprend la session renouvelée.
 
-Cette reprise **application fermée** dépend du Background Sync : elle fonctionne sur
-Chromium (Chrome, Edge, Android), pas sur Safari/iOS. Ailleurs, la file repart normalement
-à la prochaine ouverture. Les pièces restent idempotentes : un envoi simultané par l'onglet
-et le service worker ne crée pas de doublon.
+Cette reprise **application fermée** a deux chemins : le Background Sync sur Chromium
+(Chrome, Edge, Android), et — sur Safari/iOS où il n'existe pas — une notification push
+reçue par l'appareil (après activation des notifications dans l'application) : le service
+worker en profite alors pour rejouer la file. Sans notification ni Background Sync, la file
+repart à la prochaine ouverture. Les pièces restent idempotentes : un envoi simultané par
+l'onglet et le service worker ne crée pas de doublon.
 
 ## Diagnostic dans Paramètres
 
@@ -148,7 +152,9 @@ La carte **Mode hors-ligne** affiche :
   modifierait les droits ou le stock sans contrôle.
 - Une invitation créée hors ligne n'est active qu'après la synchronisation : ne transmettez
   le code qu'une fois l'appareil reconnecté (ou vérifiez la file dans Paramètres).
-- La reprise application fermée dépend du navigateur (Background Sync sur Chromium).
+- La reprise application fermée dépend du navigateur : Background Sync sur Chromium,
+  notification push sur iOS (à activer dans l'application) ; sans aucun des deux, la file
+  repart à la réouverture.
 - Les lectures au-delà de la fenêtre d'historique réglée peuvent manquer hors ligne ; elles
   restent disponibles en ligne.
 - Le cache local et le miroir de session contiennent des données sensibles : il faut

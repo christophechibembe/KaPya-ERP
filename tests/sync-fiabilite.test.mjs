@@ -60,6 +60,29 @@ test('la reprise automatique et le bouton manuel forcent la synchronisation', as
   assert.match(parametres, /'locked'/, 'un verrou d’un autre onglet est signalé à l’utilisateur');
 });
 
+test('la reprise automatique des refus temporaires est câblée sans toucher aux refus métier', async () => {
+  const api = await readFile(path.join(root, 'js/api.js'), 'utf8');
+  assert.match(api, /shouldAutoRetry\(it\)/);
+  assert.match(api, /statusCode: e\.status/);
+  assert.match(api, /MAX_AUTO_RETRIES|retries/);
+  const offline = await readFile(path.join(root, 'js/offline.js'), 'utf8');
+  assert.match(offline, /RETRYABLE_STATUSES = new Set\(\[408, 409, 423, 429, 500, 502, 503, 504\]\)/);
+  const parametres = await readFile(path.join(root, 'js/modules/parametres.js'), 'utf8');
+  assert.match(parametres, /réessayés automatiquement, au plus 3 fois/);
+  const docs = await readFile(path.join(root, 'docs/OFFLINE.md'), 'utf8');
+  assert.match(docs, /réessayés automatiquement au plus/);
+});
+
+test('le service worker rejoue la file quand une notification réveille l’appareil', async () => {
+  const sw = await readFile(path.join(root, 'sw.js'), 'utf8');
+  const handler = sw.slice(sw.indexOf("self.addEventListener('push'"), sw.indexOf("self.addEventListener('notificationclick'"));
+  assert.match(handler, /replayOfflineQueue\(\)/);
+  assert.match(handler, /d\.sync/, 'un message de synchronisation silencieux est accepté');
+  assert.match(handler, /showNotification/, 'les notifications normales restent affichées');
+  const docs = await readFile(path.join(root, 'docs/OFFLINE.md'), 'utf8');
+  assert.match(docs, /notification push/);
+});
+
 test('le réessai d’une pièce refusée réenregistre la reprise et force l’envoi', async () => {
   const api = await readFile(path.join(root, 'js/api.js'), 'utf8');
   const retry = api.slice(api.indexOf('export async function retryRejected'), api.indexOf('export async function discardRejected'));

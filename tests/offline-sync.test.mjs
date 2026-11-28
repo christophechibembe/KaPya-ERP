@@ -1,7 +1,7 @@
 // Hors-ligne : rythme de reprise, résumé pour l'écran et interrogation de la copie locale.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { retryDelay, syncDecision, formatAge, offlineSummary, SYNC_INTERVAL_MS, BACKOFF_MAX_MS, normalizeHistoryDepth, DEFAULT_HISTORY_DEPTH, HISTORY_DEPTHS } from '../js/offline.js';
+import { retryDelay, syncDecision, formatAge, offlineSummary, SYNC_INTERVAL_MS, BACKOFF_MAX_MS, normalizeHistoryDepth, DEFAULT_HISTORY_DEPTH, HISTORY_DEPTHS, shouldAutoRetry } from '../js/offline.js';
 import { localSelect } from '../js/offline-query.mjs';
 import { documentLines, stockDelta } from '../js/offline-delete.mjs';
 
@@ -43,6 +43,18 @@ test('décision : rafraîchissement périodique seulement quand la file est vide
   assert.equal(syncDecision({ online: true, lastSync: 0, now }).reason, 'periodic');
   assert.equal(syncDecision({ online: true, lastSync: now - 1000, now }).reason, 'idle');
   assert.equal(syncDecision({ online: true, lastSync: now - SYNC_INTERVAL_MS, now }).reason, 'periodic');
+});
+
+test('refus serveur : seules les erreurs temporaires sont reprises automatiquement', () => {
+  const now = 10_000_000;
+  const base = { status: 'rejected', rejectedAt: now - 60000, retries: 0 };
+  assert.equal(shouldAutoRetry({ ...base, statusCode: 503 }, now), true);
+  assert.equal(shouldAutoRetry({ ...base, statusCode: 429 }, now), true);
+  assert.equal(shouldAutoRetry({ ...base, statusCode: 400 }, now), false, 'un refus métier reste manuel');
+  assert.equal(shouldAutoRetry({ ...base, statusCode: 503, retries: 3 }, now), false, 'au plus 3 essais');
+  assert.equal(shouldAutoRetry({ ...base, statusCode: 503, rejectedAt: now - 1000 }, now), false, 'délai progressif respecté');
+  assert.equal(shouldAutoRetry({ ...base, statusCode: 503, swRollback: true }, now), false, 'le service worker doit d’abord rétablir la copie locale');
+  assert.equal(shouldAutoRetry({ ...base, status: 'pending', statusCode: 503 }, now), false);
 });
 
 test('résumé : statut, libellés et âge de la copie locale', () => {
