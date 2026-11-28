@@ -556,11 +556,12 @@ async function renderTeam(main, ctx) {
   const members = main.querySelector('#members');
   async function loadMembers() {
     try {
-      const [rows, shops, assigns] = await Promise.all([db.select('profiles', 'select=id,role,full_name&order=role'), loadShops(), db.select('user_warehouses', 'select=user_id,warehouse_id,can_transfer_all').catch(() => [])]);
+      const [rows, shops, assigns] = await Promise.all([db.select('profiles', 'select=id,role,full_name&order=role'), loadShops(), db.select('user_warehouses', 'select=user_id,warehouse_id,can_transfer_all,can_receive_stock').catch(() => [])]);
       const shopOf = id => assigns.find(a => a.user_id === id)?.warehouse_id || '';
       const transferOf = id => !!assigns.find(a => a.user_id === id)?.can_transfer_all;
-      // Boutique du facturier : il ne voit et ne vend que dans celle-ci.
-      const shopCell = r => r.role !== 'facturier' ? '—' : `<select data-shop="${r.id}" aria-label="Boutique de ce facturier"><option value="">— choisir —</option>${shops.map(s => `<option value="${esc(s.id)}"${s.id === shopOf(r.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select><label class="check"><input type="checkbox" data-transfer="${r.id}"${transferOf(r.id) ? ' checked' : ''}> Peut transférer depuis tous les dépôts</label>`;
+      const receiveOf = id => !!assigns.find(a => a.user_id === id)?.can_receive_stock;
+      // Boutique et autorisations du facturier : il ne voit et ne vend que dans celle-ci.
+      const shopCell = r => r.role !== 'facturier' ? '—' : `<select data-shop="${r.id}" aria-label="Boutique de ce facturier"><option value="">— choisir —</option>${shops.map(s => `<option value="${esc(s.id)}"${s.id === shopOf(r.id) ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select><label class="check"><input type="checkbox" data-transfer="${r.id}"${transferOf(r.id) ? ' checked' : ''}> Peut transférer depuis tous les dépôts</label><label class="check"><input type="checkbox" data-receive="${r.id}"${receiveOf(r.id) ? ' checked' : ''}> Peut enregistrer les entrées de stock dans son dépôt</label>`;
       members.innerHTML = `<table><thead><tr><th>Membre</th><th>Rôle</th><th>Boutique</th><th>Action</th></tr></thead><tbody>${rows.map(r => `<tr><td>${r.id === ctx.id ? 'Vous' : esc(r.full_name || 'Membre')}</td><td>${
         r.id === ctx.id ? esc(ROLE[r.role]) : `<select data-id="${r.id}" aria-label="Rôle de ce membre">${Object.keys(ROLES).map(k => `<option value="${k}"${k === r.role ? ' selected' : ''}>${ROLE[k]}</option>`).join('')}</select>`}</td><td>${r.id === ctx.id ? '' : shopCell(r)}</td><td>${r.id === ctx.id ? '' : `<button class="lnk" type="button" data-remove="${r.id}" data-name="${esc(r.full_name || 'ce membre')}">Retirer</button>`}</td></tr>`).join('')}</tbody></table>`;
       // Retirer un membre : il n'appartient plus à l'entreprise, son siège est libéré.
@@ -575,14 +576,24 @@ async function renderTeam(main, ctx) {
         if (!requireOnline(MEMBERS_ONLINE)) { loadMembers(); return; }
         if (!sel.value) return;
         const all = !!members.querySelector(`[data-transfer="${sel.dataset.shop}"]`)?.checked;
-        try { await db.upsert('user_warehouses', { user_id: sel.dataset.shop, warehouse_id: sel.value, can_transfer_all: all }, 'user_id'); loadMembers(); }
+        const receive = !!members.querySelector(`[data-receive="${sel.dataset.shop}"]`)?.checked;
+        try { await db.upsert('user_warehouses', { user_id: sel.dataset.shop, warehouse_id: sel.value, can_transfer_all: all, can_receive_stock: receive }, 'user_id'); loadMembers(); }
         catch (e) { notify('Changement impossible : ' + e.message); loadMembers(); }
       });
       members.querySelectorAll('input[data-transfer]').forEach(box => box.onchange = async () => {
         if (!requireOnline(MEMBERS_ONLINE)) { loadMembers(); return; }
         const shop = members.querySelector(`select[data-shop="${box.dataset.transfer}"]`)?.value;
         if (!shop) { notify('Choisissez d’abord la boutique de ce facturier.'); box.checked = !box.checked; return; }
-        try { await db.upsert('user_warehouses', { user_id: box.dataset.transfer, warehouse_id: shop, can_transfer_all: box.checked }, 'user_id'); loadMembers(); }
+        const receive = !!members.querySelector(`[data-receive="${box.dataset.transfer}"]`)?.checked;
+        try { await db.upsert('user_warehouses', { user_id: box.dataset.transfer, warehouse_id: shop, can_transfer_all: box.checked, can_receive_stock: receive }, 'user_id'); loadMembers(); }
+        catch (e) { notify('Changement impossible : ' + e.message); loadMembers(); }
+      });
+      members.querySelectorAll('input[data-receive]').forEach(box => box.onchange = async () => {
+        if (!requireOnline(MEMBERS_ONLINE)) { loadMembers(); return; }
+        const shop = members.querySelector(`select[data-shop="${box.dataset.receive}"]`)?.value;
+        if (!shop) { notify('Choisissez d’abord la boutique de ce facturier.'); box.checked = !box.checked; return; }
+        const all = !!members.querySelector(`[data-transfer="${box.dataset.receive}"]`)?.checked;
+        try { await db.upsert('user_warehouses', { user_id: box.dataset.receive, warehouse_id: shop, can_transfer_all: all, can_receive_stock: box.checked }, 'user_id'); loadMembers(); }
         catch (e) { notify('Changement impossible : ' + e.message); loadMembers(); }
       });
       members.querySelectorAll('select[data-id]').forEach(sel => sel.onchange = async () => {

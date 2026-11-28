@@ -317,7 +317,7 @@ export function createDemoDatabase({ storage = localStore, now = () => new Date(
   return {
     async select(table, query = '') {
       let list = table === 'profiles' ? [{ id: 'demo', org_id: 'demo', full_name: 'Gérant Démo', role: 'admin', organizations: rows('organizations')[0] }]
-        : table === 'user_warehouses' ? [{ user_id: 'demo', warehouse_id: rows('warehouses')[0].id }]
+        : table === 'user_warehouses' ? [{ user_id: 'demo', warehouse_id: rows('warehouses')[0].id, can_transfer_all: false, can_receive_stock: false }]
           : table === 'sale_cost_snapshots' ? rows('sales').flatMap(s => s.sale_lines.map(l => ({ sale_line_id: l.id, unit_cost_at_sale: l.unit_cost_at_sale, cost_is_estimated: false })))
             : rows(table).map(row => view(table, row));
       const params = new URLSearchParams(query);
